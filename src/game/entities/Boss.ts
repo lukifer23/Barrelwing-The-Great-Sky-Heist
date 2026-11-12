@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { SaveManager } from '../systems/SaveManager';
 
@@ -54,7 +55,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(26);
     this.play('boss-idle');
     this.setFlipX(false);
-    this.stateUntil = scene.time.now + 1800;
+    this.stateUntil = playTime(scene) + 1800;
     this.homeX = x;
     this.homeY = y;
   }
@@ -328,7 +329,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.defeat();
       return true;
     }
-    this.stateUntil = Math.min(this.stateUntil, this.scene.time.now + 520);
+    this.stateUntil = Math.min(this.stateUntil, playTime(this.scene) + 520);
     return true;
   }
 

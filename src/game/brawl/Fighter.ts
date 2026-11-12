@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { CHARACTERS, type CharacterId } from '../data/characters';
 import { AudioManager } from '../systems/AudioManager';
@@ -23,6 +24,10 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   private dashUntil = 0;
   private groundAt = -9999;
   private lastAnimation = '';
+  private bufferedJump = 0;
+  private bufferedDash = 0;
+  private bufferedAttack = 0;
+  private bufferedAim = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, readonly id: CharacterId, readonly isCpu: boolean) {
     super(scene, x, y, CHARACTERS[id].sheet, 0);
@@ -34,12 +39,20 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   get grounded(): boolean { return this.body.blocked.down || this.body.touching.down; }
-  get now(): number { return this.scene.time.now; }
-  get attacking(): boolean { const t = this.now - this.attackAt; return t >= 65 && t <= 190; }
+  get now(): number { return playTime(this.scene); }
+  get attackWindup(): number { return this.isCpu ? 200 : 65; }
+  get attackCooldown(): number { return this.id === 'fenn' ? 360 : this.id === 'mallow' ? 570 : 450; }
+  get attackProgress(): number { return Phaser.Math.Clamp(1 - (this.attackReady - this.now) / this.attackCooldown, 0, 1); }
+  get dashProgress(): number { return Phaser.Math.Clamp(1 - (this.dashReady - this.now) / 1000, 0, 1); }
+  get stunned(): boolean { return this.now < this.stunUntil; }
+  get attacking(): boolean { const t = this.now - this.attackAt; return t >= this.attackWindup && t <= this.attackWindup + 125; }
 
   updateFighter(dtMs: number, input: FightInput): void {
     const now = this.now, dt = dtMs / 1000;
     if (this.stocks <= 0) return;
+    if (input.jump) this.bufferedJump = now + 140;
+    if (input.dash) this.bufferedDash = now + 140;
+    if (input.attack) { this.bufferedAttack = now + 160; this.bufferedAim = input.aim; }
     if (this.grounded) { this.airJumps = 2; this.groundAt = now; }
     this.setAlpha(now < this.invulnerableUntil ? 0.45 + Math.abs(Math.sin(now / 75)) * 0.5 : 1);
     if (now >= this.stunUntil) {
@@ -49,21 +62,24 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       const target = input.move * 180 * this.courier.speed;
       if (now < this.dashUntil) this.body.velocity.x = this.facing * 390;
       else this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, target, 1 - Math.exp(-(this.grounded ? 18 : 8) * dt));
-      if (input.jump && now >= this.jumpReady) {
+      if (this.bufferedJump > now && now >= this.jumpReady && (now - this.groundAt < 100 || this.airJumps > 0)) {
+        this.bufferedJump = 0;
         if (now - this.groundAt < 100) {
           this.body.velocity.y = -340; this.groundAt = -9999;
         } else if (this.airJumps > 0) { this.airJumps--; this.body.velocity.y = -285; }
         this.jumpReady = now + 160;
         AudioManager.sfx('flap', { volume: this.isCpu ? 0.1 : 0.25 });
       }
-      if (input.dash && now >= this.dashReady) {
+      if (this.bufferedDash > now && now >= this.dashReady) {
+        this.bufferedDash = 0;
         this.dashUntil = now + 120; this.dashReady = now + 1000;
         this.body.velocity.x = this.facing * 390; this.body.velocity.y = Math.min(this.body.velocity.y, 0);
         AudioManager.sfx('throw', { volume: 0.2 });
       }
-      if (input.attack && now >= this.attackReady) {
-        this.attackAt = now; this.attackAim = input.aim; this.hitThisSwing = false;
-        this.attackReady = now + (this.id === 'fenn' ? 360 : this.id === 'mallow' ? 570 : 450);
+      if (this.bufferedAttack > now && now >= this.attackReady) {
+        this.bufferedAttack = 0;
+        this.attackAt = now; this.attackAim = this.bufferedAim; this.hitThisSwing = false;
+        this.attackReady = now + this.attackCooldown;
         this.scene.events.emit('brawl-swing', this);
         AudioManager.sfx('throw', { volume: 0.2, rate: 1.4 });
       }
@@ -92,6 +108,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     target.body.velocity.set(this.attackAim === 0 ? dir * force : dir * force * 0.45, this.attackAim < 0 ? -force * 1.1 : this.attackAim > 0 ? force * 0.8 : -100 - force * 0.40);
     target.stunUntil = target.now + Math.min(450, 160 + target.damage * 1.4);
     target.invulnerableUntil = target.now + 280;
+    target.attackAt = -9999; target.hitThisSwing = true;
     target.scene.events.emit('brawl-hit', target);
     AudioManager.sfx('stomp', { volume: 0.35, rate: 1 + target.damage / 350 });
     return true;
@@ -102,6 +119,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.damage += 8;
     this.body.velocity.set(dir * (140 + this.damage * 2), -190);
     this.stunUntil = this.now + 180; this.invulnerableUntil = this.now + 600;
+    this.attackAt = -9999; this.hitThisSwing = true;
     return true;
   }
 
@@ -110,5 +128,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.body.setAllowGravity(true); this.body.enable = true; this.setVisible(true).setAngle(0);
     this.invulnerableUntil = this.now + 1700; this.stunUntil = 0; this.dashUntil = 0;
     this.attackAt = -9999; this.attackReady = this.now + 300;
+    this.bufferedJump = 0; this.bufferedDash = 0; this.bufferedAttack = 0;
+    this.jumpReady = 0; this.dashReady = 0; this.groundAt = -9999;
   }
 }

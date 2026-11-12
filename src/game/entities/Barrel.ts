@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 
 export type BarrelVariant = 'standard' | 'fast' | 'bouncing' | 'armored';
@@ -33,7 +34,7 @@ export class Barrel extends Phaser.Physics.Arcade.Sprite {
     this.body.setGravityY(0);
     const speed = variant === 'fast' ? 128 : variant === 'armored' ? 76 : 96;
     this.body.velocity.x = dir * speed;
-    this.spawnedAt = scene.time.now;
+    this.spawnedAt = playTime(scene);
     if (variant === 'bouncing') this.setTint(0xffd39a);
     if (variant === 'armored') this.setScale(1.06);
   }
@@ -99,7 +100,7 @@ export class BarrelSpawner {
     this.dir = cfg.dir;
     this.interval = cfg.interval;
     this.variant = cfg.variant ?? 'standard';
-    this.nextAt = scene.time.now + (cfg.phase ?? 0) + 900;
+    this.nextAt = playTime(scene) + (cfg.phase ?? 0) + 900;
     this.barrelGroup = group;
     this.warnSprite = scene.add.image(cfg.x, cfg.y - 8, 'fx_glow')
       .setTint(0xff7048).setDepth(17).setAlpha(0).setScale(1.6);

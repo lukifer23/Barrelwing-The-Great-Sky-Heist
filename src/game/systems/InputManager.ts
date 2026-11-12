@@ -117,6 +117,7 @@ export class InputManager {
   get up(): boolean { return touchInput.axisY < -0.4 || !!(this.keys.up?.isDown || this.keys.w?.isDown); }
   get down(): boolean { return touchInput.axisY > 0.55 || !!(this.keys.down?.isDown || this.keys.s?.isDown); }
   get jumpHeld(): boolean { return touchInput.held.has('jump') || !!this.keys.space?.isDown; }
+  get attackHeld(): boolean { return touchInput.held.has('attack') || !!this.keys.k?.isDown; }
 
   reset(): void {
     this.jumpBufferMs = 0; this.dashBufferMs = 0; this.attackBufferMs = 0;

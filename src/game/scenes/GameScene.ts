@@ -1,3 +1,4 @@
+import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { COLORS, FONT_SMALL, GAME_HEIGHT, GAME_WIDTH, PHYSICS, FLIGHT } from '../config';
 import { getLevel } from '../data/levels';
@@ -189,6 +190,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    installPlayClock(this, 48);
     const L = this.level;
     const ts = L.tile;
     const W = L.width * ts;
@@ -289,7 +291,7 @@ export class GameScene extends Phaser.Scene {
       this.time.addEvent({
         delay: 10500, loop: true, callback: () => {
           if (!this.scene.isActive()) return;
-          this.cameras.main.flash(160, 190, 215, 255);
+          this.fx.flash(0xbed7ff, 160, 0.2);
           AudioManager.sfx('throw', { volume: 0.14, rate: 0.35 });
         },
       });
@@ -709,7 +711,7 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, sp.x * ts + ts / 2, sp.y * ts, this.resumeRun?.character ?? SaveManager.get().selectedCharacter);
     this.checkpoint = { x: this.player.x, y: this.player.y };
     this.player.hearts = this.player.maxHearts;
-    this.player.invulnUntil = this.time.now + 1200;
+    this.player.invulnUntil = playTime(this) + 1200;
   }
 
   private buildCollisions(): void {
@@ -720,7 +722,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.physics.add.collider(this.player, this.oneWays, undefined, (_p, platform) => {
       const body = (platform as Phaser.GameObjects.GameObject & { body: Phaser.Physics.Arcade.StaticBody }).body;
-      return this.player.mode !== 'climb' && this.time.now > this.player.dropThroughUntil && this.player.body.velocity.y >= 0 && this.player.body.prev.y + this.player.body.height <= body.top + 6;
+      return this.player.mode !== 'climb' && playTime(this) > this.player.dropThroughUntil && this.player.body.velocity.y >= 0 && this.player.body.prev.y + this.player.body.height <= body.top + 6;
     });
     this.physics.add.collider(this.enemies, this.solids);
     this.physics.add.collider(this.enemies, this.oneWays);
@@ -750,8 +752,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildIntro(): void {
-    this.introUntil = this.time.now + 1900;
-    this.player.invulnUntil = this.time.now + 2600;
+    this.introUntil = playTime(this) + 1900;
+    this.player.invulnUntil = playTime(this) + 2600;
     const th = THEMES[this.level.theme];
     const card = this.add.container(this.scale.width / 2, Math.min(this.scale.height / 2, 150)).setScrollFactor(0).setDepth(210);
     const bg = this.add.rectangle(0, 0, 300, 62, 0x101528, 0.94).setStrokeStyle(2, th.accent, 1);
@@ -789,7 +791,7 @@ export class GameScene extends Phaser.Scene {
     }, this);
     this.events.on('enemy-defeated', (score: number, x: number, y: number, id: number) => { this.defeated.add(id); this.addScore(score); this.fx.pickup(x, y, 0xffe6a8); }, this);
     this.events.on('barrel-smash', (x: number, y: number) => { this.addScore(50); }, this);
-    this.events.on('player-flap', () => { this.lastFlapAt = this.time.now; }, this);
+    this.events.on('player-flap', () => { this.lastFlapAt = playTime(this); }, this);
     this.events.on('enemy-projectile', (x: number, y: number, tx: number, ty: number) => this.spawnBolt(x, y, tx, ty), this);
     this.events.on('boss-hit-player', (x: number) => this.hurtPlayer(x), this);
     this.events.on('boss-barrel', (x: number, y: number) => {
@@ -803,7 +805,7 @@ export class GameScene extends Phaser.Scene {
     }, this);
     this.events.on('boss-breath-start', (x: number, y: number, dir: number) => {
       this.bossFlameDir = dir;
-      this.bossFlameUntil = this.time.now + 1000;
+      this.bossFlameUntil = playTime(this) + 1000;
       this.bossFlameRect = new Phaser.Geom.Rectangle(dir < 0 ? x - 190 : x, y - 46, 190, 54);
       const beam = this.add.rectangle(x + dir * 95, y - 26, 190, 44, 0xff7a3a, 0.28).setDepth(24);
       this.tweens.add({ targets: beam, alpha: 0.08, duration: 120, yoyo: true, repeat: 5, onComplete: () => beam.destroy() });
@@ -845,7 +847,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- update
-  override update(time: number, delta: number): void {
+  override update(_time: number, delta: number): void {
+    const time = playTime(this);
     if (this.gameOver || this.levelDone) return;
     const dt = Math.min(delta, 48);
     if (!this.paused) this.elapsedMs += dt;
@@ -962,7 +965,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     // conveyor animation
-    const frame = Math.floor(this.time.now / 140) % 2;
+    const frame = Math.floor(playTime(this) / 140) % 2;
     for (const c of this.conveyors) c.sprite.setTexture(frame ? 'conveyor_1' : 'conveyor_0');
   }
 
@@ -1048,7 +1051,7 @@ export class GameScene extends Phaser.Scene {
           this.player.body.velocity.set(FLIGHT.forwardSpeed * 0.6, 0);
           this.player.x -= 24;
           this.fx.hit(this.player.x, this.player.y - 12, 0x9ff5ff);
-          this.cameras.main.shake(120, 0.004);
+          this.fx.shake(0.004, 120);
           break;
         }
       }
@@ -1119,7 +1122,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     for (const l of this.bgLayers) {
       l.sprite.tilePositionX = cam.scrollX * l.factor;
-      l.sprite.y = l.baseY + Math.sin(this.time.now / 4200) * 1.2;
+      l.sprite.y = l.baseY + Math.sin(playTime(this) / 4200) * 1.2;
     }
   }
 
@@ -1135,12 +1138,13 @@ export class GameScene extends Phaser.Scene {
       flapCharges: this.player.mode === 'flight' ? 2 : this.player.flapCharges,
       maxFlaps: this.player.maxFlapCharges,
       dashReady: this.player.dashReady,
+      dashProgress: this.player.dashProgress,
       timeMs: this.elapsedMs,
       flight: this.player.mode === 'flight',
       bossHp: this.boss?.bossActive && this.boss.engaged ? this.boss.hp : null,
       bossMax: this.boss?.maxHp ?? 6,
       bossName: 'THE STORM BARON',
-      powers: (() => { const now = this.time.now; const out: { kind: PowerKind; ratio: number }[] = [];
+      powers: (() => { const now = playTime(this); const out: { kind: PowerKind; ratio: number }[] = [];
         if (this.player.shield) out.push({ kind: 'shield', ratio: 1 });
         if (this.player.swiftUntil > now) out.push({ kind: 'swift', ratio: (this.player.swiftUntil - now) / (12000 * this.player.powerDuration) });
         if (this.player.magnetUntil > now) out.push({ kind: 'magnet', ratio: (this.player.magnetUntil - now) / (12000 * this.player.powerDuration) });
@@ -1160,7 +1164,7 @@ export class GameScene extends Phaser.Scene {
     this.collected.add(c.getData('objectId'));
     c.destroy();
     this.coinsCollected++;
-    const now = this.time.now;
+    const now = playTime(this);
     this.coinCombo = now - this.lastCoinAt < 1500 ? Math.min(9, this.coinCombo + 1) : 1;
     this.lastCoinAt = now;
     const points = 20 + (this.coinCombo - 1) * 5;
@@ -1316,7 +1320,7 @@ export class GameScene extends Phaser.Scene {
     AudioManager.sfx('defeat', { volume: 0.55, rate: 0.7 });
     this.fx.shake(0.008, 300);
     this.fx.flash(0x000000, 300, 0.4);
-    this.deathAt = this.time.now + 1050;
+    this.deathAt = playTime(this) + 1050;
     this.persistRun();
   }
 
@@ -1449,7 +1453,7 @@ export class GameScene extends Phaser.Scene {
     this.player.play(this.player.animation('idle'), true);
     AudioManager.stopMusic(600);
     AudioManager.sfx('life', { volume: 0.6 });
-    this.cameras.main.flash(180, 255, 240, 200);
+    this.fx.flash(0xfff0c8, 180, 0.25);
     this.fx.sparkle(this.player.x, this.player.y - 20, 0xffe9a0);
     for (let i = 0; i < 14; i++) {
       this.time.delayedCall(90 * i, () => {
@@ -1502,7 +1506,7 @@ export class GameScene extends Phaser.Scene {
     this.openGate('escape');
     this.bossBarVisible = false;
     this.escapeMode = true;
-    this.cameras.main.shake(1200, 0.01);
+    this.fx.shake(0.01, 1200);
     this.hud.toast('THE AIRSHIP IS FALLING — ESCAPE!', '#ff9a9a', 2600);
     AudioManager.stopMusic(400);
     AudioManager.playMusic('storm', { fade: 300 });

@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { PHYSICS, FLIGHT } from '../config';
 import { CHARACTERS, type CharacterId } from '../data/characters';
@@ -65,10 +66,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.play(this.animation('idle'));
   }
 
-  get now(): number { return this.scene.time.now; }
+  get now(): number { return playTime(this.scene); }
   get isInvulnerable(): boolean { return this.now < this.invulnUntil; }
   get dashReady(): boolean { return this.now >= this.dashReadyAt; }
   get dashActive(): boolean { return this.now < this.dashUntil; }
+  get dashProgress(): number { return Phaser.Math.Clamp(1 - (this.dashReadyAt - this.now) / (PHYSICS.dashCooldownMs * this.dashCooldown), 0, 1); }
   get maxFlapCharges(): number { return this.now < this.tripleUntil ? 3 : PHYSICS.maxFlaps; }
   get speedMultiplier(): number { return this.character.speed * (this.now < this.swiftUntil ? 1.35 : 1); }
   get magnetActive(): boolean { return this.now < this.magnetUntil; }
@@ -77,6 +79,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   setFlightBounds(rect: Phaser.Geom.Rectangle | null): void {
     this.flightBounds = rect;
     if (rect) {
+      if (this.mode === 'climb') this.exitClimb();
       this.mode = 'flight';
       this.body.setAllowGravity(true);
       this.body.setGravityY(FLIGHT.gravity - PHYSICS.gravity);

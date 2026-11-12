@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import type { EnemyKind } from '../data/levels/types';
 
@@ -310,9 +311,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   damage(amount = 1, fromX = this.x): boolean {
-    if (this.defeated || this.scene.time.now < this.hitUntil) return false;
+    if (this.defeated || playTime(this.scene) < this.hitUntil) return false;
     this.hp -= amount;
-    this.hitUntil = this.scene.time.now + 180;
+    this.hitUntil = playTime(this.scene) + 180;
     if (this.hp <= 0) {
       this.defeat();
       return true;

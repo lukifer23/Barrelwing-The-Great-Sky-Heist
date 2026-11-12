@@ -55,6 +55,10 @@
         #joystick.held { border-color: #f0c060; }
         #touch-controls button { border: 2px solid #95b5c8; border-radius: 50%; background: #15283bdd; color: #f4e6c8; font: bold 14px 'Silkscreen', monospace; box-shadow: 0 4px 0 #070a14, inset 0 0 20px #bddbe018; }
         #touch-controls button.held { background: #8b672e; border-color: #ffe6a4; }
+        #touch-controls button small { display: block; font: 7px 'Silkscreen', monospace; margin-top: 4px; }
+        #touch-controls button[aria-disabled="true"] { border-color: #607585 !important; color: #a0adbb; }
+        #touch-controls button[data-action="dash"]::after, #touch-controls button[data-action="attack"]::after { content: ''; position: absolute; left: 20%; bottom: 12%; width: calc(60% * var(--ready, 1)); height: 3px; background: #f0c060; border-radius: 2px; }
+        .flying [data-action="dash"] { display: none; }
         [data-action="jump"] { width: calc(clamp(68px, 12vmin, 88px) * var(--control-scale)); height: calc(clamp(68px, 12vmin, 88px) * var(--control-scale)); right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); border-color: #f0c060 !important; }
         [data-action="dash"] { width: calc(clamp(54px, 9vmin, 66px) * var(--control-scale)); height: calc(clamp(54px, 9vmin, 66px) * var(--control-scale)); right: calc(max(18px, env(safe-area-inset-right)) + clamp(76px, 13vmin, 100px) * var(--control-scale)); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 50px * var(--control-scale)); }
         [data-action="attack"] { display: none; }

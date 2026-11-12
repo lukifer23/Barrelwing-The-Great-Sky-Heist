@@ -68,7 +68,7 @@ test('real keyboard movement, jump, pause, resume, death and continue work repea
     await page.waitForTimeout(80); expect(await page.evaluate(() => (window as any).__game.scene.isActive('Pause'))).toBe(false);
   }
   for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.lives = 1; s.killPlayer(true); s.deathAt = s.time.now - 1; });
+    await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.lives = 1; s.killPlayer(true); s.deathAt = s.player.now - 1; });
     await page.waitForFunction(() => (window as any).__game.scene.isActive('GameOver'));
     await page.keyboard.press('Enter'); await page.waitForFunction(() => !(window as any).__game.scene.getScene('Game').gameOver);
     expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); return { lives: s.lives, dead: s.player.dead, handler: !!s.gameOverKey }; })).toEqual({ lives: 3, dead: false, handler: false });
@@ -211,7 +211,7 @@ test('Barrel Brawl keyboard attacks cause real damage and three ring-outs save a
   await page.evaluate(() => {
     const s = (window as any).__game.scene.getScene('Brawl');
     s.human.body.reset(s.W / 2 - 25, s.floor); s.cpu.body.reset(s.W / 2 + 25, s.floor);
-    s.human.facing = 1; s.human.invulnerableUntil = s.time.now + 2000; s.cpu.invulnerableUntil = 0;
+    s.human.facing = 1; s.human.invulnerableUntil = s.human.now + 2000; s.cpu.invulnerableUntil = 0;
   });
   await page.keyboard.press('k');
   await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').cpu.damage > 0);
@@ -291,9 +291,137 @@ test('camera filtering skips offscreen draws and restores them when the camera m
 
 test('Brawl resizing retains stocks, damage, and the fighter foot position on its platform', async ({ page }) => {
   const errors = await boot(page); await startBrawl(page);
-  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.human.body.reset(s.W * 0.4, s.floor); s.human.body.setVelocity(0, 0); s.human.stocks = 2; s.human.damage = 53; s.human.invulnerableUntil = s.time.now + 3000; });
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.human.body.reset(s.W * 0.4, s.floor); s.human.body.setVelocity(0, 0); s.human.stocks = 2; s.human.damage = 53; s.human.invulnerableUntil = s.human.now + 3000; });
   await page.setViewportSize({ width: 960, height: 411 }); await page.waitForTimeout(200);
   const state = await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); return { stocks: s.human.stocks, damage: s.human.damage, relativeX: s.human.x / s.W, footOffset: s.human.y - s.floor }; });
   expect(state.stocks).toBe(2); expect(state.damage).toBe(53); expect(state.relativeX).toBeCloseTo(0.4, 1); expect(Math.abs(state.footOffset)).toBeLessThan(2);
+  expect(errors).toEqual([]);
+});
+
+test('pausing freezes power, dash, and protection deadlines instead of expiring them in menus', async ({ page }) => {
+  const errors = await boot(page); await start(page); await page.waitForTimeout(2100);
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game'), p = s.player;
+    p.swiftUntil = p.now + 700; p.dashReadyAt = p.now + 700; p.invulnUntil = p.now + 700;
+    s.pauseForApp();
+  });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  const before = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { now: p.now, remaining: p.swiftUntil - p.now }; });
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.now)).toBe(before.now);
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+  await page.waitForTimeout(100);
+  const after = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { remaining: p.swiftUntil - p.now, protected: p.isInvulnerable, dash: p.dashReady, speed: p.speedMultiplier }; });
+  expect(after.remaining).toBeGreaterThan(before.remaining - 300); expect(after.protected).toBe(true); expect(after.dash).toBe(false); expect(after.speed).toBeGreaterThan(1);
+  expect(errors).toEqual([]);
+});
+
+test('Sprint pauses and resumes the same run, including backgrounding, and hides controls after defeat', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => { const g = (window as any).__game; g.scene.stop('Title'); g.scene.start('SkySprint'); });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('SkySprint'));
+  await page.keyboard.press('Space'); await page.waitForTimeout(120);
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  const paused = await page.evaluate(() => { const s = (window as any).__game.scene.getScene('SkySprint'); return { distance: s.distance, y: s.player.y, now: s.player.now }; });
+  await page.waitForTimeout(1100);
+  expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('SkySprint'); return { distance: s.distance, y: s.player.y, now: s.player.now }; })).toEqual(paused);
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('SkySprint'));
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('SkySprint').distance)).toBeGreaterThan(paused.distance);
+  await page.evaluate(() => (window as any).__game.events.emit('blur'));
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  await page.waitForTimeout(260); await page.keyboard.press('Escape');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('SkySprint'));
+  await page.evaluate(() => (window as any).__game.scene.getScene('SkySprint').gameOver());
+  await expect(page.locator('#touch-controls')).toHaveAttribute('hidden', '');
+  expect(errors).toEqual([]);
+});
+
+test('Brawl countdown freezes on pause and holding attack repeats real swings', async ({ page }) => {
+  const errors = await boot(page); await startBrawl(page);
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.startAt = s.human.now + 700; s.pauseForApp(); });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlPause'));
+  await page.waitForTimeout(1000); await page.keyboard.press('Escape');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Brawl'));
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').elapsedMs)).toBeLessThan(100);
+  await page.waitForTimeout(700);
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.swingsSeen = 0; s.events.on('brawl-swing', (f: any) => { if (!f.isCpu) s.swingsSeen++; }); });
+  await page.keyboard.down('k'); await page.waitForTimeout(1100); await page.keyboard.up('k');
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').swingsSeen)).toBeGreaterThanOrEqual(2);
+  expect(errors).toEqual([]);
+});
+
+test('touch feedback exposes real charges, recharge, and flight controls', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage(); const errors = await boot(page); await start(page); await page.waitForTimeout(2100);
+  await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; p.body.reset(100, 100); p.body.setVelocity(0, 0); p.flapCharges = 0; p.dashReadyAt = p.now + 500; });
+  await expect(page.locator('[data-action="jump"]')).toContainText('0 LEFT');
+  await expect(page.locator('[data-action="dash"]')).toContainText('CHARGING');
+  await page.waitForTimeout(600);
+  await expect(page.locator('[data-action="dash"]')).toContainText('READY');
+  await page.evaluate(() => { const g = (window as any).__game; g.scene.stop('Game'); g.scene.start('SkySprint'); });
+  await expect(page.locator('[data-action="jump"]')).toContainText('TAP TO RISE');
+  await expect(page.locator('[data-action="dash"]')).toBeHidden();
+  await page.screenshot({ path: 'artifacts/sprint-touch-feedback.png' });
+  expect(errors).toEqual([]); await context.close();
+});
+
+test('Sprint result choices stay above their overlay and accept taps after resizing', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => { const g = (window as any).__game; g.scene.stop('Title'); g.scene.start('SkySprint'); });
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('SkySprint').player?.active);
+  await page.keyboard.press('Space');
+  await page.evaluate(() => (window as any).__game.scene.getScene('SkySprint').gameOver());
+  await page.waitForFunction(() => !!(window as any).__game.scene.getScene('SkySprint').overMenu);
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(100);
+  const position = await page.evaluate(() => {
+    const g = (window as any).__game, s = g.scene.getScene('SkySprint'), label = s.overMenu.labels[0], b = label.getBounds(), canvas = g.canvas.getBoundingClientRect();
+    if (s.overLayer.depth <= s.overDim.depth) throw new Error('Results are hidden behind the overlay');
+    return { x: canvas.x + b.centerX / g.scale.width * canvas.width, y: canvas.y + b.centerY / g.scale.height * canvas.height };
+  });
+  await page.screenshot({ path: 'artifacts/sprint-results-responsive.png' });
+  await page.mouse.click(position.x, position.y);
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('SkySprint').state === 'ready');
+  expect(errors).toEqual([]);
+});
+
+test('field guide tabs fit cover, inner, and landscape screens without row overlaps', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => { const g = (window as any).__game; g.scene.pause('Title'); g.scene.start('Controls', { from: 'Title' }); });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Controls'));
+  for (const viewport of [{ width: 390, height: 844 }, { width: 832, height: 749 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport); await page.waitForTimeout(100);
+    for (const tab of ['TOUCH', 'KEYS', 'POWERUPS']) {
+      const issues = await page.evaluate(tab => {
+        const s = (window as any).__game.scene.getScene('Controls'); s.guide = tab; s.draw();
+        const texts = s.children.list.filter((o: any) => o.type === 'Text');
+        const outside = texts.filter((t: any) => { const b = t.getBounds(); return b.left < 0 || b.right > s.scale.width || b.top < 0 || b.bottom > s.scale.height; }).map((t: any) => t.text);
+        const content = texts.slice(5, -1);
+        for (let i = 1; i < content.length - 2; i += 2) {
+          if (content[i].getBounds().bottom > content[i + 2].getBounds().top - 1) outside.push(`Overlapping row: ${content[i].text}`);
+        }
+        return outside;
+      }, tab);
+      expect(issues, `${tab} at ${viewport.width}x${viewport.height}`).toEqual([]);
+    }
+  }
+  await page.screenshot({ path: 'artifacts/field-guide-landscape.png' });
+  expect(errors).toEqual([]);
+});
+
+test('Brawl rematches discard warning and CPU deadlines from the previous match', async ({ page }) => {
+  const errors = await boot(page); await startBrawl(page);
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Brawl');
+    s.bannerUntil = s.human.now + 90000; s.nextCpuAttack = s.human.now + 80000;
+    s.human.setData('previousMatch', true); s.scene.restart({ ...s.options, resume: false });
+  });
+  await page.waitForFunction(() => {
+    const s = (window as any).__game.scene.getScene('Brawl'); return s.scene.isActive() && s.human.active && !s.human.getData('previousMatch');
+  });
+  expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); return { banner: s.bannerUntil, attack: s.nextCpuAttack, stocks: s.human.stocks }; })).toEqual({ banner: 0, attack: 0, stocks: 3 });
+  await page.evaluate(() => { (window as any).__game.scene.getScene('Brawl').startAt = 0; });
+  await page.waitForFunction(() => !(window as any).__game.scene.getScene('Brawl').banner.visible);
   expect(errors).toEqual([]);
 });

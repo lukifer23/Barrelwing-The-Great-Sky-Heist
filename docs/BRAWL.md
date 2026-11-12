@@ -17,7 +17,7 @@ Respawning resets damage and grants brief invulnerability. The translucency indi
 | Joystick | A / D or Left / Right | Move |
 | JUMP | Space | Ground jump and two air recovery jumps |
 | DASH | J | Short directional burst |
-| HIT | K | Attack |
+| Hold HIT | Hold K | Repeat attacks as they recharge |
 | Joystick up + HIT | Up + K | Upward launch |
 | Joystick down + HIT | Down + K | Downward strike |
 | PAUSE | Escape / P | Pause, settings, restart, or save and leave |
@@ -30,7 +30,9 @@ Pip is balanced. Fenn moves faster and attacks more frequently, but is lighter a
 
 Canopy Court is the forest arena. Unsafe Workplace has changing conveyor drift. Return to Thunder has periodic air currents. All arenas receive announced barrel deliveries; the warning gives time to react before a barrel enters.
 
-CPU difficulty changes reaction time, attack reach decisions, recovery timing, and dash use. The CPU uses the same attacks, cooldowns, jump charges, damage, and ring-out rules as the player.
+CPU difficulty changes reaction time, attack intervals, recovery decisions, and dash use. CPU attacks have a 200 ms preparation ring before their active hit window. Player attacks prepare in 65 ms. Both use the same character damage, cooldowns, jump charges, and ring-out rules. Damage interrupts a pending attack. Short jump, dash, and attack requests are buffered during recovery; touch buttons show remaining air jumps and action recharge.
+
+Pausing suspends the match clock, initial countdown, protection, and cooldowns. Opening settings or backgrounding the app does not consume that time.
 
 ## Saving
 

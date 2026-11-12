@@ -1,3 +1,4 @@
+import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { COLORS, FONT_SMALL } from '../config';
 import { SaveManager } from '../systems/SaveManager';
@@ -14,6 +15,7 @@ export interface HudState {
   flapCharges: number;
   maxFlaps: number;
   dashReady: boolean;
+  dashProgress: number;
   timeMs: number;
   flight: boolean;
   bossHp: number | null;
@@ -160,10 +162,10 @@ export class Hud {
     }
     const t = Math.floor(s.timeMs / 1000);
     this.timeText.setText(`${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`);
-    this.dashBar.width = s.dashReady ? 22 : 4;
+    this.dashBar.width = 22 * s.dashProgress;
     this.dashBar.setFillStyle(s.dashReady ? 0x67e8f9 : 0x3a4460);
     this.flightBadge.setAlpha(s.flight ? 1 : 0);
-    if (s.flight) this.flightBadge.setAlpha(0.65 + Math.sin(this.scene.time.now / 160) * 0.3);
+    if (s.flight) this.flightBadge.setAlpha(0.65 + Math.sin(playTime(this.scene) / 160) * 0.3);
 
     for (let i = 0; i < this.powerIcons.length; i++) {
       const p = s.powers[i];

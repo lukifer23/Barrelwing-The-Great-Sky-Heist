@@ -1,3 +1,4 @@
+import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { Player } from '../player/Player';
@@ -46,6 +47,12 @@ export class SkySprintScene extends Phaser.Scene {
   private lastFlap = 0;
   private flashTimer = 0;
   private overMenu?: Menu;
+  private overLayer?: Phaser.GameObjects.Container;
+  private overDim?: Phaser.GameObjects.Rectangle;
+  private readonly appPause = () => this.pauseForApp();
+  private readonly onResume = () => this.inputMgr.reset();
+
+  get controlsActive(): boolean { return this.state !== 'over'; }
 
   private get viewWidth(): number { return this.scale.gameSize.width; }
   private get viewHeight(): number { return this.scale.gameSize.height; }
@@ -53,8 +60,9 @@ export class SkySprintScene extends Phaser.Scene {
   constructor() { super('SkySprint'); }
 
   create(): void {
+    installPlayClock(this, 50);
     this.state = 'ready';
-    this.coinScore = 0; this.hearts = []; this.overMenu = undefined;
+    this.coinScore = 0; this.hearts = []; this.overMenu = undefined; this.overLayer = undefined; this.overDim = undefined;
     this.flashTimer = 0; this.lastFlap = 0;
     this.gates = [];
     this.coins = [];
@@ -75,8 +83,13 @@ export class SkySprintScene extends Phaser.Scene {
     this.player.body.setAllowGravity(false);
     this.inputMgr = new InputManager(this);
     this.fx = new Effects(this);
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
+    this.game.events.on(Phaser.Core.Events.BLUR, this.appPause);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.appPause);
+    window.addEventListener('pagehide', this.appPause);
 
     this.buildHud();
+    this.resizeViewport();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resizeViewport, this);
     AudioManager.playMusic('sprint', { fade: 500 });
     this.events.on('sfx', (key: any, opts: any) => AudioManager.sfx(key, opts), this);
@@ -85,6 +98,10 @@ export class SkySprintScene extends Phaser.Scene {
     this.events.on('fx-step', (x: number, y: number, d: number) => this.fx.step(x, y, d), this);
     this.events.on('fx-dash', (x: number, y: number, d: number) => this.fx.dash(x, y, d), this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
+      this.game.events.off(Phaser.Core.Events.BLUR, this.appPause);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.appPause);
+      window.removeEventListener('pagehide', this.appPause);
       this.scale.off(Phaser.Scale.Events.RESIZE, this.resizeViewport, this);
       this.inputMgr.destroy();
       this.fx.destroy();
@@ -98,9 +115,17 @@ export class SkySprintScene extends Phaser.Scene {
 
   private resizeViewport(): void {
     this.cameras.main.setSize(this.viewWidth, this.viewHeight);
+    const vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
     this.player.setFlightBounds(new Phaser.Geom.Rectangle(0, 56, this.viewWidth, this.viewHeight - 86));
+    this.player.body.setVelocity(vx, vy).setAllowGravity(this.state === 'playing');
     this.hudBest.x = this.viewWidth - 12;
-    for (const image of [...this.bg, ...this.clouds]) image.setSize(this.viewWidth, this.viewHeight);
+    this.overDim?.setSize(this.viewWidth, this.viewHeight);
+    this.overLayer?.setPosition(this.viewWidth / 2, this.viewHeight / 2).setScale(Math.min(1.6, Math.max(1, this.viewHeight / 360)));
+    for (const image of [...this.bg, ...this.clouds]) {
+      const source = image.texture.getSourceImage() as HTMLImageElement;
+      image.setSize(this.viewWidth, this.viewHeight).setTileScale(Math.max(1, this.viewHeight / source.height));
+    }
+    for (const child of this.children.list) if (child instanceof Phaser.GameObjects.Rectangle && child.depth < 0) child.setSize(this.viewWidth, this.viewHeight);
     for (const g of this.gates) {
       g.gapY = Phaser.Math.Clamp(g.gapY, 50 + g.gapH / 2, this.viewHeight - 34 - g.gapH / 2);
       const topH = g.gapY - g.gapH / 2, botY = g.gapY + g.gapH / 2;
@@ -111,13 +136,13 @@ export class SkySprintScene extends Phaser.Scene {
   }
 
   private buildBg(): void {
-    this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x0e1730).setOrigin(0);
-    this.bg.push(this.add.tileSprite(0, 0, this.viewWidth, this.viewHeight, 'bg_storm_sky').setOrigin(0).setAlpha(0.8));
+    this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x0e1730).setOrigin(0).setDepth(-10);
+    this.bg.push(this.add.tileSprite(0, 0, this.viewWidth, this.viewHeight, 'bg_storm_sky').setOrigin(0).setAlpha(0.8).setDepth(-9));
     this.clouds.push(
-      this.add.tileSprite(0, 20, this.viewWidth, 150, 'bg_clouds').setOrigin(0).setAlpha(0.35),
-      this.add.tileSprite(0, 110, this.viewWidth, 160, 'bg_storm_trees').setOrigin(0).setAlpha(0.2),
+      this.add.tileSprite(0, 0, this.viewWidth, this.viewHeight, 'bg_clouds').setOrigin(0).setAlpha(0.35).setDepth(-8),
+      this.add.tileSprite(0, 0, this.viewWidth, this.viewHeight, 'bg_storm_trees').setOrigin(0).setAlpha(0.2).setDepth(-8),
     );
-    this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x0b1020, 0.25).setOrigin(0);
+    this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x0b1020, 0.25).setOrigin(0).setDepth(-7);
     this.add.particles(0, 0, 'fx_streak', {
       x: { min: this.viewWidth, max: this.viewWidth + 40 },
       y: { min: 10, max: this.viewHeight - 10 },
@@ -160,7 +185,6 @@ export class SkySprintScene extends Phaser.Scene {
       this.overMenu?.handleKey(e);
       return;
     }
-    if (e.key === 'Escape') { this.quit(); }
   }
 
   private startSprint(): void {
@@ -175,23 +199,26 @@ export class SkySprintScene extends Phaser.Scene {
     this.emitGate();
   }
 
-  private quit(): void {
-    if (this.state === 'playing') SaveManager.setBonusBest(this.score);
-    AudioManager.stopMusic(250);
-    this.scene.start('Title');
+  pauseForApp(): void {
+    if (!this.scene.isActive() || this.state === 'over') return;
+    SaveManager.setBonusBest(this.score);
+    this.inputMgr.reset();
+    this.scene.launch('Pause', { target: 'SkySprint' });
+    this.scene.pause();
   }
 
-  override update(time: number, delta: number): void {
+  override update(_time: number, delta: number): void {
+    const time = playTime(this);
     const dt = Math.min(delta, 50);
     this.inputMgr.update(dt);
-    if (this.inputMgr.pressedPause) { this.quit(); return; }
+    if (this.inputMgr.pressedPause && this.state !== 'over') { this.pauseForApp(); return; }
     if (this.state === 'ready' && this.inputMgr.jumpBufferMs > 0) this.startSprint();
 
     this.bg.forEach((b, i) => { b.tilePositionX += dt * (0.004 + i * 0.002); });
     this.clouds.forEach((c, i) => { c.tilePositionX += dt * (0.02 + i * 0.03) * (this.state === 'playing' ? 2 : 0.4); });
 
     if (this.state !== 'playing') {
-      this.player.setY(132 + Math.sin(time / 700) * 4);
+      if (this.state === 'ready') this.player.setY(132 + Math.sin(time / 700) * 4);
       this.player.body.velocity.x = 0;
       return;
     }
@@ -322,6 +349,8 @@ export class SkySprintScene extends Phaser.Scene {
   private gameOver(): void {
     if (this.state === 'over') return;
     this.state = 'over';
+    if (this.startPrompt.active) this.startPrompt.destroy();
+    if (this.readySub.active) this.readySub.destroy();
     this.player.controlLocked = true;
     this.player.dead = true;
     this.player.body.setAllowGravity(false);
@@ -333,8 +362,9 @@ export class SkySprintScene extends Phaser.Scene {
     this.hudBest.setText(`BEST ${SaveManager.get().bonusBest.toLocaleString('en-US')}`);
 
     this.time.delayedCall(500, () => {
-      const dim = this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x05070d, 0.78).setOrigin(0).setDepth(50);
-      addPanel(this, this.viewWidth / 2, 132, 280, 150, 0x141a2e, 0.98, 0xc8b48a).setDepth(51);
+      this.overDim = this.add.rectangle(0, 0, this.viewWidth, this.viewHeight, 0x05070d, 0.78).setOrigin(0).setDepth(50);
+      const before = new Set(this.children.list);
+      addPanel(this, this.viewWidth / 2, 132, 280, 190, 0x141a2e, 0.98, 0xc8b48a).setDepth(51);
       this.add.text(this.viewWidth / 2, 78, 'SPRINT OVER', {
         fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#e4546a',
       }).setOrigin(0.5).setDepth(52).setShadow(2, 2, '#000000', 0, true, true);
@@ -349,7 +379,11 @@ export class SkySprintScene extends Phaser.Scene {
         { label: 'WORLD MAP', action: () => this.scene.start('WorldMap') },
         { label: 'TITLE', action: () => this.scene.start('Title') },
       ];
-      this.overMenu = new Menu(this, items, { x: this.viewWidth / 2, y: 152, spacing: 16, align: 'center', fontSize: '8px', showHints: false });
+      this.overMenu = new Menu(this, items, { x: this.viewWidth / 2, y: 152, spacing: 24, align: 'center', fontSize: '10px', showHints: false });
+      const objects = this.children.list.filter(o => !before.has(o)) as (Phaser.GameObjects.GameObject & { x: number; y: number })[];
+      for (const object of objects) { object.x -= this.viewWidth / 2; object.y -= 132; }
+      this.overLayer = this.add.container(this.viewWidth / 2, this.viewHeight / 2, objects).setDepth(51);
+      this.resizeViewport();
     });
   }
 }

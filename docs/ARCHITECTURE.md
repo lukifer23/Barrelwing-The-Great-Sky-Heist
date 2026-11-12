@@ -8,6 +8,8 @@ Boot waits for save initialization and fonts. Preload loads bundled images, spri
 
 Scenes are reused by Phaser, so transient arrays and flags must reset on each create or init. Custom event subscriptions must be removed on shutdown. Input buffers and held touch states reset at pause, respawn, and scene transitions.
 
+Gameplay deadlines use `playTime(scene)` from `PlayClock`, installed before constructing campaign, Sprint, or Brawl entities. It advances on active scene steps with the same delta cap used by that scene. Use it for powers, invulnerability, attacks, AI deadlines, and despawn times. Phaser's `scene.time.now` represents the frame timestamp and includes time spent outside the active scene; it is suitable for menu input guards but not gameplay deadlines that must freeze during pause. Phaser delayed calls and tweens retain their own scene-managed pause behavior.
+
 ## Authored content
 
 `src/game/data/levels` contains nine campaign levels and six trials. Coordinates use a per-stage tile size. Runtime construction converts these definitions into world positions. Each collectible and enemy has a stable object identifier for save restoration; each gem also has its own slot from zero through two.

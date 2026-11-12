@@ -8,6 +8,8 @@ Barrelwing is a pixel-art action platformer about Pip, a forest courier chasing 
 
 Play in a WebGL browser or install the offline Android app directly on a personal device. No account, server, ads, analytics, or network connection is required to play the installed app.
 
+This is a playable development build. Route playtesting, balance, and device polish are ongoing; see the [quality priorities](docs/QUALITY.md) and [validation evidence](docs/VALIDATION.md).
+
 ## The game
 
 - Nine campaign stages across Verdant Canopy, the Copperworks, and the Storm Above.
@@ -80,7 +82,7 @@ The app supports portrait, landscape, and changing foldable display sizes. Gamep
 | Enter | Confirm |
 | U on the map | Windtail Workshop |
 
-On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE buttons. Move the stick gently to walk or fully to run. Push up or down to climb ladders. Hold JUMP for height; tap again in the air to flap. Movement and jumping can be held together. Menus support tapping. Android Back pauses gameplay or returns from a menu.
+On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE buttons. Move the stick gently to walk or fully to run. Push up or down to climb ladders. Hold JUMP for height; tap again in the air to flap. Movement and jumping can be held together. Buttons show remaining air flaps and action recharge; DASH is hidden during flight. In Brawl, hold HIT to repeat attacks as they recharge. The field guide explains touch, keyboard, and powerups. Menus support tapping. Android Back pauses gameplay or returns from a menu.
 
 ## Settings and saves
 

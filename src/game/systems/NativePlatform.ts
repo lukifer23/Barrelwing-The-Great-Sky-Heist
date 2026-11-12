@@ -12,6 +12,8 @@ export async function installNativePlatform(game: Phaser.Game): Promise<void> {
       if (scene.scene.isActive()) { scene.persistRun(); scene.pauseForApp(); }
       const brawl = game.scene.getScene('Brawl') as Phaser.Scene & { pauseForApp(): void };
       if (brawl.scene.isActive()) brawl.pauseForApp();
+      const sprint = game.scene.getScene('SkySprint') as Phaser.Scene & { pauseForApp(): void };
+      if (sprint.scene.isActive()) sprint.pauseForApp();
       SaveManager.save();
     }
   });
@@ -20,6 +22,6 @@ export async function installNativePlatform(game: Phaser.Game): Promise<void> {
     if (!active) return;
     // Send through each scene's existing navigation logic.
     active.input.keyboard?.emit('keydown', new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
-    if (active.scene.key === 'Game' || active.scene.key === 'Brawl') (active as Phaser.Scene & { pauseForApp(): void }).pauseForApp();
+    if (['Game', 'Brawl', 'SkySprint'].includes(active.scene.key)) (active as Phaser.Scene & { pauseForApp(): void }).pauseForApp();
   });
 }

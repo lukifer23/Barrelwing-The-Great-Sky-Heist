@@ -1,3 +1,4 @@
+import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
 import { ARENA_NAMES, type BrawlOptions } from '../data/brawl';
@@ -30,6 +31,8 @@ export class BrawlScene extends Phaser.Scene {
   private nextThink = 0;
   private nextCpuJump = 0;
   private nextCpuDash = 0;
+  private nextCpuAttack = 0;
+  private cpuJumpHeldUntil = 0;
   private cpuIntent = neutralFightInput();
   private previousWidth = 0;
   private previousHeight = 0;
@@ -49,8 +52,11 @@ export class BrawlScene extends Phaser.Scene {
     this.plates = []; this.elapsedMs = 0; this.ended = false; this.suddenDeath = false; this.knockedOut = 0;
     this.nextSave = 0; this.nextThink = 0; this.nextCpuJump = 0; this.nextCpuDash = 0; this.nextHazard = 14000;
     this.cpuIntent = neutralFightInput();
+    this.nextCpuAttack = 0; this.cpuJumpHeldUntil = 0;
+    this.bannerUntil = 0;
   }
   create(): void {
+    installPlayClock(this, 40);
     const theme = THEMES[this.options.arena];
     this.cameras.main.setBackgroundColor(theme.sky).setSize(this.W, this.H).setScroll(0, 0);
     this.background = this.add.tileSprite(0, 0, this.W, this.H, theme.far).setOrigin(0).setAlpha(0.75).setDepth(-20);
@@ -80,7 +86,7 @@ export class BrawlScene extends Phaser.Scene {
       this.human.damage = saved.playerDamage; this.cpu.damage = saved.cpuDamage; this.elapsedMs = saved.elapsedMs;
       this.knockedOut = 3 - this.cpu.stocks; this.nextHazard = this.elapsedMs + 12000;
     }
-    this.startAt = this.time.now + 2500; this.human.invulnerableUntil = this.startAt; this.cpu.invulnerableUntil = this.startAt;
+    this.startAt = playTime(this) + 2500; this.human.invulnerableUntil = this.startAt; this.cpu.invulnerableUntil = this.startAt;
     this.events.on('brawl-swing', this.swing, this); this.events.on('brawl-hit', this.hit, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.resumeMatch, this);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resizeArena, this);
@@ -121,7 +127,8 @@ export class BrawlScene extends Phaser.Scene {
     if (this.banner) this.banner.setX(this.W / 2).setWordWrapWidth(this.W - 40);
   }
 
-  override update(time: number, delta: number): void {
+  override update(_time: number, delta: number): void {
+    const time = playTime(this);
     if (this.ended) return;
     const dt = Math.min(delta, 40); this.inputMgr.update(dt);
     if (this.inputMgr.pressedPause) { this.pauseForApp(); return; }
@@ -139,7 +146,7 @@ export class BrawlScene extends Phaser.Scene {
       this.human.damage = 300; this.cpu.damage = 300; this.showBanner('SUDDEN DELIVERY', 2200);
     }
     const input: FightInput = { move: this.inputMgr.horizontal, jump: this.inputMgr.consumeJump(), heldJump: this.inputMgr.jumpHeld,
-      dash: this.inputMgr.consumeDash(), attack: this.inputMgr.consumeAttack(), aim: this.inputMgr.up ? -1 : this.inputMgr.down ? 1 : 0 };
+      dash: this.inputMgr.consumeDash(), attack: this.inputMgr.consumeAttack() || this.inputMgr.attackHeld, aim: this.inputMgr.up ? -1 : this.inputMgr.down ? 1 : 0 };
     this.human.updateFighter(dt, input); this.cpu.updateFighter(dt, this.think(time));
     this.human.strike(this.cpu, this.suddenDeath); this.cpu.strike(this.human, this.suddenDeath);
     for (const fighter of [this.human, this.cpu]) {
@@ -164,11 +171,12 @@ export class BrawlScene extends Phaser.Scene {
     const targetX = offstage ? this.W / 2 : this.human.x;
     intent.move = Math.abs(targetX - this.cpu.x) < 36 ? 0 : Math.sign(targetX - this.cpu.x);
     if ((offstage || dy < -50 || this.cpu.grounded && Math.abs(dx) > 85 && Math.abs(dx) < 170) && time > this.nextCpuJump) {
-      intent.jump = true; this.nextCpuJump = time + (offstage ? 340 : 650);
+      intent.jump = true; this.nextCpuJump = time + (offstage ? 340 : 650); this.cpuJumpHeldUntil = time + 300;
     }
-    intent.heldJump = offstage || dy < -35;
+    intent.heldJump = offstage || dy < -35 || time < this.cpuJumpHeldUntil;
     const reach = this.options.difficulty === 'easy' ? 43 : 65;
-    intent.attack = Math.abs(dx) < reach && Math.abs(dy) < 62;
+    intent.attack = time >= this.nextCpuAttack && !this.cpu.stunned && Math.abs(dx) < reach && Math.abs(dy) < 62;
+    if (intent.attack) this.nextCpuAttack = time + (this.options.difficulty === 'easy' ? 1200 : this.options.difficulty === 'hard' ? 650 : 950);
     intent.aim = dy < -28 ? -1 : dy > 35 ? 1 : 0;
     if (!offstage && this.options.difficulty === 'hard' && Math.abs(dx) > 170 && time > this.nextCpuDash) { intent.dash = true; this.nextCpuDash = time + 2600; }
     this.cpuIntent = intent; return intent;
@@ -176,7 +184,10 @@ export class BrawlScene extends Phaser.Scene {
   private swing(fighter: Fighter): void {
     const x = fighter.x + (fighter.attackAim === 0 ? fighter.facing * 34 : 0), y = fighter.y - 18 + fighter.attackAim * 24;
     const ring = this.add.ellipse(x, y, fighter.attackAim === 0 ? 62 : 36, fighter.attackAim === 0 ? 34 : 62, fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.15).setStrokeStyle(2, fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.8).setDepth(22);
-    this.tweens.add({ targets: ring, alpha: 0, scale: 1.3, duration: 210, onComplete: () => ring.destroy() });
+    this.tweens.add({ targets: ring, alpha: 0.65, scale: 1.15, duration: fighter.attackWindup, onComplete: () => {
+      ring.setFillStyle(fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.45);
+      this.tweens.add({ targets: ring, alpha: 0, scale: 1.5, duration: 125, onComplete: () => ring.destroy() });
+    } });
   }
   private hit(fighter: Fighter): void { this.fx.hit(fighter.x, fighter.y - 16, fighter.isCpu ? 0xff9f89 : 0x9ff5ff); this.fx.shake(0.003, 80); }
   private ringOut(fighter: Fighter): void {
@@ -196,7 +207,7 @@ export class BrawlScene extends Phaser.Scene {
       this.barrels.add(new Barrel(this, this.W * (left ? 0.19 : 0.81), this.floor - 180, left ? 1 : -1, 'standard'));
     });
   }
-  private showBanner(text: string, duration: number): void { this.banner.setText(text).setVisible(true); this.bannerUntil = this.time.now + duration; }
+  private showBanner(text: string, duration: number): void { this.banner.setText(text).setVisible(true); this.bannerUntil = playTime(this) + duration; }
   private updateHud(): void {
     this.humanHud.setText(`${this.human.courier.name}  /  YOU\n${this.human.stocks} STOCKS   ${Math.floor(this.human.damage)}%`);
     this.cpuHud.setText(`${this.cpu.courier.name}  /  CPU\n${this.cpu.stocks} STOCKS   ${Math.floor(this.cpu.damage)}%`);

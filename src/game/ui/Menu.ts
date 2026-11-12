@@ -76,7 +76,6 @@ export class Menu {
   setHover(cb: (i: number) => void): void { this.onHover = cb; }
 
   repaint(): void {
-    const now = this.scene.time.now;
     this.labels.forEach((t, i) => {
       const active = i === this.index;
       t.setColor(this.enabled[i] ? (active ? '#f0c060' : '#f4e6c8') : '#5a6480');
@@ -85,8 +84,7 @@ export class Menu {
       this.scene.tweens.killTweensOf(m);
       if (active && this.enabled[i]) {
         m.setVisible(true);
-        const bounds = t.getBounds();
-        m.setPosition(bounds.left - 12, t.y);
+        m.setPosition(t.x - t.displayWidth * t.originX - 12, t.y);
         this.scene.tweens.add({ targets: m, angle: { from: -8, to: 8 }, duration: 700, yoyo: true, repeat: -1 });
         if (this.hint) this.hint.setText(this.items[i].hint ?? '');
       } else {

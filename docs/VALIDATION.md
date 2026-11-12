@@ -16,13 +16,19 @@ The initial review covered the original application source, authored stages, ass
 - Progress previously covered completed stages only. Active runs and permanent upgrades now persist, including native Android preferences.
 - Fixed-aspect menu layouts left unused screen regions. The title uses shared anchors for the ground, props, character, and menu; other menus reflow with the viewport.
 
+- Gameplay deadlines used wall time, allowing powers and combat protection to expire while paused. Campaign, Sprint, and Brawl now share an active simulation clock, including enemy and barrel deadlines.
+- Sprint used pause input to quit, left touch controls over its defeat state, and drew result choices below the overlay. It now has pause/resume, lifecycle handling, a results container above the overlay, and responsive result positioning.
+- The field guide assumed a keyboard and dismissed on any tap. It now provides explicit touch, keyboard, and powerup tabs plus a Back target.
+
 ## Automated checks
 
 `npm test` validates all fifteen authored stages, gem counts, exits, checkpoint floors, flight gaps, gate switches, bundled asset availability, and animation frame bounds.
 
 `npm run test:browser` runs the real Phaser game in Chromium with actual browser storage. It covers all stage constructors, configured flyer gravity, event counts after restarts, checkpoint recovery after reload, corrupt primary save recovery, keyboard movement and jumping, repeated pause/resume, death/Continue, earned upgrade persistence and effect, Sprint restart state, touch input across changing viewport shapes, all three playable couriers, Acorn Nova effects, actual foot alignment, title menu bounds, master mute, and pointer activation of game-over options. Barrel Brawl tests cover attacks, knockback damage, three-stock wins, saved matches, CPU movement, and pause/resume.
 
-The current suite has 17 content/asset checks and 17 browser integration tests.
+Additional regression checks cover paused power/protection/dash deadlines, paused Brawl countdowns, held attacks, Sprint resume and backgrounding, touch action feedback, tappable Sprint results after resizing, field-guide bounds and row spacing, and stale deadlines on Brawl rematches.
+
+The current suite has 17 content/asset checks and 24 browser integration tests.
 
 `npm run build` typechecks and creates the production browser package. `npm run android:apk` builds the installable debug application. The GitHub workflow runs web checks and an Android build on fresh runners.
 

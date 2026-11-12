@@ -8,12 +8,14 @@ export class PauseScene extends Phaser.Scene {
   private music: 'forest' | 'factory' | 'storm' = 'forest';
   private menu!: Menu;
   private readyAt = 0;
+  private target: 'Game' | 'SkySprint' = 'Game';
 
   constructor() { super('Pause'); }
 
-  init(data: { levelId: number; music: 'forest' | 'factory' | 'storm' }): void {
+  init(data: { levelId?: number; music?: 'forest' | 'factory' | 'storm'; target?: 'Game' | 'SkySprint' }): void {
     this.levelId = data.levelId ?? 1;
     this.music = data.music ?? 'forest';
+    this.target = data.target ?? 'Game';
   }
 
   create(): void {
@@ -26,7 +28,13 @@ export class PauseScene extends Phaser.Scene {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
     }).setOrigin(0.5);
 
-    const items = [
+    const items = this.target === 'SkySprint' ? [
+      { label: 'RESUME FLIGHT', action: () => this.resumeGame() },
+      { label: 'CONTROLS', action: () => this.openOverlay('Controls') },
+      { label: 'SETTINGS', action: () => this.openOverlay('Settings') },
+      { label: 'RESTART SPRINT', action: () => { this.scene.stop(this.target); this.scene.start(this.target); } },
+      { label: 'RETURN TO TITLE', action: () => this.returnTo('Title') },
+    ] : [
       { label: 'RESUME', action: () => this.resumeGame() },
       { label: 'CHECKPOINT (-1 LIFE)', action: () => this.restartCheckpoint() },
       { label: 'RESTART LEVEL', action: () => this.restartLevel() },
@@ -49,7 +57,7 @@ export class PauseScene extends Phaser.Scene {
 
   private resumeGame(): void {
     AudioManager.sfx('ui_confirm', { volume: 0.4 });
-    this.scene.resume('Game');
+    this.scene.resume(this.target);
     this.scene.stop();
   }
 
@@ -67,7 +75,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private returnTo(key: 'WorldMap' | 'Title'): void {
-    this.scene.stop('Game');
+    this.scene.stop(this.target);
     this.scene.stop();
     this.scene.start(key, key === 'WorldMap' ? { trials: this.levelId >= 10 } : undefined);
   }

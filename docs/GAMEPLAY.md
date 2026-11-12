@@ -8,6 +8,8 @@ The joystick is analog: small horizontal movements walk, larger movements run. T
 
 Hold JUMP for a higher ground jump. Release and tap JUMP again while airborne to spend one of the two air flaps. Landing refills flaps. Wind channels switch to continuous forward flight with unlimited rhythmic flaps. DASH bursts horizontally, breaks wooden barrels, and damages enemies, including armored guards. Metal barrels must be avoided.
 
+The touch buttons show remaining air charges and dash recharge. FLAP replaces JUMP in the air, and flight hides DASH because wind channels use flaps only. The field guide has separate touch, keyboard, and powerup tabs.
+
 Down drops through one-way platforms. Springs launch higher than a normal jump. Conveyors move the ground beneath the courier; moving platforms carry them.
 
 ## Couriers
@@ -58,3 +60,7 @@ Slugs patrol. Ants warn before rushing. Hoppers wind up and leap. Armored guards
 The Baron announces attacks and becomes vulnerable between attack sequences. Stomp or dash during those windows. A regular enemy can be stomped only when its anatomy allows it; a snapping plant or armored guard is not a safe landing pad.
 
 Humor is part of the courier world, but warning colors, pickup names, timers, and control labels communicate the actual mechanics.
+
+## Pausing
+
+PAUSE or Escape/P suspends the action in the campaign and Sky Sprint. Android Back and leaving the foreground also pause active gameplay. Settings can be opened without spending powerup duration, dash recharge, protection time, or enemy pattern time. Resume returns to the same session. Sky Sprint banks its current personal best when paused; closing the app ends that Sprint attempt rather than restoring its exact flight position.

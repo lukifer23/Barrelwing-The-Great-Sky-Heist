@@ -2,6 +2,8 @@ import type Phaser from 'phaser';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { SaveManager } from './SaveManager';
+import type { Player } from '../player/Player';
+import type { Fighter } from '../brawl/Fighter';
 
 type Action = 'jump' | 'dash' | 'pause' | 'attack';
 export const touchInput = {
@@ -44,16 +46,19 @@ export function installTouchControls(game: Phaser.Game): void {
   };
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) stick.addEventListener(event, releaseStick);
   root.append(stick);
+  const buttons = new Map<Action, HTMLButtonElement>();
   for (const [action, label, description] of [
-    ['attack', 'HIT', 'Attack'], ['dash', 'DASH', 'Dash'], ['jump', 'JUMP', 'Jump or flap'], ['pause', 'PAUSE', 'Pause or leave sprint'],
+    ['attack', 'HIT', 'Attack'], ['dash', 'DASH', 'Dash'], ['jump', 'JUMP', 'Jump or flap'], ['pause', 'PAUSE', 'Pause'],
   ] as const) {
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+    const button = document.createElement('button'); button.type = 'button';
+    button.innerHTML = `<span class="action-label">${label}</span><small class="action-detail"></small>`;
+    buttons.set(action, button);
     button.dataset.action = action; button.setAttribute('aria-label', description);
     const pointers = new Set<number>();
     button.addEventListener('pointerdown', e => {
       e.preventDefault(); button.setPointerCapture(e.pointerId); pointers.add(e.pointerId);
       touchInput.held.add(action); touchInput.pressed.add(action); button.classList.add('held');
-      if (SaveManager.get().settings.haptics && Capacitor.isNativePlatform()) void Haptics.impact({ style: ImpactStyle.Light }).catch(() => undefined);
+      if (button.getAttribute('aria-disabled') !== 'true' && SaveManager.get().settings.haptics && Capacitor.isNativePlatform()) void Haptics.impact({ style: ImpactStyle.Light }).catch(() => undefined);
     });
     const release = (e: PointerEvent) => { pointers.delete(e.pointerId); if (!pointers.size) { touchInput.held.delete(action); button.classList.remove('held'); } };
     for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) button.addEventListener(event, release);
@@ -68,6 +73,17 @@ export function installTouchControls(game: Phaser.Game): void {
   document.getElementById('app')!.append(mute);
   const fps = document.createElement('output'); fps.id = 'fps-meter'; fps.hidden = true; document.getElementById('app')!.append(fps);
   let lastFpsUpdate = performance.now(), fpsFrames = 0, previous = '', previousSettings = '';
+  const feedback = (action: Action, label: string, detail: string, progress: number, available: boolean) => {
+    const button = buttons.get(action)!;
+    const key = `${label}:${detail}:${Math.round(progress * 20)}:${available}`;
+    if (button.dataset.feedback === key) return;
+    button.dataset.feedback = key;
+    button.querySelector('.action-label')!.textContent = label;
+    button.querySelector('.action-detail')!.textContent = detail;
+    button.style.setProperty('--ready', String(progress));
+    button.setAttribute('aria-disabled', String(!available));
+    button.title = `${label}: ${detail}`;
+  };
   const update = () => {
     const settings = SaveManager.get().settings;
     const muted = settings.muted;
@@ -87,10 +103,27 @@ export function installTouchControls(game: Phaser.Game): void {
       if (settings.showFps) fps.textContent = `${Math.round(fpsFrames * 1000 / elapsed)} FPS`;
       fpsFrames = 0; lastFpsUpdate = performance.now();
     }
-    const scene = game.scene.isActive('Brawl') ? 'Brawl' : game.scene.isActive('Game') ? 'Game' : game.scene.isActive('SkySprint') ? 'SkySprint' : '';
+    const sprint = game.scene.getScene('SkySprint') as Phaser.Scene & { controlsActive?: boolean; player?: Player };
+    const scene = game.scene.isActive('Brawl') ? 'Brawl' : game.scene.isActive('Game') ? 'Game' : game.scene.isActive('SkySprint') && sprint.controlsActive ? 'SkySprint' : '';
+    if (scene) {
+      const active = game.scene.getScene(scene) as Phaser.Scene & { player?: Player; human?: Fighter };
+      const p = active.player, fighter = active.human;
+      const flight = p?.mode === 'flight';
+      root.classList.toggle('flying', !!flight);
+      if (p) {
+        const usable = !p.dead && !p.controlLocked;
+        const air = !p.grounded && p.mode !== 'climb';
+        feedback('jump', flight || air ? 'FLAP' : 'JUMP', flight ? 'TAP TO RISE' : air ? `${p.flapCharges} LEFT` : 'HOLD: HIGHER', 1, usable && (flight || !air || p.flapCharges > 0));
+        feedback('dash', 'DASH', p.dashReady ? 'READY' : 'CHARGING', p.dashProgress, usable && p.dashReady);
+      } else if (fighter) {
+        feedback('jump', 'JUMP', fighter.grounded ? 'HOLD: HIGHER' : `${fighter.airJumps} LEFT`, 1, !fighter.stunned && (fighter.grounded || fighter.airJumps > 0));
+        feedback('dash', 'DASH', fighter.dashProgress === 1 ? 'READY' : 'CHARGING', fighter.dashProgress, !fighter.stunned && fighter.dashProgress === 1);
+        feedback('attack', 'HIT', fighter.attackProgress === 1 ? 'HOLD: REPEAT' : 'RECOVERING', fighter.attackProgress, !fighter.stunned && fighter.attackProgress === 1);
+      }
+    }
     if (scene === previous) return;
     previous = scene; root.classList.toggle('brawling', scene === 'Brawl'); root.hidden = !scene; document.body.classList.toggle('playing', !!scene);
-    touchInput.reset(); releaseStick(); game.scale.refresh();
+    touchInput.reset(); releaseStick(); for (const button of buttons.values()) button.classList.remove('held'); game.scale.refresh();
   };
   game.events.on('poststep', update);
   const blur = () => { touchInput.reset(); releaseStick(); };
