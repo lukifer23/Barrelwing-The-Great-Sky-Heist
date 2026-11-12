@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Barrelwing</string>
+    <string name="title_activity_main">Barrelwing</string>
+    <string name="package_name">com.barrelwing.skyheist</string>
+    <string name="custom_url_scheme">com.barrelwing.skyheist</string>
+</resources>
