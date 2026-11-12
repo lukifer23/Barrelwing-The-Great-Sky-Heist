@@ -31,6 +31,8 @@ export class BrawlScene extends Phaser.Scene {
   private nextCpuJump = 0;
   private nextCpuDash = 0;
   private cpuIntent = neutralFightInput();
+  private previousWidth = 0;
+  private previousHeight = 0;
   private ended = false;
   private suddenDeath = false;
   private bannerUntil = 0;
@@ -43,6 +45,7 @@ export class BrawlScene extends Phaser.Scene {
   constructor() { super('Brawl'); }
   init(options: BrawlOptions): void {
     this.options = { arena: options.arena ?? 'forest', difficulty: options.difficulty ?? 'normal', player: options.player ?? 'pip', cpu: options.cpu ?? 'fenn', resume: options.resume };
+    this.previousWidth = 0; this.previousHeight = 0;
     this.plates = []; this.elapsedMs = 0; this.ended = false; this.suddenDeath = false; this.knockedOut = 0;
     this.nextSave = 0; this.nextThink = 0; this.nextCpuJump = 0; this.nextCpuDash = 0; this.nextHazard = 14000;
     this.cpuIntent = neutralFightInput();
@@ -96,6 +99,15 @@ export class BrawlScene extends Phaser.Scene {
     this.plates.push({ sprite, x, lift, width });
   }
   private resizeArena(): void {
+    if (this.previousWidth > 0 && this.previousHeight > 0) {
+      const oldFloor = this.previousHeight * 0.72;
+      for (const fighter of [this.human, this.cpu]) if (fighter) {
+        const vx = fighter.body.velocity.x, vy = fighter.body.velocity.y;
+        fighter.body.reset(fighter.x / this.previousWidth * this.W, fighter.y - oldFloor + this.floor);
+        fighter.body.velocity.set(vx, vy);
+      }
+    }
+    this.previousWidth = this.W; this.previousHeight = this.H;
     this.cameras.main.setSize(this.W, this.H);
     this.background.setSize(this.W, this.H);
     const image = this.background.texture.getSourceImage() as HTMLImageElement;
@@ -107,7 +119,6 @@ export class BrawlScene extends Phaser.Scene {
     if (this.cpuHud) this.cpuHud.x = this.W - 12;
     if (this.timerHud) this.timerHud.x = this.W / 2;
     if (this.banner) this.banner.setX(this.W / 2).setWordWrapWidth(this.W - 40);
-    for (const fighter of [this.human, this.cpu]) if (fighter && (fighter.x > this.W || fighter.y > this.H + 100)) fighter.respawn(this.W * (fighter.isCpu ? 0.66 : 0.34), this.floor - 30);
   }
 
   override update(time: number, delta: number): void {

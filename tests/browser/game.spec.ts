@@ -288,3 +288,12 @@ test('camera filtering skips offscreen draws and restores them when the camera m
   });
   expect(result).toEqual({ hidden: true, active: true, restored: true }); expect(errors).toEqual([]);
 });
+
+test('Brawl resizing retains stocks, damage, and the fighter foot position on its platform', async ({ page }) => {
+  const errors = await boot(page); await startBrawl(page);
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.human.body.reset(s.W * 0.4, s.floor); s.human.body.setVelocity(0, 0); s.human.stocks = 2; s.human.damage = 53; s.human.invulnerableUntil = s.time.now + 3000; });
+  await page.setViewportSize({ width: 960, height: 411 }); await page.waitForTimeout(200);
+  const state = await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); return { stocks: s.human.stocks, damage: s.human.damage, relativeX: s.human.x / s.W, footOffset: s.human.y - s.floor }; });
+  expect(state.stocks).toBe(2); expect(state.damage).toBe(53); expect(state.relativeX).toBeCloseTo(0.4, 1); expect(Math.abs(state.footOffset)).toBeLessThan(2);
+  expect(errors).toEqual([]);
+});

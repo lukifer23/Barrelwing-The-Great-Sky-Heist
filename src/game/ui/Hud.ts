@@ -59,14 +59,14 @@ export class Hud {
       .setOrigin(0, 0).setScrollFactor(0).setDepth(D).setStrokeStyle(1, 0x3a4460, 0.8);
 
     for (let i = 0; i < 6; i++) {
-      const e = scene.add.image(12 + i * 10, 14, 'ui_heart_empty').setScrollFactor(0).setDepth(D + 1);
-      const h = scene.add.image(12 + i * 10, 14, 'ui_heart').setScrollFactor(0).setDepth(D + 2);
+      const e = scene.add.image(10 + i * 10, 14, 'ui_heart_empty').setScale(0.8).setScrollFactor(0).setDepth(D + 1);
+      const h = scene.add.image(10 + i * 10, 14, 'ui_heart').setScale(0.8).setScrollFactor(0).setDepth(D + 2);
       this.heartEmpty.push(e);
       this.hearts.push(h);
     }
 
-    scene.add.image(69, 14, 'acorn', 0).setScrollFactor(0).setDepth(D + 1).setScale(0.8);
-    this.coinText = scene.add.text(79, 10, '0', {
+    scene.add.image(73, 14, 'acorn', 0).setScrollFactor(0).setDepth(D + 1).setScale(0.8);
+    this.coinText = scene.add.text(83, 10, '0', {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f4e6c8',
     }).setScrollFactor(0).setDepth(D + 1);
 

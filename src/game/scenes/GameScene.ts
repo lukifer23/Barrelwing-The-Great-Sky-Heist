@@ -1369,6 +1369,7 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(200, () => {
       this.clearTransient();
       this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
+      this.cameras.main.centerOn(this.player.x, this.player.y);
       this.cameras.main.fadeIn(260, 0, 0, 0);
       this.respawning = false;
       this.hud.toast(`RESTARTED — LIVES LEFT: ${this.lives}`, '#f4e6c8', 900);
@@ -1396,6 +1397,7 @@ export class GameScene extends Phaser.Scene {
     this.scoreAtLevelStart = 0;
     this.score = 0;
     this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
     this.elapsedMs = 0;
     this.deathAt = 0;
     this.persistRun();
@@ -1570,6 +1572,7 @@ export class GameScene extends Phaser.Scene {
     this.elapsedMs = r.elapsedMs; this.gemsCollected = [...r.gems];
     this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
     this.player.hearts = Phaser.Math.Clamp(r.hearts, 1, this.player.maxHearts);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
     for (const id of r.switches) {
       const sw = this.switches.find(s => s.id === id);
       if (sw) { sw.used = true; sw.sprite.setTexture('switch_on'); }
