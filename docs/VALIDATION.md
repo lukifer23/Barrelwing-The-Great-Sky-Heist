@@ -22,7 +22,7 @@ The initial review covered the original application source, authored stages, ass
 
 `npm run test:browser` runs the real Phaser game in Chromium with actual browser storage. It covers all stage constructors, configured flyer gravity, event counts after restarts, checkpoint recovery after reload, corrupt primary save recovery, keyboard movement and jumping, repeated pause/resume, death/Continue, earned upgrade persistence and effect, Sprint restart state, touch input across changing viewport shapes, all three playable couriers, Acorn Nova effects, actual foot alignment, title menu bounds, master mute, and pointer activation of game-over options. Barrel Brawl tests cover attacks, knockback damage, three-stock wins, saved matches, CPU movement, and pause/resume.
 
-The current suite has 17 content/asset checks and 15 browser integration tests.
+The current suite has 17 content/asset checks and 16 browser integration tests.
 
 `npm run build` typechecks and creates the production browser package. `npm run android:apk` builds the installable debug application. The GitHub workflow runs web checks and an Android build on fresh runners.
 
@@ -30,7 +30,7 @@ The current suite has 17 content/asset checks and 15 browser integration tests.
 
 An Android debug build has been installed on a Samsung Galaxy Z Fold7. WebView inspection confirmed WebGL rendering on the Adreno 830 GPU. Screenshots exposed menu letterboxing and animation-anchor problems; the layout was revised in response.
 
-A separate Barrel Bridge gameplay sample measured approximately 53 fps before native frame-rate requests were added; that result remains a performance issue until a new gameplay sample demonstrates the target.
+A Barrel Bridge gameplay comparison measured 52.5 fps before camera filtering and 59.5 fps after filtering 92 offscreen draw objects. The permanent filter preserves physics and logical visibility and uses a guard band around the viewport. These are short samples; sustained gameplay and thermal behavior still require extended testing.
 
 A 600-frame title-screen sample on the device measured 59.98 rendered fps over 10 seconds, with a 17.3 ms 95th-percentile interval. This is a short menu measurement, not a sustained gameplay guarantee.
 

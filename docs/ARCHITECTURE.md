@@ -24,7 +24,7 @@ The boss moves between dormant, entry, hover, warning, attack, vulnerability, tr
 
 The viewport service adapts logical rendering dimensions to the parent aspect ratio while keeping world units stable. Gameplay cameras expand; menus reflow to the current viewport, with a dedicated anchored title layout. The HUD anchors score and timer to the right edge and banners to the center. Touch controls are DOM buttons so their physical sizes do not shrink with the canvas.
 
-Effects reuse particle emitters. Barrel lifetimes and projectile lifetimes bound transient physics objects. Sprint destroys offscreen gates and removes collected coins. Shared menu marker tweens are replaced rather than stacked on repeated selection. Audio fades are cancellable and honor current mute and volume settings.
+A camera filter skips offscreen draw submissions without changing object activity, simulation, collection state, or logical visibility. It uses a guard band and checks at 100 ms intervals. Effects reuse particle emitters. Barrel lifetimes and projectile lifetimes bound transient physics objects. Sprint destroys offscreen gates and removes collected coins. Shared menu marker tweens are replaced rather than stacked on repeated selection. Audio fades are cancellable and honor current mute and volume settings.
 
 ## Validation boundaries
 

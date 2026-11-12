@@ -12,6 +12,7 @@ import { Boss } from '../entities/Boss';
 import { InputManager } from '../systems/InputManager';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager, type RunSnapshot } from '../systems/SaveManager';
+import { ViewCuller } from '../systems/ViewCuller';
 import { Effects } from '../systems/Effects';
 import { Hud } from '../ui/Hud';
 
@@ -62,6 +63,7 @@ export class GameScene extends Phaser.Scene {
   private inputMgr!: InputManager;
   private hud!: Hud;
   private fx!: Effects;
+  private viewCuller!: ViewCuller;
 
   private solids!: Phaser.Physics.Arcade.StaticGroup;
   private oneWays!: Phaser.Physics.Arcade.StaticGroup;
@@ -216,6 +218,7 @@ export class GameScene extends Phaser.Scene {
 
     this.inputMgr = new InputManager(this);
     this.fx = new Effects(this);
+    this.viewCuller = new ViewCuller(this);
     this.wireEvents();
 
     this.musicKey = L.music;
@@ -883,6 +886,7 @@ export class GameScene extends Phaser.Scene {
     this.updateTutorials();
     this.updateBackground();
     this.updateHud();
+    this.viewCuller.update(time);
 
     // pit death
     if (this.player.y > this.killY && !this.player.dead && this.deathAt === 0) {

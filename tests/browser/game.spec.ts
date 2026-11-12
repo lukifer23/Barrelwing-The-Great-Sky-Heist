@@ -275,3 +275,16 @@ test('game-over Continue, World Map, and Title targets work with pointer input a
   }
   expect(errors).toEqual([]);
 });
+
+test('camera filtering skips offscreen draws and restores them when the camera moves', async ({ page }) => {
+  const errors = await boot(page); await start(page, 2);
+  const result = await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game');
+    const coin = s.coins.getChildren().find((c: any) => c.y < 200), camera = s.cameras.main;
+    camera.worldView.setTo(0, 600, 480, 270); s.viewCuller.update(s.time.now + 200);
+    const hidden = !!(coin.cameraFilter & camera.id), active = coin.active;
+    camera.worldView.setTo(0, 0, 480, 270); s.viewCuller.update(s.time.now + 400);
+    return { hidden, active, restored: !(coin.cameraFilter & camera.id) };
+  });
+  expect(result).toEqual({ hidden: true, active: true, restored: true }); expect(errors).toEqual([]);
+});
