@@ -1,0 +1,95 @@
+import type { LevelDef } from './types';
+import { T, coinLine, coinArc, coinColumn, gem } from './helpers';
+
+export const TRIAL_13: LevelDef = {
+  id: 13, world: 1, name: 'The Last Mile', subtitle: 'The last mile is mostly vertical. Naturally.',
+  theme: 'forest', tile: 16, width: 160, height: 30, spawn: { x: 3, y: 22 }, parTime: 150,
+  thresholds: { bronze: 1800, silver: 3000, gold: 4400 }, music: 'forest', intro: 'One final delivery. Allegedly.',
+  terrain: [T(0, 22, 30, 8), T(62, 22, 20, 8), T(88, 22, 26, 8), T(142, 22, 18, 8),
+    T(16, 17, 5, 1, 'wood'), T(23, 13, 4, 1, 'wood'), T(68, 16, 5, 1, 'wood'),
+    T(96, 17, 4, 1, 'wood'), T(104, 13, 5, 1, 'wood')],
+  objects: [
+    { t: 'tutorial', x: 6, y: 20, text: 'ONE MORE FLAP. THEN YOU CAN GO HOME.' },
+    ...coinLine(6, 20, 8, 2), ...coinArc(32, 19, 6, 3), ...coinArc(43, 14, 6, 3), ...coinArc(54, 18, 5, 3),
+    ...coinLine(64, 20, 7, 2), ...coinLine(90, 20, 9, 2), ...coinArc(116, 18, 6, 4), ...coinArc(128, 13, 6, 3), ...coinLine(144, 20, 6, 2),
+    gem(45, 10), gem(70, 12), gem(130, 8),
+    { t: 'spring', x: 26, y: 22, power: 500 }, { t: 'mover', x: 85, y: 20, w: 4, axis: 'x', dist: 3, speed: 44 },
+    { t: 'fallingPlatform', x: 101, y: 17, w: 3 }, { t: 'fallingPlatform', x: 110, y: 13, w: 3 },
+    { t: 'flight', x: 30, y: 7, w: 32, h: 18, gates: [
+      { at: 6, gap: 14, size: 5 }, { at: 14, gap: 9, size: 5, moving: 'y', amp: 1, speed: 1 }, { at: 23, gap: 12, size: 4 }, { at: 29, gap: 8, size: 5 }] },
+    { t: 'flight', x: 114, y: 5, w: 28, h: 20, gates: [
+      { at: 5, gap: 15, size: 5 }, { at: 13, gap: 8, size: 5 }, { at: 21, gap: 13, size: 5, moving: 'y', amp: 1, speed: 1.2 }] },
+    { t: 'enemy', kind: 'bird', x: 44, y: 13, patrol: 3 }, { t: 'enemy', kind: 'hopper', x: 72, y: 22, patrol: 3 },
+    { t: 'enemy', kind: 'ant', x: 97, y: 22, patrol: 4 }, { t: 'enemy', kind: 'diver', x: 125, y: 11, patrol: 3 },
+    { t: 'barrelSpawner', x: 108, y: 22, dir: -1, interval: 3400, variant: 'bouncing' },
+    { t: 'powerup', kind: 'shield', x: 20, y: 20 }, { t: 'powerup', kind: 'triple', x: 68, y: 20 },
+    { t: 'powerup', kind: 'nova', x: 94, y: 20 }, { t: 'powerup', kind: 'life', x: 146, y: 20 },
+    { t: 'checkpoint', x: 66, y: 22 }, { t: 'checkpoint', x: 104, y: 22 },
+    { t: 'windCrystal', x: 50, y: 10 }, { t: 'windCrystal', x: 126, y: 9 }, { t: 'exit', x: 156, y: 22 },
+  ],
+};
+
+export const TRIAL_14: LevelDef = {
+  id: 14, world: 2, name: 'Return to Pressure', subtitle: 'A workplace incident waiting for a courier.',
+  theme: 'factory', tile: 18, width: 52, height: 74, spawn: { x: 5, y: 70 }, parTime: 220,
+  thresholds: { bronze: 2000, silver: 3400, gold: 4800 }, music: 'factory', intro: 'The maintenance report is just a scream.',
+  terrain: [T(0, 70, 52, 4, 'metal'),
+    ...[60, 50, 40, 30, 20, 10].flatMap(y => [T(4, y, 16, 2, 'metal'), T(30, y, 18, 2, 'metal')]),
+    T(4, 4, 44, 2, 'metal'), T(23, 65, 5, 1, 'wood'), T(23, 45, 5, 1, 'wood'), T(23, 25, 5, 1, 'wood')],
+  objects: [
+    { t: 'tutorial', x: 7, y: 68, text: 'THE FLOOR IS NOT LAVA. HR REFUSES TO CONFIRM.' },
+    ...[60, 50, 40, 30, 20, 10].flatMap(y => [...coinLine(6, y - 2, 6, 2), ...coinLine(32, y - 2, 7, 2)]),
+    ...coinColumn(25, 61, 4), ...coinColumn(25, 41, 4), ...coinLine(8, 2, 14, 2),
+    gem(44, 58), gem(8, 28), gem(26, 6),
+    { t: 'ladder', x: 10, y: 60, h: 10 }, { t: 'ladder', x: 40, y: 50, h: 10 },
+    { t: 'ladder', x: 10, y: 40, h: 10 }, { t: 'ladder', x: 40, y: 30, h: 10 },
+    { t: 'ladder', x: 10, y: 20, h: 10 }, { t: 'ladder', x: 40, y: 10, h: 10 }, { t: 'ladder', x: 40, y: 4, h: 6 },
+    { t: 'mover', x: 25, y: 57, w: 5, axis: 'y', dist: -5, speed: 38 },
+    { t: 'mover', x: 25, y: 37, w: 5, axis: 'y', dist: -5, speed: 40 },
+    { t: 'mover', x: 25, y: 17, w: 5, axis: 'y', dist: -5, speed: 42 },
+    { t: 'conveyor', x: 12, y: 40, w: 14, dir: 1, speed: 65 },
+    { t: 'conveyor', x: 39, y: 20, w: 16, dir: -1, speed: 65 },
+    { t: 'steam', x: 16, y: 60, period: 3400 }, { t: 'steam', x: 34, y: 30, period: 3300, phase: 0.5 },
+    { t: 'barrelSpawner', x: 46, y: 60, dir: -1, interval: 3600 },
+    { t: 'barrelSpawner', x: 6, y: 40, dir: 1, interval: 3800, variant: 'armored' },
+    { t: 'barrelSpawner', x: 46, y: 20, dir: -1, interval: 3200, variant: 'fast' },
+    { t: 'enemy', kind: 'crawler', x: 14, y: 50, patrol: 4 }, { t: 'enemy', kind: 'ant', x: 38, y: 40, patrol: 4 },
+    { t: 'enemy', kind: 'hopper', x: 12, y: 30, patrol: 3 }, { t: 'enemy', kind: 'gator', x: 36, y: 10, patrol: 3 },
+    { t: 'enemy', kind: 'wisp', x: 25, y: 24, patrol: 2 },
+    { t: 'powerup', kind: 'shield', x: 42, y: 58 }, { t: 'powerup', kind: 'nova', x: 12, y: 48 },
+    { t: 'powerup', kind: 'life', x: 36, y: 28 }, { t: 'powerup', kind: 'triple', x: 14, y: 18 },
+    { t: 'checkpoint', x: 36, y: 40 }, { t: 'checkpoint', x: 16, y: 20 }, { t: 'exit', x: 44, y: 4 },
+  ],
+};
+
+export const TRIAL_15: LevelDef = {
+  id: 15, world: 3, name: 'Cloud Nine-to-Five', subtitle: 'The commute has become unreasonable.',
+  theme: 'storm', tile: 16, width: 192, height: 30, spawn: { x: 3, y: 24 }, parTime: 180,
+  thresholds: { bronze: 1900, silver: 3200, gold: 4600 }, music: 'storm', intro: 'This meeting could have been an acorn.',
+  terrain: [T(0, 24, 28, 6), T(78, 22, 20, 8), T(98, 25, 12, 5), T(100, 17, 10, 2),
+    T(158, 24, 34, 6), T(178, 20, 14, 2), T(14, 19, 5, 1, 'wood'), T(84, 17, 5, 1, 'wood')],
+  objects: [
+    { t: 'tutorial', x: 6, y: 22, text: 'NO SHORTCUTS. EXCEPT THE ENTIRE SKY.' },
+    ...coinLine(5, 22, 9, 2), ...coinArc(30, 21, 7, 4), ...coinArc(44, 15, 7, 4), ...coinArc(60, 19, 7, 4),
+    ...coinLine(80, 20, 8, 2), ...coinLine(101, 15, 4, 2), ...coinArc(112, 16, 7, 4), ...coinArc(128, 12, 7, 4),
+    ...coinArc(144, 18, 7, 3), ...coinLine(162, 22, 7, 2), ...coinLine(180, 18, 5, 2),
+    gem(45, 12), gem(88, 13), gem(134, 7),
+    { t: 'flight', x: 28, y: 8, w: 50, h: 18, gates: [
+      { at: 7, gap: 14, size: 5 }, { at: 16, gap: 9, size: 5, moving: 'y', amp: 1.2, speed: 1.1 },
+      { at: 26, gap: 12, size: 5 }, { at: 36, gap: 7, size: 5 }, { at: 45, gap: 12, size: 5 }] },
+    { t: 'ladder', x: 104, y: 17, h: 8 }, { t: 'spring', x: 108, y: 17, power: 500 },
+    { t: 'flight', x: 110, y: 5, w: 48, h: 21, gates: [
+      { at: 7, gap: 11, size: 5 }, { at: 17, gap: 15, size: 5 }, { at: 27, gap: 7, size: 5, moving: 'y', amp: 1, speed: 1.2 },
+      { at: 37, gap: 13, size: 5 }, { at: 44, gap: 10, size: 5 }] },
+    { t: 'updraft', x: 170, y: 15, w: 5, h: 9, power: 1.2 },
+    { t: 'fallingPlatform', x: 168, y: 19, w: 4 },
+    { t: 'enemy', kind: 'stormbee', x: 51, y: 15, patrol: 3, amp: 16 },
+    { t: 'enemy', kind: 'diver', x: 90, y: 13, patrol: 3 }, { t: 'enemy', kind: 'wisp', x: 124, y: 15, patrol: 2 },
+    { t: 'enemy', kind: 'bird', x: 146, y: 12, patrol: 4 }, { t: 'enemy', kind: 'gator', x: 184, y: 20, patrol: 4 },
+    { t: 'lightning', x: 94, y: 25, w: 2, period: 3800, phase: 0.4 },
+    { t: 'powerup', kind: 'shield', x: 22, y: 22 }, { t: 'powerup', kind: 'heart', x: 84, y: 20 },
+    { t: 'powerup', kind: 'nova', x: 162, y: 22 }, { t: 'powerup', kind: 'life', x: 174, y: 22 },
+    { t: 'windCrystal', x: 42, y: 13 }, { t: 'windCrystal', x: 140, y: 10 },
+    { t: 'checkpoint', x: 84, y: 22 }, { t: 'checkpoint', x: 164, y: 24 }, { t: 'exit', x: 188, y: 20 },
+  ],
+};

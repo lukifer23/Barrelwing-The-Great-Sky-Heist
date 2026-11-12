@@ -1372,57 +1372,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showGameOver(): void {
-    this.gameOver = true;
-    SaveManager.saveRun(null);
-    this.inputMgr.reset();
-    this.player.dead = true;
-    this.physics.pause();
-    this.cameras.main.flash(200, 30, 0, 0);
-    AudioManager.stopMusic(600);
-    const container = this.add.container((this.scale.width - GAME_WIDTH) / 2, (this.scale.height - GAME_HEIGHT) / 2).setScrollFactor(0).setDepth(250);
-    this.gameOverContainer = container;
-    const dim = this.add.rectangle(-(this.scale.width - GAME_WIDTH) / 2, -(this.scale.height - GAME_HEIGHT) / 2, this.scale.width, this.scale.height, 0x05070d, 0.82).setOrigin(0);
-    const logo = this.add.text(GAME_WIDTH / 2, 82, 'GAME OVER', {
-      fontFamily: '"Press Start 2P"', fontSize: '22px', color: '#e4546a',
-    }).setOrigin(0.5).setShadow(3, 3, '#000000', 0, true, true);
-    const sub = this.add.text(GAME_WIDTH / 2, 112, `${this.level.name.toUpperCase()}  ·  SCORE ${this.score.toLocaleString('en-US')}`, {
-      fontFamily: FONT_SMALL, fontSize: '8px', color: '#9fb0d0',
-    }).setOrigin(0.5);
-    container.add([dim, logo, sub]);
-
-    const items = [
-      { label: `CONTINUE  (${SaveManager.stats.startingLives} LIVES)`, action: () => { container.destroy(); this.continueLevel(); } },
-      { label: 'RETURN TO MAP', action: () => { this.scene.start('WorldMap'); } },
-      { label: 'TITLE SCREEN', action: () => { this.scene.start('Title'); } },
-    ];
-    let sel = 0;
-    const buttons: Phaser.GameObjects.Text[] = [];
-    items.forEach((it, i) => {
-      const t = this.add.text(GAME_WIDTH / 2, 152 + i * 22, it.label, {
-        fontFamily: FONT_SMALL, fontSize: '9px', color: '#f4e6c8',
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      t.on('pointerover', () => { sel = i; repaint(); });
-      t.on('pointerdown', () => { AudioManager.sfx('ui_confirm', { volume: 0.5 }); it.action(); });
-      buttons.push(t);
-      container.add(t);
-    });
-    const repaint = () => {
-      buttons.forEach((b, i) => {
-        b.setColor(i === sel ? '#f0c060' : '#8a93b2');
-        b.setText((i === sel ? '▶ ' : '  ') + items[i].label);
-      });
-    };
-    repaint();
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.repeat || !this.gameOver) return;
-      if (e.key === 'ArrowUp' || e.key === 'w') { sel = (sel + items.length - 1) % items.length; repaint(); AudioManager.sfx('ui_move'); }
-      if (e.key === 'ArrowDown' || e.key === 's') { sel = (sel + 1) % items.length; repaint(); AudioManager.sfx('ui_move'); }
-      if (e.key === 'Enter' || e.key === ' ') { AudioManager.sfx('ui_confirm', { volume: 0.5 }); items[sel].action(); }
-    };
-    this.input.keyboard?.on('keydown', keyHandler);
-    this.gameOverKey = keyHandler;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', keyHandler));
+    this.gameOver = true; SaveManager.saveRun(null); this.inputMgr.reset();
+    this.player.dead = true; this.physics.pause(); AudioManager.stopMusic(600);
+    this.scene.launch('GameOver', { levelId: this.level.id, name: this.level.name, score: this.score });
+    this.scene.pause();
   }
+
+  continueAfterGameOver(): void { this.continueLevel(); }
 
   private continueLevel(): void {
     if (this.gameOverKey) this.input.keyboard?.off('keydown', this.gameOverKey);

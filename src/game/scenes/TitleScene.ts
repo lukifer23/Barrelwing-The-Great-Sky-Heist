@@ -99,6 +99,7 @@ export class TitleScene extends Phaser.Scene {
       { label: 'LEVEL SELECT', action: () => this.scene.start('WorldMap') },
       ...(save.completedGame ? [{ label: 'SKY TRIALS', action: () => this.scene.start('WorldMap', { trials: true }) }] : []),
       { label: save.bonusUnlocked ? 'SKY SPRINT' : 'SKY SPRINT [LOCKED]', disabled: !save.bonusUnlocked, action: () => this.scene.start('SkySprint') },
+      { label: 'BARREL BRAWL', action: () => this.scene.start('BrawlSetup') },
       { label: 'COURIERS', action: () => this.openOverlay('Characters') },
       { label: 'CONTROLS', action: () => this.openOverlay('Controls') },
       { label: 'SETTINGS', action: () => this.openOverlay('Settings') },

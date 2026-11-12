@@ -7,6 +7,7 @@ export class InputManager {
   private scene: Phaser.Scene;
   jumpBufferMs = 0;
   dashBufferMs = 0;
+  attackBufferMs = 0;
   private onJumpDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
     this.jumpBufferMs = 135;
@@ -16,6 +17,7 @@ export class InputManager {
     if (e.repeat) return;
     this.dashBufferMs = 140;
   };
+  private onAttackDown = (e: KeyboardEvent) => { if (!e.repeat) this.attackBufferMs = 140; };
   private onPauseDown = (e: KeyboardEvent) => { if (!e.repeat) this.pressedPause = true; };
   private onRestartDown = (e: KeyboardEvent) => { if (!e.repeat) this.pressedRestart = true; };
   pressedJump = false;
@@ -46,6 +48,7 @@ export class InputManager {
     this.keys.s = kb.addKey(K.S);
     this.keys.space = kb.addKey(K.SPACE);
     this.keys.j = kb.addKey(K.J);
+    this.keys.k = kb.addKey(K.K);
     this.keys.esc = kb.addKey(K.ESC);
     this.keys.p = kb.addKey(K.P);
     this.keys.m = kb.addKey(K.M);
@@ -54,6 +57,7 @@ export class InputManager {
 
     kb.on('keydown-SPACE', this.onJumpDown);
     kb.on('keydown-J', this.onDashDown);
+    kb.on('keydown-K', this.onAttackDown);
     kb.on('keydown-ESC', this.onPauseDown);
     kb.on('keydown-P', this.onPauseDown);
     kb.on('keydown-R', this.onRestartDown);
@@ -61,8 +65,10 @@ export class InputManager {
 
   update(dtMs: number): void {
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
+    this.attackBufferMs = Math.max(0, this.attackBufferMs - dtMs);
     this.dashBufferMs = Math.max(0, this.dashBufferMs - dtMs);
     if (touchInput.pressed.delete('jump')) { this.jumpBufferMs = 135; this.pressedJump = true; }
+    if (touchInput.pressed.delete('attack')) this.attackBufferMs = 140;
     if (touchInput.pressed.delete('dash')) this.dashBufferMs = 140;
     if (touchInput.pressed.delete('pause')) this.pressedPause = true;
     if (!this.scene.input.keyboard) return;
@@ -78,6 +84,11 @@ export class InputManager {
       return true;
     }
     return false;
+  }
+
+  consumeAttack(): boolean {
+    if (this.attackBufferMs <= 0) return false;
+    this.attackBufferMs = 0; return true;
   }
 
   consumeDash(): boolean {
@@ -108,7 +119,7 @@ export class InputManager {
   get jumpHeld(): boolean { return touchInput.held.has('jump') || !!this.keys.space?.isDown; }
 
   reset(): void {
-    this.jumpBufferMs = 0; this.dashBufferMs = 0;
+    this.jumpBufferMs = 0; this.dashBufferMs = 0; this.attackBufferMs = 0;
     this.clearFrameFlags(); touchInput.reset();
     this.scene.input.keyboard?.resetKeys();
   }
@@ -119,6 +130,7 @@ export class InputManager {
     if (kb) {
       kb.off('keydown-SPACE', this.onJumpDown);
       kb.off('keydown-J', this.onDashDown);
+      kb.off('keydown-K', this.onAttackDown);
       kb.off('keydown-ESC', this.onPauseDown);
       kb.off('keydown-P', this.onPauseDown);
       kb.off('keydown-R', this.onRestartDown);

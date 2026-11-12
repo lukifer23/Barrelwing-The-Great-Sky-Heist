@@ -6,7 +6,7 @@ A save contains stage records, campaign and bonus unlocks, Sprint best score, ag
 
 ## Stage records
 
-Each of twelve records tracks completion, best score, fastest successful clear, three distinct gem flags, and best rating. A replay merges gems and ratings without discarding earlier achievements. An incomplete attempt does not overwrite a successful best time. Completing stages 1 through 9 advances the campaign. Stage 3 unlocks Sky Sprint; stage 9 unlocks the Sky Trials.
+Each of fifteen records tracks completion, best score, fastest successful clear, three distinct gem flags, and best rating. A replay merges gems and ratings without discarding earlier achievements. An incomplete attempt does not overwrite a successful best time. Completing stages 1 through 9 advances the campaign. Stage 3 unlocks Sky Sprint; stage 9 unlocks the Sky Trials.
 
 ## Upgrades
 
@@ -34,3 +34,7 @@ Completing a stage records results before its celebration finishes. The active r
 On Android, initialization reads Capacitor Preferences before gameplay starts. Writes are serialized so an older asynchronous write cannot overwrite a newer one. Local storage holds a synchronous journal. In browsers, progress uses local storage only. A corrupt primary browser save can recover from its companion copy. If storage is unavailable, gameplay remains usable in memory and checkpoint feedback reports the failure.
 
 The game has no account, backend, cloud backup, telemetry, or shared leaderboard. Removing application data removes local progress. Android operating-system backup behavior depends on device configuration and is not a game-managed synchronization service.
+
+## Independent modes
+
+Brawl records and active matches are stored separately from the campaign run. Starting a new campaign retains Brawl records, its active match, the Sprint personal best, settings, and the chosen courier. Campaign stage records and upgrades reset. See [BRAWL.md](BRAWL.md) for match restoration details.

@@ -11,12 +11,13 @@ Play in a WebGL browser or install the offline Android app directly on a persona
 ## The game
 
 - Nine campaign stages across Verdant Canopy, the Copperworks, and the Storm Above.
-- Three post-campaign Sky Trials, including a tougher Baron rematch.
+- Six post-campaign Sky Trials, including a tougher Baron rematch.
 - Sky Sprint: an endless flight mode with a saved personal best, unlocked after Cloudvine Drift.
 - Running, variable-height jumps, air flaps, buffered jumps, coyote time, ladders, drop-through platforms, and a barrel-smashing dash.
 - Moving platforms, conveyors, springs, switches, gates, steam vents, lightning, updrafts, and falling platforms.
 - Distinct enemies, four barrel variants, and a three-phase boss with attack warnings and vulnerable windows.
 - Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
+- Barrel Brawl: solo-versus-CPU platform fighting with directional attacks, rising knockback, three stocks, three arenas, saved matches, and three difficulty levels.
 - Three playable couriers: Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
 - Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, and longer powerups. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
@@ -83,11 +84,11 @@ On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE button
 
 ## Settings and saves
 
-Settings include music and sound volume, mute, native haptics, touch button size and opacity, left-handed controls, screen shake, reduced motion, an FPS display, and browser fullscreen. Changes apply immediately and are saved.
+The always-visible Sound On / Muted button silences all audio in one tap. Settings include music and sound volume, mute, native haptics, touch button size and opacity, left-handed controls, screen shake, reduced motion, an FPS display, and browser fullscreen. Changes apply immediately and are saved.
 
 Browser progress uses local storage. Android also writes to native SharedPreferences through Capacitor Preferences. Saves are local to the installation; clearing application data or uninstalling removes them. There is no cloud synchronization or online leaderboard. The title's Continue option restores the saved stage at its latest checkpoint.
 
-See [gameplay guide](docs/GAMEPLAY.md), [save format](docs/SAVES.md), [architecture](docs/ARCHITECTURE.md), and [validation](docs/VALIDATION.md).
+See [Barrel Brawl](docs/BRAWL.md), [gameplay guide](docs/GAMEPLAY.md), [save format](docs/SAVES.md), [architecture](docs/ARCHITECTURE.md), and [validation](docs/VALIDATION.md).
 
 ## Project layout
 

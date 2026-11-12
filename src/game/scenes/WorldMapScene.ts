@@ -89,7 +89,7 @@ export class WorldMapScene extends Phaser.Scene {
       this.add.text(240, 46, 'POST-CAMPAIGN REMIXES  ·  THE SKY REMEMBERS', {
         fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
       }).setOrigin(0.5);
-      this.add.text(GAME_WIDTH - 10, 12, `TRIAL GEMS ${SaveManager.trialGems}/9`, {
+      this.add.text(GAME_WIDTH - 10, 12, `TRIAL GEMS ${SaveManager.trialGems}/${TRIALS.length * 3}`, {
         fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
       }).setOrigin(1, 0);
       return;
@@ -141,7 +141,7 @@ export class WorldMapScene extends Phaser.Scene {
 
   private buildNodes(): void {
     const save = SaveManager.get();
-    const trialPos = [{ x: 92, y: 148 }, { x: 242, y: 148 }, { x: 392, y: 148 }];
+    const trialPos = this.list.map((_, i) => ({ x: [92, 242, 392][i % 3], y: this.list.length <= 3 ? 148 : 116 + Math.floor(i / 3) * 64 }));
     this.list.forEach((level, i) => {
       const pos = this.trialMode ? trialPos[i] : NODE_POS[level.world - 1][(level.id - 1) % 3];
       const unlocked = SaveManager.isLevelAvailable(level.id);
@@ -167,7 +167,7 @@ export class WorldMapScene extends Phaser.Scene {
       }
 
       if (this.trialMode) {
-        this.add.text(pos.x, pos.y - 34, ['TRIAL I', 'TRIAL II', 'TRIAL III'][i], {
+        this.add.text(pos.x, pos.y - 34, `TRIAL ${i + 1}`, {
           fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
         }).setOrigin(0.5);
       }

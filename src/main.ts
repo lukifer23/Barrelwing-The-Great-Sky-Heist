@@ -12,6 +12,10 @@ import { SettingsScene } from './game/scenes/SettingsScene';
 import { ControlsScene } from './game/scenes/ControlsScene';
 import { CreditsScene } from './game/scenes/CreditsScene';
 import { SkySprintScene } from './game/scenes/SkySprintScene';
+import { GameOverScene } from './game/scenes/GameOverScene';
+import { BrawlScene } from './game/scenes/BrawlScene';
+import { BrawlSetupScene } from './game/scenes/BrawlSetupScene';
+import { BrawlPauseScene, BrawlResultsScene } from './game/scenes/BrawlMenus';
 import { CharacterScene } from './game/scenes/CharacterScene';
 import { WorkshopScene } from './game/scenes/WorkshopScene';
 import { SaveManager } from './game/systems/SaveManager';
@@ -49,13 +53,14 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [
     BootScene, PreloadScene, TitleScene, WorldMapScene, GameScene,
     PauseScene, ResultsScene, EndingScene, SettingsScene, ControlsScene,
-    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene,
+    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene, BrawlScene, BrawlSetupScene, BrawlPauseScene, BrawlResultsScene, GameOverScene,
   ],
 };
 
 const game = new Phaser.Game(config);
 game.registry.set('saves', SaveManager);
 AudioManager.bind(game);
+game.registry.set('audioRefresh', () => AudioManager.refreshVolumes());
 installTouchControls(game);
 installViewport(game);
 void installNativePlatform(game);

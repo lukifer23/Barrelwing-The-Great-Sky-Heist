@@ -1,3 +1,5 @@
+import { TOTAL_LEVELS, TRIAL_IDS } from '../data/progression';
+import { emptyBrawlRecord, type BrawlRecord, type BrawlRun } from '../data/brawl';
 import legacyObjectIds from '../data/legacyObjectIds.json';
 import { characterId, type CharacterId } from '../data/characters';
 import { Capacitor } from '@capacitor/core';
@@ -56,6 +58,8 @@ export interface SaveData {
   upgrades: Upgrades;
   run: RunSnapshot | null;
   selectedCharacter: CharacterId;
+  brawl: BrawlRecord;
+  brawlRun: BrawlRun | null;
 }
 
 const KEY = 'barrelwing.save.v1';
@@ -93,7 +97,7 @@ export const defaultSettings = (): Settings => ({
 
 export function emptySave(): SaveData {
   const levels: Record<number, LevelRecord> = {};
-  for (let i = 1; i <= 12; i++) levels[i] = emptyLevel();
+  for (let i = 1; i <= TOTAL_LEVELS; i++) levels[i] = emptyLevel();
   return {
     version: VERSION,
     levels,
@@ -105,7 +109,7 @@ export function emptySave(): SaveData {
     settings: defaultSettings(),
     upgrades: emptyUpgrades(),
     run: null,
-    selectedCharacter: 'pip',
+    selectedCharacter: 'pip', brawl: emptyBrawlRecord(), brawlRun: null,
   };
 }
 
@@ -147,7 +151,7 @@ export class SaveManager {
     if (!raw || typeof raw !== 'object' || raw.version !== VERSION) return emptySave();
     const base = emptySave();
     const levels = { ...base.levels };
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= TOTAL_LEVELS; i++) {
       const rec = raw.levels?.[i];
       if (rec && typeof rec === 'object') {
         levels[i] = {
@@ -175,6 +179,8 @@ export class SaveManager {
       upgrades: this.cleanUpgrades(raw.upgrades, levels),
       run: this.cleanRun(raw.run),
       selectedCharacter: characterId(raw.selectedCharacter),
+      brawl: { wins: Math.floor(finite(raw.brawl?.wins)), losses: Math.floor(finite(raw.brawl?.losses)), streak: Math.floor(finite(raw.brawl?.streak)), bestStreak: Math.floor(finite(raw.brawl?.bestStreak)), knockouts: Math.floor(finite(raw.brawl?.knockouts)) },
+      brawlRun: this.cleanBrawlRun(raw.brawlRun),
     };
   }
 
@@ -191,7 +197,7 @@ export class SaveManager {
   }
 
   private static cleanRun(raw: RunSnapshot | null | undefined): RunSnapshot | null {
-    if (!raw || !Number.isInteger(raw.levelId) || raw.levelId < 1 || raw.levelId > 12 || finite(raw.lives) < 1) return null;
+    if (!raw || !Number.isInteger(raw.levelId) || raw.levelId < 1 || raw.levelId > TOTAL_LEVELS || finite(raw.lives) < 1) return null;
     if (!Number.isFinite(raw.checkpoint?.x) || !Number.isFinite(raw.checkpoint?.y)) return null;
     return {
       levelId: raw.levelId, checkpoint: { x: finite(raw.checkpoint.x, 0, 10000), y: finite(raw.checkpoint.y, 0, 10000) },
@@ -251,6 +257,21 @@ export class SaveManager {
     return true;
   }
 
+  private static cleanBrawlRun(raw: BrawlRun | null | undefined): BrawlRun | null {
+    if (!raw || !['forest', 'factory', 'storm'].includes(raw.arena) || !['easy', 'normal', 'hard'].includes(raw.difficulty) || raw.playerStocks < 1 || raw.cpuStocks < 1) return null;
+    return { arena: raw.arena, difficulty: raw.difficulty, player: characterId(raw.player), cpu: characterId(raw.cpu),
+      playerStocks: Math.max(1, Math.floor(finite(raw.playerStocks, 3, 3))), cpuStocks: Math.max(1, Math.floor(finite(raw.cpuStocks, 3, 3))),
+      playerDamage: finite(raw.playerDamage, 0, 999), cpuDamage: finite(raw.cpuDamage, 0, 999), elapsedMs: finite(raw.elapsedMs, 0, 180000) };
+  }
+
+  static saveBrawlRun(run: BrawlRun | null): void { this.get().brawlRun = run; this.save(); }
+  static recordBrawl(won: boolean, knockouts: number): void {
+    const r = this.get().brawl;
+    if (won) { r.wins++; r.streak++; r.bestStreak = Math.max(r.bestStreak, r.streak); }
+    else { r.losses++; r.streak = 0; }
+    r.knockouts += Math.max(0, Math.floor(knockouts)); this.save();
+  }
+
   static selectCharacter(id: CharacterId): void {
     this.get().selectedCharacter = characterId(id); this.save();
   }
@@ -269,8 +290,12 @@ export class SaveManager {
 
   static resetProgress(): void {
     const settings = { ...this.get().settings };
+    const selectedCharacter = this.get().selectedCharacter;
+    const { brawl, brawlRun, bonusBest } = this.get();
     this.data = emptySave();
     this.data.settings = settings;
+    this.data.selectedCharacter = selectedCharacter;
+    this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
     this.save();
   }
 
@@ -332,12 +357,12 @@ export class SaveManager {
 
   /** Main levels use progression; trials require a finished campaign. */
   static isLevelAvailable(id: number): boolean {
-    if (Number.isInteger(id) && id >= 10 && id <= 12) return this.get().completedGame;
+    if (Number.isInteger(id) && id >= 10 && id <= TOTAL_LEVELS) return this.get().completedGame;
     return this.isUnlocked(id);
   }
 
   static get trialGems(): number {
-    return [10, 11, 12].reduce((n, id) => n + (this.get().levels[id]?.gems.filter(Boolean).length ?? 0), 0);
+    return TRIAL_IDS.reduce((n, id) => n + (this.get().levels[id]?.gems.filter(Boolean).length ?? 0), 0);
   }
 
 }

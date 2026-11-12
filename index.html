@@ -42,6 +42,9 @@
       }
       [hidden] { display: none !important; }
       #touch-controls { display: none; }
+      #audio-toggle { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); min-width: 86px; min-height: 44px; padding: 8px; z-index: 40; color: #f4e6c8; background: #101528dd; border: 1px solid #8194a5; border-radius: 10px; font: 11px 'Silkscreen', monospace; touch-action: manipulation; }
+      body.playing #audio-toggle { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); right: auto; left: 50%; transform: translateX(-50%); }
+      body.playing #fps-meter { bottom: 64px; }
       #fps-meter { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); color: #9ff5ff; background: #101528; font: 12px monospace; padding: 3px 8px; z-index: 30; pointer-events: none; }
       @media (pointer: coarse) {
         #touch-controls { display: block; --control-scale: 1; --control-opacity: .75; position: absolute; inset: 0; pointer-events: none; z-index: 20; }
@@ -54,6 +57,9 @@
         #touch-controls button.held { background: #8b672e; border-color: #ffe6a4; }
         [data-action="jump"] { width: calc(clamp(68px, 12vmin, 88px) * var(--control-scale)); height: calc(clamp(68px, 12vmin, 88px) * var(--control-scale)); right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); border-color: #f0c060 !important; }
         [data-action="dash"] { width: calc(clamp(54px, 9vmin, 66px) * var(--control-scale)); height: calc(clamp(54px, 9vmin, 66px) * var(--control-scale)); right: calc(max(18px, env(safe-area-inset-right)) + clamp(76px, 13vmin, 100px) * var(--control-scale)); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 50px * var(--control-scale)); }
+        [data-action="attack"] { display: none; }
+        .brawling [data-action="attack"] { display: block; width: calc(68px * var(--control-scale)); height: calc(68px * var(--control-scale)); right: calc(max(18px, env(safe-area-inset-right)) + clamp(80px, 14vmin, 106px) * var(--control-scale)); bottom: max(18px, env(safe-area-inset-bottom)); border-color: #ffa77e !important; }
+        .brawling [data-action="dash"] { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 86px * var(--control-scale)); }
         [data-action="pause"] { width: 58px; height: 34px; font-size: 10px !important; border-radius: 12px !important; right: max(12px, env(safe-area-inset-right)); top: max(68px, env(safe-area-inset-top)); }
         #touch-controls.left-handed { transform: scaleX(-1); }
         #touch-controls.left-handed button, #touch-controls.left-handed #joystick { transform: scaleX(-1); }

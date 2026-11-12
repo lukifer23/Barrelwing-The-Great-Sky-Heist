@@ -3,7 +3,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { SaveManager } from './SaveManager';
 
-type Action = 'jump' | 'dash' | 'pause';
+type Action = 'jump' | 'dash' | 'pause' | 'attack';
 export const touchInput = {
   held: new Set<Action>(), pressed: new Set<Action>(), axisX: 0, axisY: 0,
   reset() { this.held.clear(); this.pressed.clear(); this.axisX = 0; this.axisY = 0; },
@@ -45,7 +45,7 @@ export function installTouchControls(game: Phaser.Game): void {
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) stick.addEventListener(event, releaseStick);
   root.append(stick);
   for (const [action, label, description] of [
-    ['dash', 'DASH', 'Dash'], ['jump', 'JUMP', 'Jump or flap'], ['pause', 'PAUSE', 'Pause or leave sprint'],
+    ['attack', 'HIT', 'Attack'], ['dash', 'DASH', 'Dash'], ['jump', 'JUMP', 'Jump or flap'], ['pause', 'PAUSE', 'Pause or leave sprint'],
   ] as const) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
     button.dataset.action = action; button.setAttribute('aria-label', description);
@@ -60,10 +60,22 @@ export function installTouchControls(game: Phaser.Game): void {
     root.append(button);
   }
   document.getElementById('app')!.append(root);
+  const mute = document.createElement('button'); mute.id = 'audio-toggle'; mute.type = 'button';
+  mute.addEventListener('click', () => {
+    SaveManager.patchSettings({ muted: !SaveManager.get().settings.muted });
+    game.registry.get('audioRefresh')?.();
+  });
+  document.getElementById('app')!.append(mute);
   const fps = document.createElement('output'); fps.id = 'fps-meter'; fps.hidden = true; document.getElementById('app')!.append(fps);
   let lastFpsUpdate = performance.now(), fpsFrames = 0, previous = '', previousSettings = '';
   const update = () => {
     const settings = SaveManager.get().settings;
+    const muted = settings.muted;
+    if (mute.getAttribute('aria-pressed') !== String(muted)) {
+      mute.textContent = muted ? 'MUTED' : 'SOUND ON';
+      mute.setAttribute('aria-label', muted ? 'Unmute game audio' : 'Mute game audio');
+      mute.setAttribute('aria-pressed', String(muted));
+    }
     const key = `${settings.touchScale}:${settings.touchOpacity}:${settings.leftHanded}:${settings.showFps}`;
     if (key !== previousSettings) {
       previousSettings = key; root.style.setProperty('--control-scale', String(settings.touchScale));
@@ -75,13 +87,13 @@ export function installTouchControls(game: Phaser.Game): void {
       if (settings.showFps) fps.textContent = `${Math.round(fpsFrames * 1000 / elapsed)} FPS`;
       fpsFrames = 0; lastFpsUpdate = performance.now();
     }
-    const scene = game.scene.isActive('Game') ? 'Game' : game.scene.isActive('SkySprint') ? 'SkySprint' : '';
+    const scene = game.scene.isActive('Brawl') ? 'Brawl' : game.scene.isActive('Game') ? 'Game' : game.scene.isActive('SkySprint') ? 'SkySprint' : '';
     if (scene === previous) return;
-    previous = scene; root.hidden = !scene; document.body.classList.toggle('playing', !!scene);
+    previous = scene; root.classList.toggle('brawling', scene === 'Brawl'); root.hidden = !scene; document.body.classList.toggle('playing', !!scene);
     touchInput.reset(); releaseStick(); game.scale.refresh();
   };
   game.events.on('poststep', update);
   const blur = () => { touchInput.reset(); releaseStick(); };
   window.addEventListener('blur', blur);
-  game.events.once('destroy', () => { root.remove(); fps.remove(); window.removeEventListener('blur', blur); game.events.off('poststep', update); });
+  game.events.once('destroy', () => { root.remove(); fps.remove(); mute.remove(); window.removeEventListener('blur', blur); game.events.off('poststep', update); });
 }

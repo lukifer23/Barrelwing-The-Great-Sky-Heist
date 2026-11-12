@@ -12,9 +12,9 @@ async function start(page: Page, id = 1) {
   await page.waitForFunction(id => { const s = (window as any).__game.scene.getScene('Game'); return s.scene.isActive() && s.level.id === id && !!s.inputMgr; }, id);
 }
 
-test('all twelve stages load with unique gems and configured physics; restarts do not leak handlers', async ({ page }) => {
+test('all fifteen stages load with unique gems and configured physics; restarts do not leak handlers', async ({ page }) => {
   const errors = await boot(page);
-  for (let id = 1; id <= 12; id++) {
+  for (let id = 1; id <= 15; id++) {
     await start(page, id);
     const state = await page.evaluate(() => {
       const s = (window as any).__game.scene.getScene('Game');
@@ -69,7 +69,7 @@ test('real keyboard movement, jump, pause, resume, death and continue work repea
   }
   for (let i = 0; i < 2; i++) {
     await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.lives = 1; s.killPlayer(true); s.deathAt = s.time.now - 1; });
-    await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').gameOver);
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('GameOver'));
     await page.keyboard.press('Enter'); await page.waitForFunction(() => !(window as any).__game.scene.getScene('Game').gameOver);
     expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); return { lives: s.lives, dead: s.player.dead, handler: !!s.gameOverKey }; })).toEqual({ lives: 3, dead: false, handler: false });
   }
@@ -157,6 +157,11 @@ test('playable characters apply real traits and keep their own animation sheets'
     const state = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { hearts: p.maxHearts, sheet: p.texture.key, speed: p.speedMultiplier, animation: p.animation('run') }; });
     expect(state).toEqual({ hearts, sheet, speed, animation: `${sheet}-run` });
   }
+  await page.evaluate(() => { const g = (window as any).__game; g.scene.stop('Game'); g.scene.start('Title'); });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+  await page.evaluate(() => (window as any).__game.scene.getScene('Title').startNewGame());
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.characterId)).toBe('mallow');
   expect(errors).toEqual([]);
 });
 
@@ -187,6 +192,86 @@ test('title fills a folded, unfolded, and landscape screen with the menu inside 
         menuFits: s.menu.labels.every((t: any) => { const b = t.getBounds(); return b.left >= bounds.left - 2 && b.right <= bounds.right + 2 && b.top >= bounds.top - 2 && b.bottom <= bounds.bottom + 2; }) };
     });
     expect(layout.scrollY).toBe(0); expect(layout.menuFits).toBe(true);
+  }
+  expect(errors).toEqual([]);
+});
+
+async function startBrawl(page: Page) {
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    for (const s of g.scene.getScenes(true)) g.scene.stop(s.scene.key);
+    g.scene.start('Brawl', { arena: 'forest', difficulty: 'normal', player: 'pip', cpu: 'fenn' });
+  });
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').human?.active);
+  await page.evaluate(() => { (window as any).__game.scene.getScene('Brawl').startAt = 0; });
+}
+
+test('Barrel Brawl keyboard attacks cause real damage and three ring-outs save a victory', async ({ page }) => {
+  const errors = await boot(page); await startBrawl(page);
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Brawl');
+    s.human.body.reset(s.W / 2 - 25, s.floor); s.cpu.body.reset(s.W / 2 + 25, s.floor);
+    s.human.facing = 1; s.human.invulnerableUntil = s.time.now + 2000; s.cpu.invulnerableUntil = 0;
+  });
+  await page.keyboard.press('k');
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').cpu.damage > 0);
+  for (let stocks = 2; stocks >= 0; stocks--) {
+    await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.cpu.body.reset(s.W + 200, s.floor); });
+    await page.waitForFunction(stocks => (window as any).__game.scene.getScene('Brawl').cpu.stocks === stocks, stocks);
+  }
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlResults'));
+  expect(await page.evaluate(() => (window as any).__game.registry.get('saves').get().brawl)).toMatchObject({ wins: 1, losses: 0, bestStreak: 1, knockouts: 3 });
+  expect(await page.evaluate(() => (window as any).__game.registry.get('saves').get().brawlRun)).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test('Barrel Brawl saves separately from campaign progress and restores match stocks and damage', async ({ page }) => {
+  const errors = await boot(page); await start(page);
+  await page.evaluate(() => (window as any).__game.scene.getScene('Game').persistRun());
+  await startBrawl(page);
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); s.cpu.stocks = 2; s.human.damage = 44; s.elapsedMs = 22000; s.persistMatch(); });
+  await page.reload(); await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
+  await page.evaluate(() => { const g = (window as any).__game, saved = g.registry.get('saves').get().brawlRun; g.scene.stop('Title'); g.scene.start('Brawl', { ...saved, resume: true }); });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Brawl'));
+  expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Brawl'); return { stocks: s.cpu.stocks, damage: s.human.damage, campaign: (window as any).__game.registry.get('saves').get().run?.levelId }; })).toEqual({ stocks: 2, damage: 44, campaign: 1 });
+  expect(errors).toEqual([]);
+});
+
+test('Barrel Brawl CPU moves and attacks; pause resumes without stuck input', async ({ page }) => {
+  const errors = await boot(page); await startBrawl(page);
+  const initial = await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').cpu.x);
+  await page.waitForTimeout(700);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').cpu.x)).not.toBe(initial);
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlPause'));
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Brawl'));
+  await page.waitForTimeout(150); expect(await page.evaluate(() => (window as any).__game.scene.isActive('BrawlPause'))).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('one-tap master mute silences audio and survives reload', async ({ page }) => {
+  const errors = await boot(page);
+  await page.getByRole('button', { name: 'Mute game audio', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Unmute game audio', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => ({ saved: (window as any).__game.registry.get('saves').get().settings.muted, manager: (window as any).__game.sound.mute }))).toEqual({ saved: true, manager: true });
+  await page.reload(); await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
+  await expect(page.getByRole('button', { name: 'Unmute game audio', exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('game-over Continue, World Map, and Title targets work with pointer input after camera scrolling', async ({ page }) => {
+  const errors = await boot(page);
+  for (const [label, destination] of [['CONTINUE', 'Game'], ['WORLD MAP', 'WorldMap'], ['TITLE SCREEN', 'Title']] as const) {
+    await start(page, 2);
+    await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.cameras.main.setScroll(80, 430); s.showGameOver(); });
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('GameOver'));
+    const point = await page.evaluate(label => {
+      const g = (window as any).__game, s = g.scene.getScene('GameOver');
+      const text = s.children.list.find((o: any) => o.type === 'Text' && o.text.startsWith(label));
+      const bounds = text.getBounds(), canvas = g.canvas.getBoundingClientRect();
+      return { x: canvas.x + bounds.centerX / g.scale.width * canvas.width, y: canvas.y + bounds.centerY / g.scale.height * canvas.height };
+    }, label);
+    await page.mouse.click(point.x, point.y);
+    await page.waitForFunction(key => (window as any).__game.scene.isActive(key) && !(window as any).__game.scene.isActive('GameOver'), destination);
   }
   expect(errors).toEqual([]);
 });
