@@ -200,10 +200,11 @@ export class WorldMapScene extends Phaser.Scene {
 
   private buildFooter(): void {
     const button = (x: number, label: string, action: () => void) => this.add.text(x, 68, label, { fontFamily: FONT_SMALL, fontSize: '7px', color: '#f0c060', padding: { x: 4, y: 4 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', action);
-    button(65, '← BACK', () => this.scene.start(this.trialMode ? 'WorldMap' : 'Title'));
-    button(200, `U · UPGRADES (${SaveManager.shards})`, () => this.openWorkshop());
-    if (SaveManager.get().completedGame) button(332, this.trialMode ? 'CAMPAIGN' : 'TRIALS', () => this.scene.restart({ trials: !this.trialMode }));
-    if (SaveManager.get().bonusUnlocked) button(435, 'SPRINT', () => this.scene.start('SkySprint'));
+    button(40, 'BACK', () => this.scene.start(this.trialMode ? 'WorldMap' : 'Title'));
+    button(150, `U · UPGRADES (${SaveManager.shards})`, () => this.openWorkshop());
+    button(270, 'COURIERS', () => { this.scene.pause(); this.scene.launch('Characters', { from: 'WorldMap' }); });
+    if (SaveManager.get().completedGame) button(370, this.trialMode ? 'CAMPAIGN' : 'TRIALS', () => this.scene.restart({ trials: !this.trialMode }));
+    if (SaveManager.get().bonusUnlocked) button(440, 'SPRINT', () => this.scene.start('SkySprint'));
     this.add.text(12, GAME_HEIGHT - 6, this.trialMode ? 'ARROWS SELECT   ·   ENTER PLAY   ·   ESC SKY MAP' : 'ARROWS SELECT   ·   ENTER PLAY   ·   ESC TITLE', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
     }).setOrigin(0, 1).setAlpha(0.8);

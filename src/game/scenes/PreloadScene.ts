@@ -22,7 +22,7 @@ export class PreloadScene extends Phaser.Scene {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
     }).setOrigin(0.5);
 
-    const hints = ['WAKING THE WINDTAIL', 'STACKING THE BARRELS', 'OILING THE COGS', 'RAISING THE STORM'];
+    const hints = ['POLISHING THE EMERGENCY ACORN', 'ADDING HANDLING TO FREE SHIPPING', 'NEGOTIATING WITH GRAVITY', 'CHECKING THE TAIL WARRANTY'];
     this.load.on('progress', (p: number) => {
       bar.width = 238 * p;
       label.setText(hints[Math.min(hints.length - 1, Math.floor(p * hints.length))] + '…');

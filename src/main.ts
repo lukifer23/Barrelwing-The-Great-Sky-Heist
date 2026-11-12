@@ -12,6 +12,7 @@ import { SettingsScene } from './game/scenes/SettingsScene';
 import { ControlsScene } from './game/scenes/ControlsScene';
 import { CreditsScene } from './game/scenes/CreditsScene';
 import { SkySprintScene } from './game/scenes/SkySprintScene';
+import { CharacterScene } from './game/scenes/CharacterScene';
 import { WorkshopScene } from './game/scenes/WorkshopScene';
 import { SaveManager } from './game/systems/SaveManager';
 import { installViewport } from './game/systems/Viewport';
@@ -44,11 +45,11 @@ const config: Phaser.Types.Core.GameConfig = {
       fps: 60,
     },
   },
-  fps: { target: 60, forceSetTimeOut: false },
+  fps: { target: 60, limit: 60, forceSetTimeOut: false },
   scene: [
     BootScene, PreloadScene, TitleScene, WorldMapScene, GameScene,
     PauseScene, ResultsScene, EndingScene, SettingsScene, ControlsScene,
-    CreditsScene, SkySprintScene, WorkshopScene,
+    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene,
   ],
 };
 

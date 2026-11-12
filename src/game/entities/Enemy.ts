@@ -41,6 +41,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private timer = 0;
   private plantTimer = 0;
   private nextDiveAt = 0;
+  private nextShotAt = 0;
   private aiState: 'patrol' | 'alert' | 'charge' | 'shoot' | 'hurt' = 'patrol';
   private stateUntil = 0;
   private hitUntil = 0;
@@ -166,7 +167,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.kind === 'hopper') {
       this.timer += dt;
-      if (this.timer > 1.1) {
+      if (this.timer > 1.1 && this.grounded) {
         this.timer = 0;
         this.body.velocity.y = -230;
         this.body.velocity.x = this.dir * 65;
@@ -178,7 +179,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       }
     } else {
       if (this.grounded && Math.abs(this.body.velocity.y) < 1) {
-        this.body.velocity.x = this.dir * this.baseSpeed;
+        this.body.velocity.x = this.dir * (this.kind === 'crawler' ? this.baseSpeed * (Math.sin(time / 420) > 0 ? 2.4 : 0.35) : this.baseSpeed);
       }
     }
     this.setFlipX(this.dir < 0);
@@ -225,6 +226,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.body.velocity.x = (targetX - this.x) * 1.6 * speed;
     this.body.velocity.y = (targetY - this.y) * 1.6 * speed;
     this.setFlipX(dx < 0);
+    if (this.kind === 'stormbee' && time > this.nextShotAt && Math.abs(dx) < 220 && Math.abs(dy) < 100) {
+      this.nextShotAt = time + 2800;
+      this.setTint(0x9ff5ff);
+      const targetX = this.x + dx, targetY = this.y + dy;
+      this.scene.time.delayedCall(350, () => {
+        if (!this.active || this.defeated) return;
+        this.setTint(0xb7b0ff);
+        this.scene.events.emit('enemy-projectile', this.x, this.y - 8, targetX, targetY);
+      });
+    }
   }
 
   private diverAI(time: number, dt: number, dx: number, dy: number, dist: number): void {

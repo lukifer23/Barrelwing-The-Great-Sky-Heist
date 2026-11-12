@@ -16,7 +16,8 @@ Play in a WebGL browser or install the offline Android app directly on a persona
 - Running, variable-height jumps, air flaps, buffered jumps, coyote time, ladders, drop-through platforms, and a barrel-smashing dash.
 - Moving platforms, conveyors, springs, switches, gates, steam vents, lightning, updrafts, and falling platforms.
 - Distinct enemies, four barrel variants, and a three-phase boss with attack warnings and vulnerable windows.
-- Shield, Swift, Magnet, Triple Flap, and healing pickups.
+- Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
+- Three playable couriers: Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
 - Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, and longer powerups. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
 - Checkpoint recovery after closing the app, including collected items, defeated enemies, switches, lives, score, gems, elapsed time, and boss progress.
@@ -86,7 +87,7 @@ Settings include music and sound volume, mute, native haptics, touch button size
 
 Browser progress uses local storage. Android also writes to native SharedPreferences through Capacitor Preferences. Saves are local to the installation; clearing application data or uninstalling removes them. There is no cloud synchronization or online leaderboard. The title's Continue option restores the saved stage at its latest checkpoint.
 
-See [save format](docs/SAVES.md), [architecture](docs/ARCHITECTURE.md), and [validation](docs/VALIDATION.md).
+See [gameplay guide](docs/GAMEPLAY.md), [save format](docs/SAVES.md), [architecture](docs/ARCHITECTURE.md), and [validation](docs/VALIDATION.md).
 
 ## Project layout
 

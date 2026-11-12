@@ -28,6 +28,8 @@ The initial review covered the original application source, authored stages, ass
 
 An Android debug build has been installed on a Samsung Galaxy Z Fold7. WebView inspection confirmed WebGL rendering on the Adreno 830 GPU. Screenshots exposed menu letterboxing and animation-anchor problems; the layout was revised in response.
 
-Sustained frame-time measurements, physical folding during active play, extended audio checks, and complete route playthroughs remain separate acceptance checks. Successful builds, smoke tests, and GPU detection do not establish a sustained 60 fps guarantee or prove that every possible route has been playtested.
+A 600-frame title-screen sample on the device measured 59.98 rendered fps over 10 seconds, with a 17.3 ms 95th-percentile interval. This is a short menu measurement, not a sustained gameplay guarantee.
+
+Sustained gameplay frame-time measurements, physical folding during active play, extended audio checks, and complete route playthroughs remain separate acceptance checks. Successful builds, smoke tests, and GPU detection do not establish a sustained 60 fps guarantee or prove that every possible route has been playtested.
 
 Local screenshots, diagnostic logs, generated APKs, and device identifiers are excluded from version control.

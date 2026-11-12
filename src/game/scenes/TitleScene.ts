@@ -29,7 +29,7 @@ export class TitleScene extends Phaser.Scene {
     this.buildBackdrop(W, H);
     this.buildLogo(W, H);
     this.buildMenu(W, H);
-    this.add.text(10, H - 8, window.matchMedia('(pointer: coarse)').matches ? 'TAP A MENU OPTION TO PLAY' : 'ENTER SELECT  ·  ARROWS MOVE  ·  M MUTE  ·  F FULLSCREEN', {
+    this.add.text(10, H - 8, window.matchMedia('(pointer: coarse)').matches ? 'TAP TO PLAY. ACORNS SOLD SEPARATELY.' : 'ENTER SELECT  ·  ARROWS MOVE  ·  M MUTE  ·  F FULLSCREEN', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0',
     }).setOrigin(0, 1).setDepth(12);
     this.add.text(W - 8, H - 8, 'v1.1', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0' }).setOrigin(1, 1).setDepth(12);
@@ -99,6 +99,7 @@ export class TitleScene extends Phaser.Scene {
       { label: 'LEVEL SELECT', action: () => this.scene.start('WorldMap') },
       ...(save.completedGame ? [{ label: 'SKY TRIALS', action: () => this.scene.start('WorldMap', { trials: true }) }] : []),
       { label: save.bonusUnlocked ? 'SKY SPRINT' : 'SKY SPRINT [LOCKED]', disabled: !save.bonusUnlocked, action: () => this.scene.start('SkySprint') },
+      { label: 'COURIERS', action: () => this.openOverlay('Characters') },
       { label: 'CONTROLS', action: () => this.openOverlay('Controls') },
       { label: 'SETTINGS', action: () => this.openOverlay('Settings') },
       { label: 'CREDITS', action: () => this.openOverlay('Credits') },
@@ -108,8 +109,8 @@ export class TitleScene extends Phaser.Scene {
     const spacing = tall ? Math.max(30, Math.min(52, (H - top - 80) / items.length)) : Math.max(14, Math.min(30, (H - top - 36) / items.length));
     const x = tall ? W / 2 : W * 0.61;
     const panelW = tall ? W * 0.76 : Math.min(200, W - x - 10);
-    const panelH = spacing * items.length + 16;
-    this.add.rectangle(tall ? x - panelW / 2 - 10 : x - 14, top - 12, panelW + 20, panelH, 0x101528, 0.9).setOrigin(0).setStrokeStyle(1, 0x6b5a3a).setDepth(9);
+    const panelH = spacing * items.length + 8;
+    this.add.rectangle(tall ? x - panelW / 2 - 10 : x - 14, top - spacing / 2 - 4, panelW + 20, panelH, 0x101528, 0.9).setOrigin(0).setStrokeStyle(1, 0x6b5a3a).setDepth(9);
     this.menu = new Menu(this, items, { x, y: top, spacing, align: tall ? 'center' : 'left', fontSize: tall ? '16px' : '9px', showHints: false, depth: 12 });
   }
 
@@ -143,7 +144,7 @@ export class TitleScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', key));
   }
 
-  private openOverlay(key: 'Controls' | 'Settings' | 'Credits'): void { this.scene.pause(); this.scene.launch(key, { from: 'Title' }); }
+  private openOverlay(key: 'Controls' | 'Settings' | 'Credits' | 'Characters'): void { this.scene.pause(); this.scene.launch(key, { from: 'Title' }); }
 
   override update(time: number, delta: number): void {
     this.clouds.forEach((plate, i) => { plate.tilePositionX += delta * (0.003 + i * 0.004); });

@@ -1,3 +1,5 @@
+import legacyObjectIds from '../data/legacyObjectIds.json';
+import { characterId, type CharacterId } from '../data/characters';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { emptyUpgrades, UPGRADES, UPGRADE_COSTS, upgradeStats, type UpgradeKind, type Upgrades } from '../data/upgrades';
@@ -38,6 +40,8 @@ export interface RunSnapshot {
   bossDefeated: boolean;
   bossHp: number;
   bossPhase: number;
+  character: CharacterId;
+  objectVersion: 2;
 }
 
 export interface SaveData {
@@ -51,6 +55,7 @@ export interface SaveData {
   settings: Settings;
   upgrades: Upgrades;
   run: RunSnapshot | null;
+  selectedCharacter: CharacterId;
 }
 
 const KEY = 'barrelwing.save.v1';
@@ -58,7 +63,7 @@ const VERSION = 1;
 const BACKUP_KEY = KEY + '.backup';
 const finite = (v: unknown, fallback = 0, max = Number.MAX_SAFE_INTEGER): number =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : fallback;
-const ids = (v: unknown): number[] => Array.isArray(v) ? [...new Set(v.filter(n => Number.isInteger(n) && n >= 0 && n < 10000))] : [];
+const ids = (v: unknown): number[] => Array.isArray(v) ? [...new Set(v.filter(n => Number.isInteger(n) && n >= 0 && n <= 0xffffffff))] : [];
 
 function settingsFrom(raw: Partial<Settings> | undefined): Settings {
   const d = defaultSettings();
@@ -100,6 +105,7 @@ export function emptySave(): SaveData {
     settings: defaultSettings(),
     upgrades: emptyUpgrades(),
     run: null,
+    selectedCharacter: 'pip',
   };
 }
 
@@ -168,6 +174,7 @@ export class SaveManager {
       settings: settingsFrom(raw.settings),
       upgrades: this.cleanUpgrades(raw.upgrades, levels),
       run: this.cleanRun(raw.run),
+      selectedCharacter: characterId(raw.selectedCharacter),
     };
   }
 
@@ -188,13 +195,19 @@ export class SaveManager {
     if (!Number.isFinite(raw.checkpoint?.x) || !Number.isFinite(raw.checkpoint?.y)) return null;
     return {
       levelId: raw.levelId, checkpoint: { x: finite(raw.checkpoint.x, 0, 10000), y: finite(raw.checkpoint.y, 0, 10000) },
-      lives: Math.floor(finite(raw.lives, 3, 99)), hearts: Math.floor(finite(raw.hearts, 3, 5)),
+      lives: Math.floor(finite(raw.lives, 3, 99)), hearts: Math.floor(finite(raw.hearts, 3, 6)),
       score: finite(raw.score), coins: Math.floor(finite(raw.coins)), elapsedMs: finite(raw.elapsedMs),
       gems: [raw.gems?.[0] === true, raw.gems?.[1] === true, raw.gems?.[2] === true],
-      collected: ids(raw.collected), defeated: ids(raw.defeated),
+      collected: raw.objectVersion === 2 ? ids(raw.collected) : this.migrateObjectIds(raw.levelId, raw.collected),
+      defeated: raw.objectVersion === 2 ? ids(raw.defeated) : this.migrateObjectIds(raw.levelId, raw.defeated), objectVersion: 2,
       switches: Array.isArray(raw.switches) ? raw.switches.filter(s => typeof s === 'string').slice(0, 100) : [],
-      bossDefeated: raw.bossDefeated === true, bossHp: Math.floor(finite(raw.bossHp, 6, 6)), bossPhase: Math.max(1, Math.floor(finite(raw.bossPhase, 1, 3))),
+      bossDefeated: raw.bossDefeated === true, bossHp: Math.floor(finite(raw.bossHp, 6, 6)), bossPhase: Math.max(1, Math.floor(finite(raw.bossPhase, 1, 3))), character: characterId(raw.character),
     };
+  }
+
+  private static migrateObjectIds(levelId: number, values: unknown): number[] {
+    const legacy = (legacyObjectIds as Record<string, number[]>)[levelId] ?? [];
+    return ids(values).map(index => legacy[index]).filter(id => id !== undefined);
   }
 
   static storageAvailable = true;
@@ -236,6 +249,10 @@ export class SaveManager {
     d.upgrades[kind]++;
     this.save();
     return true;
+  }
+
+  static selectCharacter(id: CharacterId): void {
+    this.get().selectedCharacter = characterId(id); this.save();
   }
 
   static get stats() { return upgradeStats(this.get().upgrades); }

@@ -31,7 +31,7 @@ export const LEVEL_7: LevelDef = {
   ],
   objects: [
     { t: 'tutorial', x: 8, y: 18, text: 'THE STORM CHANNEL AHEAD. FLAP ON THE BEAT.' },
-    { t: 'tutorial', x: 110, y: 15, text: 'LIGHTNING ALWAYS WARNS FIRST' },
+    { t: 'tutorial', x: 110, y: 15, text: 'LIGHTNING: LOUD, BRIGHT, AND BAD AT CUSTOMER SERVICE.' },
 
     ...coinLine(5, 18, 6, 2),
     ...coinArc(24, 16, 5, 4),
@@ -121,6 +121,7 @@ export const LEVEL_7: LevelDef = {
     { t: 'windCrystal', x: 166, y: 9 },
 
     { t: 'powerup', kind: 'shield', x: 46, y: 16 },
+    { t: 'powerup', kind: 'life', x: 112, y: 15 },
     { t: 'powerup', kind: 'magnet', x: 142, y: 16 },
     { t: 'checkpoint', x: 44, y: 18 },
     { t: 'powerup', kind: 'triple', x: 112, y: 14 },
@@ -169,7 +170,7 @@ export const LEVEL_8: LevelDef = {
     T(8, 17, 6, 1, 'wood'),
   ],
   objects: [
-    { t: 'tutorial', x: 6, y: 66, text: 'UPDRAFTS LIFT YOU. BARRELS DO NOT.' },
+    { t: 'tutorial', x: 6, y: 66, text: 'THE ELEVATOR IS OUT. NATURALLY, SO IS THE FLOOR.' },
 
     ...coinLine(4, 58, 6, 2),
     ...coinLine(24, 58, 6, 2),
@@ -320,6 +321,7 @@ export const LEVEL_9: LevelDef = {
     { t: 'powerup', kind: 'shield', x: 70, y: 18 },
     { t: 'powerup', kind: 'triple', x: 116, y: 18 },
     { t: 'powerup', kind: 'magnet', x: 150, y: 18 },
+    { t: 'powerup', kind: 'nova', x: 120, y: 18 },
     { t: 'checkpoint', x: 64, y: 20 },
     { t: 'checkpoint', x: 112, y: 20 },
     { t: 'checkpoint', x: 156, y: 20 },

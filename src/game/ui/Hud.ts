@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, FONT_SMALL } from '../config';
+import { SaveManager } from '../systems/SaveManager';
 import { POWER_META } from '../data/powerups';
 import type { PowerKind } from '../data/levels/types';
 
@@ -48,6 +49,7 @@ export class Hud {
   private lastHearts = -1;
   private flightBadge: Phaser.GameObjects.Text;
   private powerIcons: Phaser.GameObjects.Image[] = [];
+  private powerText: Phaser.GameObjects.Text;
   private powerBars: Phaser.GameObjects.Rectangle[] = [];
 
   constructor(scene: Phaser.Scene) {
@@ -56,7 +58,7 @@ export class Hud {
     this.panel = scene.add.rectangle(4, 4, 164, 26, 0x101528, 0.78)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(D).setStrokeStyle(1, 0x3a4460, 0.8);
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       const e = scene.add.image(12 + i * 10, 14, 'ui_heart_empty').setScrollFactor(0).setDepth(D + 1);
       const h = scene.add.image(12 + i * 10, 14, 'ui_heart').setScrollFactor(0).setDepth(D + 2);
       this.heartEmpty.push(e);
@@ -104,6 +106,8 @@ export class Hud {
       this.powerIcons.push(scene.add.image(14 + i * 20, 50, 'power_shield').setScrollFactor(0).setDepth(D + 1).setVisible(false).setScale(0.85));
       this.powerBars.push(scene.add.rectangle(7 + i * 20, 58, 14, 2, 0x9fe0ff).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false));
     }
+
+    this.powerText = scene.add.text(86, 44, '', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#f4e6c8', lineSpacing: 2, backgroundColor: '#101528', padding: { x: 3, y: 2 } }).setScrollFactor(0).setDepth(D + 1).setVisible(false);
 
     this.toastText = scene.add.text(240, 76, '', {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f4e6c8',
@@ -172,6 +176,11 @@ export class Hud {
       bar.width = 14 * Phaser.Math.Clamp(p.ratio, 0, 1);
       bar.x = 7 + i * 20;
     }
+
+    this.powerText.setVisible(s.powers.length > 0).setText(s.powers.map(p => {
+      const meta = POWER_META[p.kind];
+      return p.kind === 'shield' ? 'SHIELD: 1 HIT' : `${meta.label}: ${Math.ceil(p.ratio * meta.durationMs * SaveManager.stats.powerDuration / 1000)}s`;
+    }).join('\n'));
 
     if (s.bossHp !== null) {
       this.ensureBossBar(s.bossName);

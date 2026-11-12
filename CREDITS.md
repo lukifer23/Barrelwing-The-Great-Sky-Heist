@@ -15,7 +15,7 @@ All third-party assets used in this game are public-domain / CC0 unless noted be
 | Press Start 2P | CodeMan38 | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Press+Start+2P |
 | Silkscreen | Jason Kottke | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Silkscreen |
 
-The small wing/heart HUD icons and transient particle textures were authored for this project.
+The small wing/heart HUD icons and transient particle textures were authored for this project. Fenn uses the SunnyLand Forest player frames, repacked to the game's shared foot baseline; Mallow is a recolored SunnyLand Woods squirrel. Character names and movement traits are original.
 
 ## Music
 

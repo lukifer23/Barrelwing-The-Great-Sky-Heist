@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, FONT_SMALL, GAME_HEIGHT, GAME_WIDTH, PHYSICS, FLIGHT } from '../config';
 import { getLevel } from '../data/levels';
 import { THEMES, type LevelDef, type LevelObject, type TerrainRect, type TileStyle, type FlightGate, type PowerKind } from '../data/levels/types';
+import { objectIds } from '../data/objectIds';
 import { POWER_META } from '../data/powerups';
 import { Player } from '../player/Player';
 import { Enemy } from '../entities/Enemy';
@@ -83,7 +84,7 @@ export class GameScene extends Phaser.Scene {
   private spikes: Phaser.GameObjects.TileSprite[] = [];
   private steamVents: { x: number; y: number; period: number; phase: number; spout: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
   private lightnings: { x: number; y: number; w: number; period: number; phase: number; beam: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
-  private updrafts: Phaser.Geom.Rectangle[] = [];
+  private updrafts: { rect: Phaser.Geom.Rectangle; power: number }[] = [];
   private fallingPlats: { sprite: Phaser.GameObjects.TileSprite; body: Phaser.Physics.Arcade.StaticBody; used: boolean }[] = [];
   private flightZones: FlightRuntime[] = [];
   private tutorials: { x: number; y: number; text: string; shown: boolean }[] = [];
@@ -410,7 +411,9 @@ export class GameScene extends Phaser.Scene {
     const cx = (t: number) => t * ts + ts / 2;
 
     let gemIndex = 0;
-    for (const [objectId, o] of this.level.objects.entries()) {
+    const stableIds = objectIds(this.level);
+    for (const [objectIndex, o] of this.level.objects.entries()) {
+      const objectId = stableIds[objectIndex];
       const index = o.t === 'gem' ? gemIndex++ : -1;
       if (this.collected.has(objectId) || (o.t === 'enemy' && this.defeated.has(objectId))) continue;
       switch (o.t) {
@@ -451,7 +454,12 @@ export class GameScene extends Phaser.Scene {
         case 'spikes': this.addSpikes(cx(o.x), o.y * ts, o.w * ts); break;
         case 'steam': this.addSteam(cx(o.x), o.y * ts, o.period, o.phase ?? 0); break;
         case 'lightning': this.addLightning(o.x * ts, o.y * ts, o.w * ts, o.period, o.phase ?? 0); break;
-        case 'updraft': this.updrafts.push(new Phaser.Geom.Rectangle(o.x * ts, o.y * ts, o.w * ts, o.h * ts)); break;
+        case 'updraft': {
+          const rect = new Phaser.Geom.Rectangle(o.x * ts, o.y * ts, o.w * ts, o.h * ts);
+          this.updrafts.push({ rect, power: o.power ?? 1 });
+          this.add.particles(rect.left, rect.bottom, 'fx_streak', { x: { min: 0, max: rect.width }, lifespan: rect.height / 90 * 1000, speedY: -90, speedX: 0, frequency: 180, scaleX: 0.4, scaleY: 0.8, alpha: { start: 0.35, end: 0 }, tint: 0x9ff5ff }).setDepth(8);
+          break;
+        }
         case 'fallingPlatform': this.addFallingPlatform(cx(o.x), o.y * ts, o.w * ts); break;
         case 'exit': this.addExit(cx(o.x), o.y * ts); break;
         case 'tutorial': this.tutorials.push({ x: cx(o.x), y: o.y * ts, text: o.text, shown: false }); break;
@@ -620,6 +628,14 @@ export class GameScene extends Phaser.Scene {
     else if (kind === 'swift') this.player.grantSwift();
     else if (kind === 'magnet') this.player.grantMagnet();
     else if (kind === 'triple') this.player.grantTriple();
+    else if (kind === 'life') this.grantExtraLife();
+    else if (kind === 'nova') {
+      const blast = this.add.sprite(this.player.x, this.player.y - 20, 'energy_smack').setDepth(25).setScale(1.8).play('energy-burst');
+      blast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => blast.destroy());
+      for (const enemy of [...this.enemies.getChildren()] as Enemy[]) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
+      for (const barrel of [...this.barrels.getChildren()] as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
+      this.fx.shake(0.004, 180); AudioManager.sfx('magic', { volume: 0.5, rate: 0.8 });
+    }
     else if (kind === 'heart') {
       if (this.player.hearts < this.player.maxHearts) this.player.hearts += 1;
       this.fx.sparkle(img.x, img.y, 0xff9aa8);
@@ -687,7 +703,7 @@ export class GameScene extends Phaser.Scene {
   private buildPlayer(): void {
     const ts = this.level.tile;
     const sp = this.level.spawn;
-    this.player = new Player(this, sp.x * ts + ts / 2, sp.y * ts);
+    this.player = new Player(this, sp.x * ts + ts / 2, sp.y * ts, this.resumeRun?.character ?? SaveManager.get().selectedCharacter);
     this.checkpoint = { x: this.player.x, y: this.player.y };
     this.player.hearts = this.player.maxHearts;
     this.player.invulnUntil = this.time.now + 1200;
@@ -975,20 +991,12 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
-    // spikes
-    for (const sp of this.spikes) {
-      const pb = this.player.body;
-      const r = new Phaser.Geom.Rectangle(sp.x - sp.width / 2, sp.y - 12, sp.width, 12);
-      if (Phaser.Geom.Intersects.RectangleToRectangle(r, new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height))) {
-        this.hurtPlayer(sp.x);
-      }
-    }
   }
 
   private updateUpdrafts(dt: number): void {
     for (const u of this.updrafts) {
-      if (Phaser.Geom.Rectangle.Contains(u, this.player.x, this.player.y - 12)) {
-        this.player.body.velocity.y -= 1680 * dt / 1000;
+      if (Phaser.Geom.Rectangle.Contains(u.rect, this.player.x, this.player.y - 12)) {
+        this.player.body.velocity.y -= 1680 * u.power * dt / 1000;
         if (this.player.body.velocity.y < -190) this.player.body.velocity.y = -190;
         if (Math.random() < 0.25) this.fx.step(this.player.x, this.player.y, 1);
       }
@@ -1197,7 +1205,7 @@ export class GameScene extends Phaser.Scene {
         this.player.bounce(-285);
         this.fx.shake(0.0025, 80);
       }
-    } else if (this.player.dashActive && !e.isArmored) {
+    } else if (this.player.dashActive) {
       e.damage(1, this.player.x);
       this.player.bounce(-120);
     } else {
@@ -1476,7 +1484,7 @@ export class GameScene extends Phaser.Scene {
     this.player.controlLocked = true;
     this.player.body.velocity.set(0, 0);
     this.player.body.setAllowGravity(false);
-    this.player.play('pip-idle', true);
+    this.player.play(this.player.animation('idle'), true);
     AudioManager.stopMusic(600);
     AudioManager.sfx('life', { volume: 0.6 });
     this.cameras.main.flash(180, 255, 240, 200);
@@ -1589,6 +1597,7 @@ export class GameScene extends Phaser.Scene {
       gems: [...this.gemsCollected], collected: [...this.collected], defeated: [...this.defeated],
       switches: this.switches.filter(s => s.used).map(s => s.id),
       bossDefeated: this.bossDefeated, bossHp: this.boss?.hp ?? 6, bossPhase: this.boss?.phase ?? 1,
+      character: this.player.characterId, objectVersion: 2,
     });
   }
 

@@ -14,16 +14,16 @@ Every unique saved gem and rating star earns one Sky Shard. Available shards are
 
 | Upgrade | Effect per tier |
 | --- | --- |
-| Heartwood | One additional maximum heart |
-| Second Wind | One additional starting life |
-| Quicktail | Dash cooldown reduced by 15% of its base duration |
-| Wind Keeper | Timed powers last 25% longer than base duration |
+| More Hearts | One additional maximum heart |
+| More Lives | One additional starting life |
+| Faster Dash | Dash cooldown reduced by 15% of its base duration |
+| Longer Powers | Timed powers last 25% longer than base duration |
 
 Upgrades apply when a new stage instance begins. Sky Sprint retains its three-heart score-attack rules.
 
 ## Active run
 
-Continue restores the most recent checkpoint, lives, health, score, acorns, elapsed time, gem flags, collected object IDs, defeated enemy IDs, activated switches, and boss progress. Object IDs are indexes in the authored stage array. Editing object order in a released stage therefore requires a save migration or clearing that stage's active snapshot.
+Continue restores the most recent checkpoint, lives, health, score, acorns, elapsed time, gem flags, collected object IDs, defeated enemy IDs, activated switches, and boss progress. Object IDs are stable hashes of type, coordinates, kind, and duplicate occurrence. Inserting unrelated objects does not renumber existing collectibles or enemies. The original index-based snapshots migrate through a retained ID map. Moving or changing the kind of a persistent object requires an explicit migration.
 
 Temporary power effects and transient hazards are reset on restoration. Falling platforms recover when returning to a checkpoint. A checkpoint restart spends a life. A game over clears the active run; choosing Continue grants a new set of lives and resets the attempt score and timer while retaining the checkpoint and consumed stage objects.
 

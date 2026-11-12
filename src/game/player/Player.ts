@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PHYSICS, FLIGHT } from '../config';
+import { CHARACTERS, type CharacterId } from '../data/characters';
 import { SaveManager } from '../systems/SaveManager';
 import type { InputManager } from '../systems/InputManager';
 
@@ -7,6 +8,9 @@ export type PlayerMode = 'normal' | 'climb' | 'flight';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
+  readonly characterId: CharacterId;
+  readonly character: typeof CHARACTERS[CharacterId];
+  animation(state: string): string { return `${this.character.sheet}-${state}`; }
   mode: PlayerMode = 'normal';
   hearts = 3;
   maxHearts = 3;
@@ -42,22 +46,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private climbPhaseAt = 0;
   dropThroughUntil = 0;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'pip', 0);
+  constructor(scene: Phaser.Scene, x: number, y: number, id: CharacterId = SaveManager.get().selectedCharacter) {
+    super(scene, x, y, CHARACTERS[id].sheet, 0);
+    this.characterId = id; this.character = CHARACTERS[id];
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.maxHearts = SaveManager.stats.maxHearts;
+    this.maxHearts = SaveManager.stats.maxHearts + this.character.extraHeart;
     this.hearts = this.maxHearts;
     this.powerDuration = SaveManager.stats.powerDuration;
     this.dashCooldown = SaveManager.stats.dashCooldown;
     this.setOrigin(0.5, 35 / 45);
     this.body.setSize(14, 24);
     this.body.setOffset(20, 11);
-    this.body.setMaxVelocity(PHYSICS.dashSpeed, PHYSICS.maxFall);
+    this.body.setMaxVelocity(PHYSICS.dashSpeed, 520);
     this.body.setGravityY(0);
     this.setDepth(20);
     this.setCollideWorldBounds(false);
-    this.play('pip-idle');
+    this.play(this.animation('idle'));
   }
 
   get now(): number { return this.scene.time.now; }
@@ -65,7 +70,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   get dashReady(): boolean { return this.now >= this.dashReadyAt; }
   get dashActive(): boolean { return this.now < this.dashUntil; }
   get maxFlapCharges(): number { return this.now < this.tripleUntil ? 3 : PHYSICS.maxFlaps; }
-  get speedMultiplier(): number { return this.now < this.swiftUntil ? 1.35 : 1; }
+  get speedMultiplier(): number { return this.character.speed * (this.now < this.swiftUntil ? 1.35 : 1); }
   get magnetActive(): boolean { return this.now < this.magnetUntil; }
   get grounded(): boolean { return this.body.blocked.down || this.body.touching.down; }
 
@@ -88,22 +93,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   updatePlayer(dtMs: number, input: InputManager, ladders: Phaser.Geom.Rectangle[]): void {
     const dt = dtMs / 1000;
     const now = this.now;
+    if (this.body.velocity.y > PHYSICS.maxFall) this.body.velocity.y = PHYSICS.maxFall;
     this.shieldAura?.setPosition(this.x, this.y - 18);
 
     if (this.dead || this.victory) {
-      this.updateAnim();
+      this.updateAnim(dtMs);
       return;
     }
 
     if (this.mode === 'flight') {
       this.updateFlight(dtMs, input);
-      this.updateAnim();
+      this.updateAnim(dtMs);
       return;
     }
 
     if (this.mode === 'climb') {
       this.updateClimb(dtMs, input, ladders);
-      this.updateAnim();
+      this.updateAnim(dtMs);
       return;
     }
 
@@ -135,7 +141,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.body.setDragX(0);
         if (Math.abs(this.body.velocity.x) > maxRun) {
           this.body.setAccelerationX(0);
-          this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, Math.sign(dir) * maxRun, 0.2);
+          this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, Math.sign(dir) * maxRun, 1 - Math.exp(-13.4 * dt));
         }
       } else {
         this.body.setAccelerationX(0);
@@ -214,7 +220,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     this.wasGrounded = this.grounded;
 
-    this.updateAnim();
+    this.updateAnim(dtMs);
   }
 
   private updateFlight(dtMs: number, input: InputManager): void {
@@ -392,7 +398,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.velocity.set(dir * PHYSICS.knockbackX, PHYSICS.knockbackY);
     this.paintInvulnerable();
     this.hurtUntil = this.now + 320;
-    this.play('pip-hurt', true);
+    this.play(this.animation('hurt'), true);
     this.squash(1.1, 0.9);
     return true;
   }
@@ -402,7 +408,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dead = true;
     this.body.setAllowGravity(false);
     this.body.velocity.set(0, -170);
-    this.play('pip-hurt', true);
+    this.play(this.animation('hurt'), true);
     this.setTint(0xff8a8a);
     this.scene.tweens.add({ targets: this, angle: this.facing * 90, alpha: 0.1, duration: 900, ease: 'Cubic.easeIn' });
   }
@@ -443,7 +449,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.shieldAura?.destroy();
     this.shieldAura = undefined;
     this.setFrame(0);
-    this.play('pip-idle');
+    this.play(this.animation('idle'));
     this.alpha = 1;
   }
 
@@ -455,14 +461,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  private updateAnim(): void {
+  private updateAnim(dtMs: number): void {
     const now = this.now;
     if (this.dead || this.victory) return;
     if (now < this.hurtUntil) return;
-    let key = 'pip-idle';
+    let key = this.animation('idle');
     if (this.mode === 'climb') {
-      key = 'pip-climb';
-      this.anims.msPerFrame = 140;
+      key = this.animation('climb');
+      this.anims.msPerFrame = 100;
     } else if (this.mode === 'flight') {
       // glide pose, with a brief tuck on each flap
       const vy = this.body.velocity.y;
@@ -478,13 +484,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setRotation(Phaser.Math.Clamp(vy / 1400, -0.1, 0.14));
       return;
     } else if (Math.abs(this.body.velocity.x) > 18) {
-      key = 'pip-run';
-      this.anims.msPerFrame = 1000 / 14;
+      key = this.animation('run');
+      this.anims.msPerFrame = 1000 / 18;
     } else {
-      key = 'pip-idle';
-      this.anims.msPerFrame = 130;
+      key = this.animation('idle');
+      this.anims.msPerFrame = 100;
     }
-    this.setRotation(Phaser.Math.Linear(this.rotation, 0, 0.2));
+    this.setRotation(Phaser.Math.Linear(this.rotation, 0, 1 - Math.exp(-14 * dtMs / 1000)));
     if (this.lastAnim !== key || !this.anims.isPlaying) {
       this.lastAnim = key;
       this.play(key, true);

@@ -76,6 +76,7 @@ export const LEVEL_4: LevelDef = {
     { t: 'powerup', kind: 'shield', x: 40, y: 14 },
     { t: 'powerup', kind: 'magnet', x: 80, y: 7 },
     { t: 'powerup', kind: 'heart', x: 30, y: 14 },
+    { t: 'powerup', kind: 'nova', x: 97, y: 14 },
     { t: 'checkpoint', x: 63, y: 16 },
     { t: 'steam', x: 36, y: 16, period: 3200, phase: 0.2 },
     { t: 'steam', x: 96, y: 16, period: 2900, phase: 0.6 },
@@ -120,7 +121,8 @@ export const LEVEL_5: LevelDef = {
     T(25, 17, 6, 1, 'metal'),
   ],
   objects: [
-    { t: 'tutorial', x: 6, y: 58, text: 'LADDERS ARE YOUR FRIEND. STEAM IS NOT.' },
+    { t: 'tutorial', x: 6, y: 58, text: 'LADDERS: GOOD. STEAM: UNAPPROVED SAUNA.' },
+    { t: 'tutorial', x: 28, y: 36, text: 'IRON BARRELS DO NOT BREAK. JUMP OR FLAP OVER THEM.' },
 
     ...coinLine(4, 50, 5, 2),
     ...coinLine(21, 50, 5, 2),
@@ -151,7 +153,7 @@ export const LEVEL_5: LevelDef = {
 
     { t: 'barrelSpawner', x: 34, y: 52, dir: -1, interval: 3000 },
     { t: 'barrelSpawner', x: 4, y: 44, dir: 1, interval: 2700, variant: 'fast' },
-    { t: 'barrelSpawner', x: 32, y: 36, dir: -1, interval: 2500 },
+    { t: 'barrelSpawner', x: 32, y: 36, dir: -1, interval: 3200, variant: 'armored' },
     { t: 'barrelSpawner', x: 4, y: 28, dir: 1, interval: 2900, variant: 'bouncing' },
     { t: 'barrelSpawner', x: 32, y: 20, dir: -1, interval: 2400 },
 
@@ -207,8 +209,8 @@ export const LEVEL_6: LevelDef = {
     T(166, 11, 6, 1, 'metal'),
   ],
   objects: [
-    { t: 'tutorial', x: 6, y: 18, text: 'SPRINGS LAUNCH YOU INTO THE DUCTS' },
-    { t: 'tutorial', x: 98, y: 18, text: 'THE GATE NEEDS POWER. FIND THE LANTERN.' },
+    { t: 'tutorial', x: 6, y: 18, text: 'DO A BARREL DODGE. THEN TAKE THE SPRING.' },
+    { t: 'tutorial', x: 98, y: 18, text: 'THE CAKE IS A LIE. THE GATE NEEDS A LANTERN.' },
 
     ...coinLine(6, 18, 6, 2),
     ...coinArc(26, 16, 4, 2),
@@ -269,6 +271,7 @@ export const LEVEL_6: LevelDef = {
     { t: 'powerup', kind: 'triple', x: 100, y: 18 },
     { t: 'checkpoint', x: 84, y: 17 },
     { t: 'powerup', kind: 'shield', x: 150, y: 16 },
+    { t: 'powerup', kind: 'nova', x: 76, y: 15 },
     { t: 'powerup', kind: 'heart', x: 144, y: 16 },
     { t: 'checkpoint', x: 150, y: 18 },
     { t: 'windCrystal', x: 56, y: 10 },

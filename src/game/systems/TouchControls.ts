@@ -61,7 +61,7 @@ export function installTouchControls(game: Phaser.Game): void {
   }
   document.getElementById('app')!.append(root);
   const fps = document.createElement('output'); fps.id = 'fps-meter'; fps.hidden = true; document.getElementById('app')!.append(fps);
-  let lastFpsUpdate = 0, previous = '', previousSettings = '';
+  let lastFpsUpdate = performance.now(), fpsFrames = 0, previous = '', previousSettings = '';
   const update = () => {
     const settings = SaveManager.get().settings;
     const key = `${settings.touchScale}:${settings.touchOpacity}:${settings.leftHanded}:${settings.showFps}`;
@@ -69,7 +69,12 @@ export function installTouchControls(game: Phaser.Game): void {
       previousSettings = key; root.style.setProperty('--control-scale', String(settings.touchScale));
       root.style.setProperty('--control-opacity', String(settings.touchOpacity)); root.classList.toggle('left-handed', settings.leftHanded); fps.hidden = !settings.showFps;
     }
-    if (settings.showFps && performance.now() - lastFpsUpdate > 500) { lastFpsUpdate = performance.now(); fps.textContent = `${Math.round(game.loop.actualFps)} FPS`; }
+    fpsFrames++;
+    const elapsed = performance.now() - lastFpsUpdate;
+    if (elapsed > 500) {
+      if (settings.showFps) fps.textContent = `${Math.round(fpsFrames * 1000 / elapsed)} FPS`;
+      fpsFrames = 0; lastFpsUpdate = performance.now();
+    }
     const scene = game.scene.isActive('Game') ? 'Game' : game.scene.isActive('SkySprint') ? 'SkySprint' : '';
     if (scene === previous) return;
     previous = scene; root.hidden = !scene; document.body.classList.toggle('playing', !!scene);

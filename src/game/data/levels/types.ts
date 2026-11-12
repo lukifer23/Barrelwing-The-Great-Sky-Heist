@@ -8,7 +8,7 @@ export interface TerrainRect {
   decor?: boolean;
 }
 
-export type PowerKind = 'shield' | 'swift' | 'magnet' | 'triple' | 'heart';
+export type PowerKind = 'shield' | 'swift' | 'magnet' | 'triple' | 'heart' | 'nova' | 'life';
 
 export type EnemyKind = 'slug' | 'bee' | 'ant' | 'hopper' | 'gator' | 'wisp' | 'bird' | 'plant' | 'crawler' | 'stormbee' | 'diver';
 

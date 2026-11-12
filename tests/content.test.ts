@@ -39,3 +39,13 @@ test('every runtime asset exists and each animation fits its sheet', async () =>
     for (const anim of ANIMS.filter(a => a.sheet === sheet.key)) assert.ok(anim.start >= 0 && anim.end < count, anim.key);
   }
 });
+
+test('persistent object IDs survive unrelated authored insertions', async () => {
+  const { objectIds } = await import('../src/game/data/objectIds');
+  for (const level of LEVELS) {
+    const before = objectIds(level);
+    assert.equal(new Set(before).size, before.length, `${level.id}: ID collision`);
+    const after = objectIds({ ...level, objects: [{ t: 'tutorial', x: 0, y: 0, text: 'new content' }, ...level.objects] });
+    assert.deepEqual(after.slice(1), before);
+  }
+});

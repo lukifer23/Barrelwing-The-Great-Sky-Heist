@@ -8,6 +8,7 @@ export interface SpriteSheetDef {
 }
 
 export const IMAGES: Record<string, string> = {
+  power_nova: 'assets/ui/power_nova.png',
   forest_top: 'assets/terrain/forest_top.png',
   forest_fill: 'assets/terrain/forest_fill.png',
   storm_top: 'assets/terrain/storm_top.png',
@@ -134,12 +135,12 @@ export type AnimDef = {
 };
 
 export const ANIMS: AnimDef[] = [
-  { key: 'pip-idle', sheet: 'pip', start: 0, end: 7, frameRate: 8, repeat: -1 },
-  { key: 'pip-run', sheet: 'pip', start: 8, end: 13, frameRate: 14, repeat: -1 },
+  { key: 'pip-idle', sheet: 'pip', start: 0, end: 7, frameRate: 10, repeat: -1 },
+  { key: 'pip-run', sheet: 'pip', start: 8, end: 13, frameRate: 18, repeat: -1 },
   { key: 'pip-jump', sheet: 'pip', start: 14, end: 17, frameRate: 12, repeat: 0 },
   { key: 'pip-hurt', sheet: 'pip', start: 18, end: 19, frameRate: 8, repeat: 0 },
   { key: 'pip-crouch', sheet: 'pip', start: 20, end: 21, frameRate: 6, repeat: -1 },
-  { key: 'pip-climb', sheet: 'pip', start: 0, end: 7, frameRate: 7, repeat: -1 },
+  { key: 'pip-climb', sheet: 'pip', start: 0, end: 7, frameRate: 10, repeat: -1 },
   { key: 'slug-move', sheet: 'slug', start: 0, end: 3, frameRate: 6, repeat: -1 },
   { key: 'bee-fly', sheet: 'bee', start: 0, end: 7, frameRate: 12, repeat: -1 },
   { key: 'ant-run', sheet: 'ant', start: 0, end: 7, frameRate: 13, repeat: -1 },
@@ -157,3 +158,8 @@ export const ANIMS: AnimDef[] = [
   { key: 'boss-breath', sheet: 'boss_breath_sheet', start: 0, end: 6, frameRate: 11, repeat: 0 },
   { key: 'boss-tail', sheet: 'boss_tail_sheet', start: 0, end: 7, frameRate: 9, repeat: -1 },
 ];
+
+for (const sheet of ['fenn', 'mallow']) {
+  SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: 22 });
+  for (const anim of ANIMS.filter(a => a.sheet === 'pip')) ANIMS.push({ ...anim, key: anim.key.replace('pip-', `${sheet}-`), sheet });
+}

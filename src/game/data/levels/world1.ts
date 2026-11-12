@@ -28,7 +28,6 @@ export const LEVEL_1: LevelDef = {
     T(36, 13, 4, 1, 'wood'),
     T(48, 10, 4, 1, 'wood'),
     T(63, 12, 4, 1, 'wood'),
-    T(70, 9, 4, 1, 'wood'),
     T(85, 12, 4, 1, 'wood'),
     T(92, 10, 3, 1, 'wood'),
     T(104, 12, 4, 1, 'wood'),
@@ -38,8 +37,11 @@ export const LEVEL_1: LevelDef = {
   objects: [
     { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN' },
     { t: 'powerup', kind: 'shield', x: 24, y: 15 },
+    { t: 'powerup', kind: 'nova', x: 86, y: 11 },
     { t: 'powerup', kind: 'triple', x: 72, y: 8 },
-    { t: 'tutorial', x: 21, y: 14, text: 'SHIELD — ABSORBS ONE HIT' },
+    { t: 'fallingPlatform', x: 72, y: 9, w: 4 },
+    { t: 'tutorial', x: 70, y: 9, text: 'CRUMBLING PLANKS: JUMP BEFORE THEY FALL.' },
+    { t: 'tutorial', x: 21, y: 14, text: 'SHIELD: ONE FREE MISTAKE. USE IT WISELY.' },
     { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP' },
     { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP' },
     { t: 'tutorial', x: 60, y: 12, text: 'STOMP ENEMIES FROM ABOVE' },
@@ -72,6 +74,7 @@ export const LEVEL_1: LevelDef = {
     { t: 'spring', x: 92, y: 16, power: 500 },
     { t: 'decor', kind: 'tree', x: 12, y: 16, scale: 1 },
     { t: 'decor', kind: 'tree', x: 100, y: 16, scale: 1 },
+    { t: 'tutorial', x: 118, y: 11, text: 'YOUR PACKAGE IS ALMOST THERE. THE BARRELS ARE NOT YOURS.' },
     { t: 'exit', x: 128, y: 13 },
   ],
 };
@@ -111,7 +114,7 @@ export const LEVEL_2: LevelDef = {
   ],
   objects: [
     { t: 'tutorial', x: 4, y: 50, text: 'W / S  —  CLIMB THE VINES' },
-    { t: 'tutorial', x: 12, y: 43, text: 'BARRELS HURT. JUMP OR FLAP OVER THEM.' },
+    { t: 'tutorial', x: 12, y: 43, text: 'BARRELS: FREE SHIPPING. VERY POOR HANDLING.' },
 
     ...coinLine(4, 50, 6, 2),
     ...coinLine(3, 42, 5, 2),
@@ -150,6 +153,7 @@ export const LEVEL_2: LevelDef = {
 
     { t: 'powerup', kind: 'shield', x: 8, y: 42 },
     { t: 'powerup', kind: 'magnet', x: 30, y: 18 },
+    { t: 'powerup', kind: 'life', x: 26, y: 10 },
     { t: 'checkpoint', x: 34, y: 28 },
     { t: 'spring', x: 20, y: 52, power: 470 },
     { t: 'decor', kind: 'tree', x: 36, y: 44, scale: 1 },

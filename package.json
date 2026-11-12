@@ -14,6 +14,7 @@
     "test:browser": "playwright test",
     "check": "npm run test && npm run build && npm run test:browser",
     "icons": "node scripts/build-icons.mjs",
+    "characters": "node scripts/build-characters.mjs",
     "android:apk": "node scripts/android.mjs build",
     "android:install": "node scripts/android.mjs install"
   },

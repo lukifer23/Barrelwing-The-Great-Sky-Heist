@@ -128,3 +128,65 @@ test('phone touch controls move the actual player and fit portrait and landscape
   await page.screenshot({ path: 'artifacts/phone-small.png' });
   expect(errors).toEqual([]); await context.close();
 });
+
+test('visible feet land on the actual platform surface', async ({ page }) => {
+  const errors = await boot(page); await start(page); await page.waitForTimeout(2100);
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game');
+    s.tweens.killTweensOf(s.player); s.player.setScale(1);
+    s.player.body.reset(21 * 16, 150); s.player.body.setVelocity(0, 0);
+  });
+  await page.waitForFunction(() => {
+    const p = (window as any).__game.scene.getScene('Game').player;
+    return p.grounded && Math.abs(p.y - 208) < 2;
+  });
+  await page.waitForTimeout(250);
+  const foot = await page.evaluate(() => {
+    const p = (window as any).__game.scene.getScene('Game').player;
+    return { visible: p.getTopLeft().y + 35 * p.scaleY, body: p.body.bottom };
+  });
+  expect(foot.visible).toBeCloseTo(208, 0); expect(foot.body).toBeCloseTo(208, 0);
+  expect(errors).toEqual([]);
+});
+
+test('playable characters apply real traits and keep their own animation sheets', async ({ page }) => {
+  const errors = await boot(page);
+  for (const [id, hearts, sheet, speed] of [['pip', 3, 'pip', 1], ['fenn', 3, 'fenn', 1.1], ['mallow', 4, 'mallow', 0.92]] as const) {
+    await page.evaluate(id => (window as any).__game.registry.get('saves').selectCharacter(id), id);
+    await start(page);
+    const state = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { hearts: p.maxHearts, sheet: p.texture.key, speed: p.speedMultiplier, animation: p.animation('run') }; });
+    expect(state).toEqual({ hearts, sheet, speed, animation: `${sheet}-run` });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Acorn Nova actually defeats nearby enemies; extra life increases the run reserve', async ({ page }) => {
+  const errors = await boot(page); await start(page);
+  const result = await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game');
+    const nova = s.powerups.find((p: any) => p.getData('kind') === 'nova');
+    const enemy = s.enemies.getChildren()[0]; enemy.body.reset(s.player.x + 30, s.player.y);
+    s.collectPowerup(nova);
+    return { defeated: enemy.defeated, consumed: !nova.active, score: s.score };
+  });
+  expect(result.defeated).toBe(true); expect(result.consumed).toBe(true); expect(result.score).toBeGreaterThan(100);
+  await start(page, 2);
+  expect(await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.collectPowerup(s.powerups.find((p: any) => p.getData('kind') === 'life')); return s.lives; })).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test('title fills a folded, unfolded, and landscape screen with the menu inside its panel', async ({ page }) => {
+  const errors = await boot(page);
+  for (const viewport of [{ width: 411, height: 960 }, { width: 832, height: 749 }, { width: 960, height: 411 }]) {
+    await page.setViewportSize(viewport); await page.waitForTimeout(250);
+    const layout = await page.evaluate(() => {
+      const g = (window as any).__game, s = g.scene.getScene('Title');
+      const panel = s.children.list.find((o: any) => o.type === 'Rectangle' && o.depth === 9);
+      const bounds = panel.getBounds();
+      return { width: g.scale.width, height: g.scale.height, scrollY: s.cameras.main.scrollY,
+        menuFits: s.menu.labels.every((t: any) => { const b = t.getBounds(); return b.left >= bounds.left - 2 && b.right <= bounds.right + 2 && b.top >= bounds.top - 2 && b.bottom <= bounds.bottom + 2; }) };
+    });
+    expect(layout.scrollY).toBe(0); expect(layout.menuFits).toBe(true);
+  }
+  expect(errors).toEqual([]);
+});

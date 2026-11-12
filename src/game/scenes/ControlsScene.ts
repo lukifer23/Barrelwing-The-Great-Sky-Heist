@@ -16,14 +16,14 @@ export class ControlsScene extends Phaser.Scene {
     this.add.text(240, 40, 'CONTROLS', {
       fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#f4e6c8',
     }).setOrigin(0.5).setShadow(2, 2, '#000000', 0, true, true);
-    this.add.text(240, 56, 'KEYBOARD FIRST. NO MOUSE REQUIRED.', {
+    this.add.text(240, 56, 'JOYSTICK + JUMP + DASH ON TOUCH SCREENS', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
     }).setOrigin(0.5);
 
     const rows: [string, string][] = [
       ['A / D  or  ← / →', 'RUN'],
       ['SPACE', 'JUMP  ·  HOLD FOR HEIGHT'],
-      ['SPACE IN AIR', 'WINDTAIL FLAP (2 CHARGES)'],
+      ['SPACE IN AIR', 'FLAP AGAIN (2 AIR FLAPS)'],
       ['W / S  or  ↑ / ↓', 'CLIMB VINES  ·  DROP THROUGH'],
       ['J', 'DASH — SMASHES WOODEN BARRELS'],
       ['R', 'RESTART FROM CHECKPOINT'],

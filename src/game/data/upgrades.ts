@@ -1,8 +1,8 @@
 export const UPGRADES = {
-  vitality: { label: 'HEARTWOOD', description: '+1 maximum heart per tier', tex: 'ui_heart_gold' },
-  reserves: { label: 'SECOND WIND', description: '+1 starting life per tier', tex: 'ui_wing' },
-  dash: { label: 'QUICKTAIL', description: '15% shorter dash cooldown per tier', tex: 'power_swift' },
-  duration: { label: 'WIND KEEPER', description: '25% longer timed powers per tier', tex: 'power_triple' },
+  vitality: { label: 'MORE HEARTS', description: '+1 maximum heart per tier', tex: 'ui_heart_gold' },
+  reserves: { label: 'MORE LIVES', description: '+1 starting life per tier', tex: 'ui_wing' },
+  dash: { label: 'FASTER DASH', description: '15% shorter dash cooldown per tier', tex: 'power_swift' },
+  duration: { label: 'LONGER POWERS', description: '25% longer timed powers per tier', tex: 'power_triple' },
 } as const;
 
 export type UpgradeKind = keyof typeof UPGRADES;

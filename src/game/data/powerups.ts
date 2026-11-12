@@ -10,6 +10,8 @@ export interface PowerMeta {
 }
 
 export const POWER_META: Record<PowerKind, PowerMeta> = {
+  nova: { label: 'ACORN NOVA', tex: 'power_nova', color: 0xffdf78, hex: '#ffe9a0', durationMs: 0, blurb: 'BLASTS NEARBY ENEMIES AND WOODEN BARRELS' },
+  life: { label: 'EXTRA LIFE', tex: 'ui_heart_gold', color: 0xffd65a, hex: '#ffe08a', durationMs: 0, blurb: '+1 LIFE AND FULL HEALTH' },
   shield: {
     label: 'SHIELD', tex: 'power_shield', color: 0x59a8e8, hex: '#8fd0ff',
     durationMs: 0, blurb: 'BLOCKS ONE HIT',
