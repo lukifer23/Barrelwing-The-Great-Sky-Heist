@@ -5,7 +5,6 @@ import { Menu, addPanel } from '../ui/Menu';
 
 export class PauseScene extends Phaser.Scene {
   private levelId = 1;
-  private music: 'forest' | 'factory' | 'storm' = 'forest';
   private menu!: Menu;
   private readyAt = 0;
   private target: 'Game' | 'SkySprint' = 'Game';
@@ -14,7 +13,6 @@ export class PauseScene extends Phaser.Scene {
 
   init(data: { levelId?: number; music?: 'forest' | 'factory' | 'storm'; target?: 'Game' | 'SkySprint' }): void {
     this.levelId = data.levelId ?? 1;
-    this.music = data.music ?? 'forest';
     this.target = data.target ?? 'Game';
   }
 

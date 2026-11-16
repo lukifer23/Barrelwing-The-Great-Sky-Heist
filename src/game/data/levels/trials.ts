@@ -1,5 +1,5 @@
 import type { LevelDef } from './types';
-import { T, coinLine, coinArc, gem, coinColumn } from './helpers';
+import { T, coinLine, coinArc, gem } from './helpers';
 
 /**
  * Post-campaign Sky Trials. These are unlocked by finishing the story and are
@@ -41,7 +41,7 @@ export const TRIAL_10: LevelDef = {
 
     gem(32, 6),
     gem(96, 5),
-    gem(150, 4),
+    { t: 'gem', x: 150, y: 5, persistentId: 79742306 },
 
     { t: 'enemy', kind: 'bird', x: 74, y: 12, patrol: 5 },
     { t: 'enemy', kind: 'wisp', x: 120, y: 10, patrol: 2 },

@@ -35,7 +35,6 @@ export const PHYSICS = {
   coyoteMs: 105,
   jumpBufferMs: 130,
   flapImpulse: -218,
-  flapGravityBonus: 0,
   maxFlaps: 2,
   flapCooldownMs: 155,
   climbSpeed: 82,
@@ -53,5 +52,4 @@ export const FLIGHT = {
   flapImpulse: -214,
   maxRise: -250,
   minFlapGapMs: 150,
-  ceilingPadding: 10,
 };

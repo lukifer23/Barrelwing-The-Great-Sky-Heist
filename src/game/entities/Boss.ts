@@ -33,7 +33,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private sweepDir = -1;
   private sweepY = 0;
   private flame?: Phaser.GameObjects.Sprite;
-  private lastContact = 0;
+  private encounterTimers: Phaser.Time.TimerEvent[] = [];
+  private readonly startPhase: number;
   private homeX = 0;
   private homeY = 0;
   bossActive = true;
@@ -44,6 +45,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.arena = arena;
     this.phase = Phaser.Math.Clamp(startPhase, 1, 3);
+    this.startPhase = this.phase;
     this.hp = (4 - this.phase) * 2;
     this.maxHp = this.hp;
     this.setOrigin(0.28, 0.92);
@@ -146,7 +148,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
       case 'vulnerable':
         this.body.velocity.set(0, 0);
-        this.setY(Phaser.Math.Linear(this.y, this.arena.floorY - 14, 0.18));
+        this.setY(Phaser.Math.Linear(this.y, this.arena.floorY - 14, 1 - Math.exp(-12 * dt)));
         this.setTint(Math.sin(time / 120) > 0 ? 0xffe9a0 : 0xffffff);
         if (time > this.stateUntil) {
           this.clearTint();
@@ -164,24 +166,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         this.body.velocity.set(0, 0);
         if (time > this.stateUntil) {
           this.setTint(0xffb0a0);
-          this.scene.time.delayedCall(220, () => this.clearTint());
+          this.later(220, () => this.clearTint());
           this.beginHover(time);
         }
         break;
     }
 
-    // Contact damage outside vulnerable state (and never stacks every frame).
-    if (this.bossState !== 'vulnerable' && time - this.lastContact > 900) {
-      const b = this.body;
-      const p = player.body;
-      if (b && p && Phaser.Geom.Intersects.RectangleToRectangle(
-        new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height),
-        new Phaser.Geom.Rectangle(p.x, p.y, p.width, p.height),
-      )) {
-        this.lastContact = time;
-        this.scene.events.emit('boss-hit-player', this.x);
-      }
-    }
   }
 
   private face(player: Phaser.Physics.Arcade.Sprite): void {
@@ -201,7 +191,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  private nextAttack(time: number, player: Phaser.Physics.Arcade.Sprite): void {
+  private nextAttack(time: number, _player: Phaser.Physics.Arcade.Sprite): void {
     if (this.attackQueue.length === 0) {
       this.attackQueue = this.phase === 1
         ? ['sweep', 'gust', 'sweep']
@@ -239,13 +229,13 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.flame.play('fireball-fly');
       this.scene.events.emit('boss-breath-start', this.x, this.y, this.facing);
       this.scene.events.emit('sfx', 'magic', { volume: 0.45, rate: 0.6 });
-      this.scene.time.delayedCall(1100, () => { if (this.bossActive && this.bossState === 'breath') this.play('boss-idle', true); });
+      this.later(1100, () => { if (this.bossActive && this.bossState === 'breath') this.play('boss-idle', true); });
     } else if (attack === 'barrels') {
       this.bossState = 'barrels';
       this.stateUntil = time + 2100;
       this.scene.events.emit('boss-barrage');
       for (let i = 0; i < 5; i++) {
-        this.scene.time.delayedCall(220 + i * 300, () => {
+        this.later(220 + i * 300, () => {
           if (this.bossActive && this.bossState === 'barrels') {
             const x = Phaser.Math.Between(this.arena.left + 40, this.arena.right - 40);
             this.scene.events.emit('boss-barrel', x, this.arena.top + 30);
@@ -257,7 +247,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.stateUntil = time + 1200;
       this.scene.events.emit('boss-gust', this.x, this.y, this.facing);
       for (let i = 0; i < 3; i++) {
-        this.scene.time.delayedCall(i * 180, () => {
+        this.later(i * 180, () => {
           if (this.bossActive && this.bossState === 'gust') {
             this.scene.events.emit('boss-bolt', this.x + this.facing * 40, this.y - 10 + (i - 1) * 22, this.facing);
           }
@@ -307,7 +297,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.shake(400, 0.006);
     this.setTint(0xff8a8a);
     this.scene.tweens.add({ targets: this, scaleX: 2.2, scaleY: 1.8, duration: 220, yoyo: true });
-    this.scene.time.delayedCall(1500, () => {
+    this.later(1500, () => {
       if (this.bossActive) { this.clearTint(); this.setScale(2); }
     });
   }
@@ -319,7 +309,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.hp = Math.max(0, this.hp - 1);
     this.hitsThisPhase++;
     this.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
-    this.scene.time.delayedCall(90, () => this.clearTint());
+    this.later(90, () => this.clearTint());
     this.scene.events.emit('boss-damaged', this.hp, source);
     this.scene.events.emit('fx-defeat', this.x, this.y - 30);
     this.scene.events.emit('sfx', 'stomp', { volume: 0.55, rate: 0.7 });
@@ -337,6 +327,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     if (this.bossState === 'defeated') return;
     this.bossState = 'defeated';
     this.bossActive = false;
+    this.clearEncounterTimers();
+    this.scene.tweens.killTweensOf(this);
+    this.flame?.destroy(); this.flame = undefined;
     this.body.enable = false;
     this.hoverTween?.remove();
     this.setTint(0xffd9a0);
@@ -349,7 +342,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       onComplete: () => { this.setVisible(false); },
     });
     for (let i = 0; i < 8; i++) {
-      this.scene.time.delayedCall(160 + i * 170, () => {
+      this.later(160 + i * 170, () => {
         this.scene.events.emit('fx-defeat', this.x + Phaser.Math.Between(-40, 40), this.y + Phaser.Math.Between(-30, 20));
         this.scene.events.emit('sfx', 'defeat', { volume: 0.4, rate: 0.8 + Math.random() * 0.4 });
       });
@@ -363,24 +356,41 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   restoreProgress(hp: number, phase: number): void {
     this.hp = Phaser.Math.Clamp(hp, 1, this.maxHp);
-    this.phase = Phaser.Math.Clamp(phase, 1, 3);
+    this.phase = Phaser.Math.Clamp(Math.max(phase, 4 - Math.ceil(this.hp / 2)), this.startPhase, 3);
     this.hitsThisPhase = Math.max(0, (4 - this.phase) * 2 - this.hp);
   }
 
   resetEncounter(): void {
+    this.clearEncounterTimers();
     this.scene.tweens.killTweensOf(this);
     this.hoverTween?.remove();
     this.flame?.destroy(); this.flame = undefined;
     this.body.reset(this.homeX, this.homeY);
     this.body.velocity.set(0, 0);
     this.bossState = 'dormant';
+    this.restoreProgress(this.hp, this.phase);
+    this.attackQueue = []; this.attackCount = 0; this.vulnerableHit = false;
     this.clearTint(); this.setScale(2).setAlpha(1).setAngle(0);
     this.play('boss-idle', true);
   }
 
   destroyBoss(): void {
+    this.clearEncounterTimers();
     this.hoverTween?.remove();
     this.flame?.destroy();
     this.destroy();
+  }
+
+  private later(delay: number, callback: () => void): void {
+    const timer = this.scene.time.delayedCall(delay, () => {
+      this.encounterTimers = this.encounterTimers.filter(t => t !== timer);
+      if (this.active) callback();
+    });
+    this.encounterTimers.push(timer);
+  }
+
+  private clearEncounterTimers(): void {
+    for (const timer of this.encounterTimers) timer.remove(false);
+    this.encounterTimers = [];
   }
 }

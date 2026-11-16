@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
-    "assets": "node scripts/build-assets.mjs",
+    "assets": "node scripts/build-assets.mjs && node scripts/build-characters.mjs && node scripts/build-icons.mjs",
     "test": "tsx --test tests/content.test.ts",
     "test:browser": "playwright test",
     "check": "npm run test && npm run build && npm run test:browser",

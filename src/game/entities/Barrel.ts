@@ -14,7 +14,6 @@ export class Barrel extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
   variant: BarrelVariant;
   dir: number;
-  rolling = true;
   private bounceTimer = 0;
   private spawnedAt = 0;
   private dead = false;

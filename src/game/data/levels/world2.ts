@@ -35,10 +35,12 @@ export const LEVEL_4: LevelDef = {
   objects: [
     { t: 'tutorial', x: 8, y: 14, text: 'CONVEYORS PUSH YOU. WORK WITH THEM.' },
     { t: 'tutorial', x: 68, y: 8, text: 'TOUCH THE LANTERN TO OPEN THE GATE' },
+    { t: 'tutorial', x: 94, y: 14, text: 'J — DASH THE ARMORED GUARD THREE TIMES. OR USE ACORN NOVA.' },
 
     ...coinLine(5, 14, 6, 2),
     ...coinLine(35, 14, 6, 2),
-    ...coinArc(29, 12, 4, 2),
+    { t: 'coin', x: 29, y: 12 }, { t: 'coin', x: 30, y: 10 },
+    { t: 'coin', x: 31, y: 10 }, { t: 'coin', x: 32, y: 10, persistentId: 3042373520 },
     ...coinLine(41, 7, 5, 2),
     ...coinLine(57, 8, 4, 2),
     ...coinLine(67, 5, 5, 2),

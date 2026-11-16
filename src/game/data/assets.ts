@@ -16,11 +16,7 @@ export const IMAGES: Record<string, string> = {
   factory_top: 'assets/terrain/factory_top.png',
   factory_fill: 'assets/terrain/factory_fill.png',
   factory_plate: 'assets/terrain/factory_plate.png',
-  branch1: 'assets/terrain/branch1.png',
-  branch2: 'assets/terrain/branch2.png',
   branch3: 'assets/terrain/branch3.png',
-  branch4: 'assets/terrain/branch4.png',
-  branch5: 'assets/terrain/branch5.png',
   plank: 'assets/terrain/plank.png',
   switch_off: 'assets/objects/switch_off.png',
   switch_on: 'assets/objects/switch_on.png',
@@ -56,7 +52,6 @@ export const IMAGES: Record<string, string> = {
   prop_plant: 'assets/objects/plant.png',
   rock: 'assets/objects/rock.png',
   leaves: 'assets/objects/leaves.png',
-  ui_coin: 'assets/ui/coin.png',
   ui_gem: 'assets/ui/gem.png',
   ui_heart: 'assets/ui/heart.png',
   ui_heart_empty: 'assets/ui/heart_empty.png',
@@ -67,9 +62,6 @@ export const IMAGES: Record<string, string> = {
   power_magnet: 'assets/ui/power_magnet.png',
   power_triple: 'assets/ui/power_triple.png',
   ui_paw: 'assets/ui/paw.png',
-  boss_idle: 'assets/sprites/boss_idle.png',
-  boss_breath: 'assets/sprites/boss_breath.png',
-  boss_tail: 'assets/sprites/boss_tail.png',
 };
 
 export const SHEETS: SpriteSheetDef[] = [

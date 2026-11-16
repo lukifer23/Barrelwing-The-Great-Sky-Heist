@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from './game/config';
+import { GAME_HEIGHT, GAME_WIDTH, PHYSICS } from './game/config';
 import { BootScene } from './game/scenes/BootScene';
 import { PreloadScene } from './game/scenes/PreloadScene';
 import { TitleScene } from './game/scenes/TitleScene';
@@ -44,7 +44,7 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { x: 0, y: 760 },
+      gravity: { x: 0, y: PHYSICS.gravity },
       debug: false,
       fps: 60,
     },

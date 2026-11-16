@@ -1,6 +1,6 @@
 import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
-import { COLORS, FONT_SMALL } from '../config';
+import { FONT_SMALL } from '../config';
 import { SaveManager } from '../systems/SaveManager';
 import { POWER_META } from '../data/powerups';
 import type { PowerKind } from '../data/levels/types';
@@ -23,6 +23,7 @@ export interface HudState {
   bossName: string;
   bossPhase: number;
   powers: { kind: PowerKind; ratio: number }[];
+  delivery: { deaths: number; damageTaken: number; parTime: number };
 }
 
 /** Viewport-anchored HUD. Lives inside GameScene but owns its own layout. */
@@ -38,9 +39,7 @@ export class Hud {
   private gemIcons: Phaser.GameObjects.Image[] = [];
   private wings: Phaser.GameObjects.Image[] = [];
   private dashBar: Phaser.GameObjects.Rectangle;
-  private dashBarBg: Phaser.GameObjects.Rectangle;
   private timeText: Phaser.GameObjects.Text;
-  private panel: Phaser.GameObjects.Rectangle;
   private bossBg?: Phaser.GameObjects.Rectangle;
   private bossFill?: Phaser.GameObjects.Rectangle;
   private bossText?: Phaser.GameObjects.Text;
@@ -53,11 +52,13 @@ export class Hud {
   private powerIcons: Phaser.GameObjects.Image[] = [];
   private powerText: Phaser.GameObjects.Text;
   private powerBars: Phaser.GameObjects.Rectangle[] = [];
+  private layoutWidth = -1;
+  private deliveryText: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     const D = 120;
-    this.panel = scene.add.rectangle(4, 4, 164, 26, 0x101528, 0.78)
+    scene.add.rectangle(4, 4, 164, 26, 0x101528, 0.78)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(D).setStrokeStyle(1, 0x3a4460, 0.8);
 
     for (let i = 0; i < 6; i++) {
@@ -101,7 +102,7 @@ export class Hud {
     for (let i = 0; i < 3; i++) {
       this.wings.push(scene.add.image(11 + i * 12, 34, 'ui_wing').setScrollFactor(0).setDepth(D + 1));
     }
-    this.dashBarBg = scene.add.rectangle(50, 34, 22, 4, 0x2a3350).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D);
+    scene.add.rectangle(50, 34, 22, 4, 0x2a3350).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D);
     this.dashBar = scene.add.rectangle(50, 34, 22, 4, 0x67e8f9).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1);
 
     for (let i = 0; i < 4; i++) {
@@ -115,9 +116,14 @@ export class Hud {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f4e6c8',
       wordWrap: { width: 420 }, align: 'center', backgroundColor: '#101528', padding: { x: 6, y: 4 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 12).setAlpha(0);
+    this.deliveryText = scene.add.text(8, 84, '', {
+      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9ff5ff', backgroundColor: '#101528', padding: { x: 3, y: 2 },
+    }).setScrollFactor(0).setDepth(D + 1);
   }
 
   resize(width: number): void {
+    if (width === this.layoutWidth) return;
+    this.layoutWidth = width;
     const center = width / 2;
     this.scoreText.x = width - 6; this.timeText.x = width - 6;
     const nameCenter = (170 + width - 55) / 2;
@@ -137,6 +143,8 @@ export class Hud {
   }
 
   update(s: HudState): void {
+    const remaining = Math.max(0, Math.ceil(s.delivery.parTime - s.timeMs / 1000));
+    this.deliveryText.setText(`STAMPS: GEMS ${s.gems.filter(Boolean).length}/3 / ${s.delivery.deaths ? 'EXPRESS LOST' : remaining ? `PAR ${remaining}s` : 'PAR EXPIRED'} / ${s.delivery.deaths || s.delivery.damageTaken ? 'CLEAN LOST' : 'NO DAMAGE'}`);
     for (let i = 0; i < this.hearts.length; i++) {
       const on = i < s.hearts;
       this.hearts[i].setVisible(on);
@@ -210,6 +218,9 @@ export class Hud {
       this.bossPhaseText = this.scene.add.text(360, 54, 'PHASE 1/3', {
         fontFamily: FONT_SMALL, fontSize: '6px', color: '#f0c060',
       }).setOrigin(1, 0).setScrollFactor(0).setDepth(120);
+      const width = this.layoutWidth;
+      this.layoutWidth = -1;
+      this.resize(width > 0 ? width : this.scene.scale.width);
     }
     this.bossBg.setVisible(true);
     this.bossFill!.setVisible(true);
@@ -220,9 +231,9 @@ export class Hud {
 
   toast(text: string, color = '#f4e6c8', hold = 1200): void {
     this.toastTween?.remove();
-    this.toastText.setText(text).setColor(color).setAlpha(0).setY(74);
+    this.toastText.setText(text).setColor(color).setAlpha(0).setY(104);
     this.toastTween = this.scene.tweens.add({
-      targets: this.toastText, alpha: 1, y: 72, duration: 180, hold, yoyo: true,
+      targets: this.toastText, alpha: 1, y: 102, duration: 180, hold, yoyo: true,
       ease: 'Sine.easeOut',
     });
   }

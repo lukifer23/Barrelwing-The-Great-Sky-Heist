@@ -44,6 +44,7 @@ export const LEVEL_1: LevelDef = {
     { t: 'tutorial', x: 21, y: 14, text: 'SHIELD: ONE FREE MISTAKE. USE IT WISELY.' },
     { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP' },
     { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP' },
+    { t: 'tutorial', x: 46, y: 14, text: 'J — DASH THROUGH ENEMIES. LAND TO REFILL YOUR FLAPS.' },
     { t: 'tutorial', x: 60, y: 12, text: 'STOMP ENEMIES FROM ABOVE' },
 
     ...coinLine(6, 14, 7, 2),
@@ -127,7 +128,8 @@ export const LEVEL_2: LevelDef = {
     ...coinLine(25, 18, 5, 2),
     ...coinLine(2, 10, 6, 2),
     ...coinLine(23, 10, 6, 2),
-    ...coinColumn(18, 48, 5),
+    ...coinColumn(18, 48, 4),
+    { t: 'coin', x: 19, y: 50, persistentId: 3948057148 },
 
     gem(2, 42),
     gem(37, 34),

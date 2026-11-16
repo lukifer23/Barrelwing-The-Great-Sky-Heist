@@ -1,6 +1,6 @@
 import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
-import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { FONT_SMALL } from '../config';
 import { Player } from '../player/Player';
 import { InputManager } from '../systems/InputManager';
 import { AudioManager } from '../systems/AudioManager';
@@ -44,7 +44,6 @@ export class SkySprintScene extends Phaser.Scene {
   private hearts: Phaser.GameObjects.Image[] = [];
   private startPrompt!: Phaser.GameObjects.Text;
   private readySub!: Phaser.GameObjects.Text;
-  private lastFlap = 0;
   private flashTimer = 0;
   private overMenu?: Menu;
   private overLayer?: Phaser.GameObjects.Container;
@@ -63,7 +62,7 @@ export class SkySprintScene extends Phaser.Scene {
     installPlayClock(this, 50);
     this.state = 'ready';
     this.coinScore = 0; this.hearts = []; this.overMenu = undefined; this.overLayer = undefined; this.overDim = undefined;
-    this.flashTimer = 0; this.lastFlap = 0;
+    this.flashTimer = 0;
     this.gates = [];
     this.coins = [];
     this.bg = [];
@@ -92,7 +91,7 @@ export class SkySprintScene extends Phaser.Scene {
     this.resizeViewport();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resizeViewport, this);
     AudioManager.playMusic('sprint', { fade: 500 });
-    this.events.on('sfx', (key: any, opts: any) => AudioManager.sfx(key, opts), this);
+    this.events.on('sfx', (key: Parameters<typeof AudioManager.sfx>[0], opts: Parameters<typeof AudioManager.sfx>[1]) => AudioManager.sfx(key, opts), this);
     this.events.on('fx-gust', (x: number, y: number, d: number, s: boolean) => this.fx.gust(x, y, d, s), this);
     this.events.on('fx-dust', (x: number, y: number, n: number) => this.fx.dust(x, y, n), this);
     this.events.on('fx-step', (x: number, y: number, d: number) => this.fx.step(x, y, d), this);

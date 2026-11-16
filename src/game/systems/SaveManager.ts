@@ -1,4 +1,5 @@
 import { TOTAL_LEVELS, TRIAL_IDS } from '../data/progression';
+import { emptyMastery, STAMPS, type Mastery } from '../data/mastery';
 import { emptyBrawlRecord, type BrawlRecord, type BrawlRun } from '../data/brawl';
 import legacyObjectIds from '../data/legacyObjectIds.json';
 import { characterId, type CharacterId } from '../data/characters';
@@ -12,6 +13,7 @@ export interface LevelRecord {
   bestTimeMs: number;
   gems: [boolean, boolean, boolean];
   rating: 0 | 1 | 2 | 3; // 0 none, 1 bronze, 2 silver, 3 gold
+  mastery: Mastery;
 }
 
 export interface Settings {
@@ -44,10 +46,13 @@ export interface RunSnapshot {
   bossPhase: number;
   character: CharacterId;
   objectVersion: 2;
+  deaths: number;
+  damageTaken: number;
 }
 
 export interface SaveData {
   version: number;
+  revision: number;
   levels: Record<number, LevelRecord>;
   unlocked: number;
   bonusUnlocked: boolean;
@@ -84,6 +89,7 @@ const emptyLevel = (): LevelRecord => ({
   bestTimeMs: 0,
   gems: [false, false, false],
   rating: 0,
+  mastery: emptyMastery(),
 });
 
 export const defaultSettings = (): Settings => ({
@@ -100,6 +106,7 @@ export function emptySave(): SaveData {
   for (let i = 1; i <= TOTAL_LEVELS; i++) levels[i] = emptyLevel();
   return {
     version: VERSION,
+    revision: 0,
     levels,
     unlocked: 1,
     bonusUnlocked: false,
@@ -119,14 +126,18 @@ export class SaveManager {
 
   static async initialize(): Promise<void> {
     if (!Capacitor.isNativePlatform()) { this.get(); return; }
-    try {
-      const stored = await Preferences.get({ key: KEY });
-      if (stored.value) {
+    let newest = this.get();
+    for (const key of [KEY, BACKUP_KEY]) {
+      try {
+        const stored = await Preferences.get({ key });
+        if (!stored.value) continue;
         const parsed = JSON.parse(stored.value);
-        if (parsed?.version === VERSION) this.data = this.migrate(parsed);
-      }
-    } catch { /* The local journal remains a recovery copy. */ }
-    this.get();
+        if (parsed?.version !== VERSION) continue;
+        const candidate = this.migrate(parsed);
+        if (candidate.revision >= newest.revision) newest = candidate;
+      } catch { /* Try the remaining native and synchronous recovery copies. */ }
+    }
+    this.data = newest;
   }
 
   static get(): SaveData {
@@ -135,16 +146,18 @@ export class SaveManager {
   }
 
   private static load(): SaveData {
+    let newest: SaveData | null = null;
     for (const key of [KEY, BACKUP_KEY]) {
       try {
         const raw = localStorage.getItem(key);
         if (!raw) continue;
         const parsed = JSON.parse(raw);
         if (!parsed || parsed.version !== VERSION) continue;
-        return this.migrate(parsed);
+        const candidate = this.migrate(parsed);
+        if (!newest || candidate.revision > newest.revision) newest = candidate;
       } catch { /* Try the last durable copy before starting fresh. */ }
     }
-    return emptySave();
+    return newest ?? emptySave();
   }
 
   private static migrate(raw: Partial<SaveData>): SaveData {
@@ -164,11 +177,13 @@ export class SaveManager {
             !!(rec.gems && rec.gems[2]),
           ],
           rating: ([0, 1, 2, 3] as const).includes(rec.rating as 0) ? (rec.rating as 0 | 1 | 2 | 3) : 0,
+          mastery: Object.fromEntries(STAMPS.map(key => [key, rec.completed === true && rec.mastery?.[key] === true])) as Mastery,
         };
       }
     }
     return {
       version: VERSION,
+      revision: Math.floor(finite(raw.revision)),
       levels,
       unlocked: Math.max(Math.floor(finite(raw.unlocked, 1, 9)), 1, ...Object.entries(levels).filter(([id, l]) => +id <= 9 && l.completed).map(([id]) => Math.min(9, +id + 1))),
       bonusUnlocked: raw.bonusUnlocked === true || levels[3].completed,
@@ -186,7 +201,7 @@ export class SaveManager {
 
   private static cleanUpgrades(raw: Partial<Upgrades> | undefined, levels: Record<number, LevelRecord>): Upgrades {
     const out = emptyUpgrades();
-    let budget = Object.values(levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating, 0);
+    let budget = Object.values(levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);
     for (const key of Object.keys(UPGRADES) as UpgradeKind[]) {
       const tier = Math.floor(finite(raw?.[key], 0, UPGRADE_COSTS.length));
       for (let i = 0; i < tier && budget >= UPGRADE_COSTS[i]; i++) {
@@ -208,6 +223,8 @@ export class SaveManager {
       defeated: raw.objectVersion === 2 ? ids(raw.defeated) : this.migrateObjectIds(raw.levelId, raw.defeated), objectVersion: 2,
       switches: Array.isArray(raw.switches) ? raw.switches.filter(s => typeof s === 'string').slice(0, 100) : [],
       bossDefeated: raw.bossDefeated === true, bossHp: Math.floor(finite(raw.bossHp, 6, 6)), bossPhase: Math.max(1, Math.floor(finite(raw.bossPhase, 1, 3))), character: characterId(raw.character),
+      // Older runs have no hit history and cannot establish a clean delivery.
+      deaths: Math.floor(finite(raw.deaths, 1)), damageTaken: Math.floor(finite(raw.damageTaken, 1)),
     };
   }
 
@@ -219,10 +236,12 @@ export class SaveManager {
   static storageAvailable = true;
 
   static save(): void {
+    this.get().revision++;
     const serialized = JSON.stringify(this.get());
     if (Capacitor.isNativePlatform()) {
       this.nativeWrite = this.nativeWrite.catch(() => undefined).then(async () => {
         await Preferences.set({ key: KEY, value: serialized });
+        await Preferences.set({ key: BACKUP_KEY, value: serialized });
       });
       void this.nativeWrite.catch(() => { this.storageAvailable = false; });
     }
@@ -243,7 +262,7 @@ export class SaveManager {
 
   static get shards(): number {
     const d = this.get();
-    const earned = Object.values(d.levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating, 0);
+    const earned = Object.values(d.levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);
     const spent = Object.values(d.upgrades).reduce((n, tier) => n + UPGRADE_COSTS.slice(0, tier).reduce((sum, cost) => sum + cost, 0), 0);
     return Math.max(0, earned - spent);
   }
@@ -289,10 +308,13 @@ export class SaveManager {
   }
 
   static resetProgress(): void {
+    const revision = this.get().revision;
     const settings = { ...this.get().settings };
     const selectedCharacter = this.get().selectedCharacter;
     const { brawl, brawlRun, bonusBest } = this.get();
     this.data = emptySave();
+    // Reset is a newer save too; retain ordering against older recovery copies.
+    this.data.revision = revision;
     this.data.settings = settings;
     this.data.selectedCharacter = selectedCharacter;
     this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
@@ -301,7 +323,7 @@ export class SaveManager {
 
   static recordLevel(
     id: number,
-    result: { score: number; timeMs: number; gems: [boolean, boolean, boolean]; completed: boolean },
+    result: { score: number; timeMs: number; gems: [boolean, boolean, boolean]; completed: boolean; mastery?: Mastery },
   ): LevelRecord {
     const d = this.get();
     const prev = d.levels[id] ?? emptyLevel();
@@ -316,6 +338,7 @@ export class SaveManager {
         prev.gems[2] || result.gems[2],
       ],
       rating: prev.rating,
+      mastery: Object.fromEntries(STAMPS.map(key => [key, prev.mastery[key] || result.completed && result.mastery?.[key] === true])) as Mastery,
     };
     d.levels[id] = merged;
     if (result.completed) {
@@ -349,10 +372,6 @@ export class SaveManager {
   static isUnlocked(id: number): boolean {
     const d = this.get();
     return Number.isInteger(id) && id >= 1 && id <= 9 && (id <= d.unlocked || !!d.levels[id]?.completed);
-  }
-
-  static isTrial(id: number): boolean {
-    return id >= 10;
   }
 
   /** Main levels use progression; trials require a finished campaign. */

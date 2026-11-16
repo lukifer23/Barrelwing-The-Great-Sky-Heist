@@ -28,7 +28,9 @@ The initial review covered the original application source, authored stages, ass
 
 Additional regression checks cover paused power/protection/dash deadlines, paused Brawl countdowns, held attacks, Sprint resume and backgrounding, touch action feedback, tappable Sprint results after resizing, field-guide bounds and row spacing, and stale deadlines on Brawl rematches.
 
-The current suite has 17 content/asset checks and 24 browser integration tests.
+The current suite has 20 content/asset checks and 37 browser integration tests. The audit regressions cover stamp eligibility and replay rewards, stamp-funded upgrade restoration, hit/death history, cooldown buffering, anchored moving gates and protected contact, projectile aim, boss volley/reset ownership, actual HUD canvas redraw counts, newest-copy recovery, legacy defaults, ledge turns, hopper warnings, flyer movement through terrain, simultaneous pickups, dead-player interaction guards, campaign side bounds, and the relocated trial gem's flight reach.
+
+The November audit also completed Acorn Trail from its ordinary spawn using keyboard movement, jumping, and flapping, without changing position, health, upgrades, or physics. The run reached the real stage-clear result with two gems and no deaths. This is one route record, not evidence of complete campaign playthrough coverage. Screenshots of results and a portrait map were inspected locally. The dependency audit reported zero known npm advisories. See [AUDIT.md](AUDIT.md) for findings and acceptance boundaries.
 
 `npm run build` typechecks and creates the production browser package. `npm run android:apk` builds the installable debug application. The GitHub workflow runs web checks and an Android build on fresh runners.
 

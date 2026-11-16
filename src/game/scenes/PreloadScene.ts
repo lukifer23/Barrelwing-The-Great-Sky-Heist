@@ -16,7 +16,7 @@ export class PreloadScene extends Phaser.Scene {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f0c060',
     }).setOrigin(0.5);
 
-    const frame = this.add.rectangle(cx, cy + 12, 244, 12, 0x101528).setStrokeStyle(1, 0x6b5a3a);
+    this.add.rectangle(cx, cy + 12, 244, 12, 0x101528).setStrokeStyle(1, 0x6b5a3a);
     const bar = this.add.rectangle(cx - 119, cy + 12, 0, 8, 0xf0c060).setOrigin(0, 0.5);
     const label = this.add.text(cx, cy + 30, 'LOADING THE CANOPY…', {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',

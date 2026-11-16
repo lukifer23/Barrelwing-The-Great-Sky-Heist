@@ -4,6 +4,7 @@ import { LEVELS } from '../data/levels';
 import { RATING_COLORS, RATING_LABELS } from '../data/levels/types';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
+import { STAMPS, STAMP_LABELS, type Stamp } from '../data/mastery';
 import { Menu } from '../ui/Menu';
 
 interface ResultsData {
@@ -14,6 +15,8 @@ interface ResultsData {
   rating: 1 | 2 | 3;
   bonus: number;
   newBest?: boolean;
+  newStamps?: Stamp[];
+  shardsEarned?: number;
 }
 
 export class ResultsScene extends Phaser.Scene {
@@ -35,7 +38,7 @@ export class ResultsScene extends Phaser.Scene {
     this.add.tileSprite(0, 120, GAME_WIDTH, 150, 'bg_clouds').setOrigin(0).setAlpha(0.16);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0a0f1c, 0.55).setOrigin(0);
 
-    const panel = this.add.rectangle(240, 142, 340, 218, 0x101528, 0.95).setStrokeStyle(2, 0x6b5a3a);
+    this.add.rectangle(240, 135, 360, 250, 0x101528, 0.95).setStrokeStyle(2, 0x6b5a3a);
     this.add.text(240, 48, 'STAGE CLEAR', {
       fontFamily: '"Press Start 2P"', fontSize: '18px', color: '#f0c060',
     }).setOrigin(0.5).setShadow(3, 3, '#000000', 0, true, true);
@@ -70,11 +73,15 @@ export class ResultsScene extends Phaser.Scene {
       this.add.image(150 + i * 18, 170, 'ui_gem').setScale(0.9).setAlpha(d.gems[i] ? 1 : 0.2);
     }
 
-    const rating = this.add.text(300, 168, RATING_LABELS[d.rating], {
+    this.add.text(300, 168, RATING_LABELS[d.rating], {
       fontFamily: '"Press Start 2P"', fontSize: '10px', color: RATING_COLORS[d.rating],
     }).setOrigin(0.5);
-    this.add.text(300, 182, 'RATING', {
-      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
+    const mastery = SaveManager.get().levels[level.id].mastery;
+    this.add.text(240, 28, `+${d.shardsEarned ?? 0} SKY SHARDS  /  ${SaveManager.shards} AVAILABLE`, {
+      fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
+    }).setOrigin(0.5);
+    this.add.text(240, 183, STAMPS.map(key => `${mastery[key] ? '+' : '-'}${STAMP_LABELS[key]}${d.newStamps?.includes(key) ? ' NEW' : ''}`).join(' / '), {
+      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9ff5ff',
     }).setOrigin(0.5);
 
     // celebratory particles

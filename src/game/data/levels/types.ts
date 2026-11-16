@@ -12,7 +12,7 @@ export type PowerKind = 'shield' | 'swift' | 'magnet' | 'triple' | 'heart' | 'no
 
 export type EnemyKind = 'slug' | 'bee' | 'ant' | 'hopper' | 'gator' | 'wisp' | 'bird' | 'plant' | 'crawler' | 'stormbee' | 'diver';
 
-export type LevelObject =
+export type LevelObject = (
   | { t: 'coin'; x: number; y: number }
   | { t: 'gem'; x: number; y: number }
   | { t: 'enemy'; kind: EnemyKind; x: number; y: number; patrol?: number; amp?: number; speed?: number }
@@ -37,7 +37,11 @@ export type LevelObject =
   | { t: 'powerup'; kind: PowerKind; x: number; y: number }
   | { t: 'decor'; kind: 'tree' | 'vine' | 'mushroom_red' | 'mushroom_brown' | 'rock' | 'plant' | 'leaves' | 'crate' | 'cloud' | 'pipe'; x: number; y: number; scale?: number }
   | { t: 'boss'; x: number; y: number }
-  | { t: 'goalZone'; x: number; y: number; w: number; h: number };
+  | { t: 'goalZone'; x: number; y: number; w: number; h: number }
+) & {
+  /** Preserve a released object's identity when correcting its position. */
+  persistentId?: number;
+};
 
 export interface FlightGate {
   /** Horizontal offset from the flight zone start, in tiles. */
@@ -51,7 +55,6 @@ export interface FlightGate {
   speed?: number;
 }
 
-export interface TutorialHint { x: number; y: number; text: string }
 
 export interface LevelDef {
   id: number;

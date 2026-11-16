@@ -1,13 +1,14 @@
 import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
-import { COLORS, FONT_SMALL, GAME_HEIGHT, GAME_WIDTH, PHYSICS, FLIGHT } from '../config';
+import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH, FLIGHT } from '../config';
 import { getLevel } from '../data/levels';
-import { THEMES, type LevelDef, type LevelObject, type TerrainRect, type TileStyle, type FlightGate, type PowerKind } from '../data/levels/types';
+import { THEMES, type LevelDef, type LevelObject, type TerrainRect, type TileStyle, type PowerKind } from '../data/levels/types';
 import { objectIds } from '../data/objectIds';
 import { POWER_META } from '../data/powerups';
+import { evaluateMastery, STAMPS } from '../data/mastery';
 import { Player } from '../player/Player';
 import { Enemy } from '../entities/Enemy';
-import { Barrel, BarrelSpawner, type BarrelVariant } from '../entities/Barrel';
+import { Barrel, BarrelSpawner } from '../entities/Barrel';
 import { MovingPlatform } from '../entities/MovingPlatform';
 import { Boss } from '../entities/Boss';
 import { InputManager } from '../systems/InputManager';
@@ -19,7 +20,6 @@ import { Hud } from '../ui/Hud';
 
 interface GameData {
   levelId: number;
-  fromMap?: boolean;
   resume?: boolean;
 }
 
@@ -33,8 +33,6 @@ interface FlightGateRuntime {
   visBottom: Phaser.GameObjects.TileSprite;
   trimTop: Phaser.GameObjects.Rectangle;
   trimBottom: Phaser.GameObjects.Rectangle;
-  baseTopY: number;
-  baseBottomY: number;
   moving?: 'y';
   amp: number;
   speed: number;
@@ -44,10 +42,7 @@ interface FlightGateRuntime {
 interface FlightRuntime {
   bounds: Phaser.Geom.Rectangle;
   gates: FlightGateRuntime[];
-  def: Extract<LevelObject, { t: 'flight' }>;
   active: boolean;
-  tile: number;
-  startX: number;
   endX: number;
 }
 
@@ -79,61 +74,49 @@ export class GameScene extends Phaser.Scene {
 
   private spawners: BarrelSpawner[] = [];
   private movers: MovingPlatform[] = [];
-  private ladders: { sprite: Phaser.GameObjects.TileSprite; rect: Phaser.Geom.Rectangle }[] = [];
   private ladderRects: Phaser.Geom.Rectangle[] = [];
   private conveyors: { sprite: Phaser.GameObjects.TileSprite; dir: number; speed: number; x: number; y: number; w: number }[] = [];
   private gates: GateRuntime[] = [];
   private switches: { sprite: Phaser.GameObjects.Image; id: string; used: boolean }[] = [];
-  private spikes: Phaser.GameObjects.TileSprite[] = [];
   private steamVents: { x: number; y: number; period: number; phase: number; spout: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
   private lightnings: { x: number; y: number; w: number; period: number; phase: number; beam: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
   private updrafts: { rect: Phaser.Geom.Rectangle; power: number }[] = [];
   private fallingPlats: { sprite: Phaser.GameObjects.TileSprite; body: Phaser.Physics.Arcade.StaticBody; used: boolean }[] = [];
   private flightZones: FlightRuntime[] = [];
   private tutorials: { x: number; y: number; text: string; shown: boolean }[] = [];
-  private decorSprites: Phaser.GameObjects.Image[] = [];
   private powerups: Phaser.GameObjects.Image[] = [];
   private boss: Boss | null = null;
-  private bossBarVisible = false;
 
-  private hearts = 3;
   private lives = 3;
   private coinsCollected = 0;
   private coinCombo = 0;
   private lastCoinAt = 0;
   private score = 0;
-  private scoreAtLevelStart = 0;
   private gemsCollected: [boolean, boolean, boolean] = [false, false, false];
   private elapsedMs = 0;
-  private levelStartScore = 0;
+  private deaths = 0;
+  private damageTaken = 0;
   private checkpoint = { x: 0, y: 0 };
   private levelDone = false;
   private gameOver = false;
   private paused = false;
-  private introUntil = 0;
   private deathAt = 0;
   private respawning = false;
   private bossDefeated = false;
-  private escapeMode = false;
   private exitSprite!: Phaser.GameObjects.Image;
   private exitGlow!: Phaser.GameObjects.Image;
   private projGroup!: Phaser.GameObjects.Group;
-  private bossBolts: { sprite: Phaser.Physics.Arcade.Sprite; vx: number; vy: number; life: number }[] = [];
+  private bossBolts: { sprite: Phaser.Physics.Arcade.Sprite; life: number }[] = [];
   private bossFlameRect: Phaser.Geom.Rectangle | null = null;
   private bossFlameDir = -1;
   private bossFlameUntil = 0;
-  private shakeTimer = 0;
   private bgLayers: { sprite: Phaser.GameObjects.TileSprite; factor: number; baseY: number }[] = [];
   private killY = 0;
   private musicKey: 'forest' | 'factory' | 'storm' = 'forest';
-  private shownTutorials = new Set<number>();
-  private lastFlapAt = 0;
   private resumeRun: RunSnapshot | null = null;
   private collected = new Set<number>();
   private defeated = new Set<number>();
   private autosaveAt = 0;
-  private gameOverContainer?: Phaser.GameObjects.Container;
-  private gameOverKey?: (e: KeyboardEvent) => void;
   private saveOnHide = () => { this.persistRun(); this.openPause(); };
   private pageHide = () => this.persistRun();
 
@@ -151,8 +134,6 @@ export class GameScene extends Phaser.Scene {
     this.coinCombo = 0;
     this.lastCoinAt = 0;
     this.autosaveAt = 0;
-    this.gameOverContainer = undefined;
-    this.gameOverKey = undefined;
     this.levelDone = false;
     this.gameOver = false;
     this.paused = false;
@@ -160,22 +141,18 @@ export class GameScene extends Phaser.Scene {
     this.deathAt = 0;
     this.boss = null;
     this.bossDefeated = false;
-    this.escapeMode = false;
     this.spawners = [];
     this.movers = [];
-    this.ladders = [];
     this.ladderRects = [];
     this.conveyors = [];
     this.gates = [];
     this.switches = [];
-    this.spikes = [];
     this.steamVents = [];
     this.lightnings = [];
     this.updrafts = [];
     this.fallingPlats = [];
     this.flightZones = [];
     this.tutorials = [];
-    this.decorSprites = [];
     this.powerups = [];
     this.bgLayers = [];
     this.bossBolts = [];
@@ -184,9 +161,9 @@ export class GameScene extends Phaser.Scene {
     this.gemsCollected = [false, false, false];
     this.score = 0;
     this.elapsedMs = 0;
-    this.hearts = 3;
+    this.deaths = 0;
+    this.damageTaken = 0;
     this.lives = SaveManager.stats.startingLives;
-    this.shownTutorials.clear();
   }
 
   create(): void {
@@ -203,9 +180,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.roundPixels = true;
 
     this.score = 0;
-    this.scoreAtLevelStart = 0;
 
-    this.buildBackground(W, H);
+    this.buildBackground();
     this.buildTerrain();
     this.buildObjects();
     this.buildPlayer();
@@ -235,7 +211,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- build
-  private buildBackground(W: number, H: number): void {
+  private buildBackground(): void {
     const th = THEMES[this.level.theme];
     this.add.rectangle(0, 0, GAME_WIDTH + 4, GAME_HEIGHT + 4, th.sky)
       .setOrigin(0).setScrollFactor(0).setDepth(-40);
@@ -248,7 +224,7 @@ export class GameScene extends Phaser.Scene {
     for (const l of layers) {
       if (!this.textures.exists(l.key)) continue;
       const src = this.textures.get(l.key).getSourceImage() as HTMLImageElement;
-      const sw = Math.max(1, src.width), sh = Math.max(1, src.height);
+      const sh = Math.max(1, src.height);
       const sprite = this.add.tileSprite(0, l.y, GAME_WIDTH, sh, l.key)
         .setOrigin(0).setScrollFactor(0).setDepth(l.depth).setAlpha(l.alpha);
       if (l.tint) sprite.setTint(l.tint);
@@ -398,7 +374,6 @@ export class GameScene extends Phaser.Scene {
     if (kind === 'vine') img.setOrigin(0.5, 0).setY(y + 2).setAlpha(0.85);
     if (kind === 'pipe') img.setTint(0x9aa0b0);
     if (kind === 'cloud') img.setAlpha(0.5);
-    this.decorSprites.push(img);
   }
 
   private buildObjects(): void {
@@ -475,7 +450,6 @@ export class GameScene extends Phaser.Scene {
             left: (o.x - 9) * ts, right: (o.x + 9) * ts,
             top: (o.y - 3) * ts, floorY: (o.y + 3) * ts,
           }, this.level.bossPhase ?? 1);
-          this.bossBarVisible = true;
           break;
         case 'goalZone': {
           const goal = this.add.rectangle((o.x + o.w / 2) * ts, (o.y + o.h / 2) * ts, o.w * ts, o.h * ts, 0xffe08a, 0.12);
@@ -526,7 +500,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addLadder(x: number, y: number, h: number): void {
-    const sp = this.add.tileSprite(x, y + h / 2, 14, h, 'vine').setDepth(8).setAlpha(0.35);
+    this.add.tileSprite(x, y + h / 2, 14, h, 'vine').setDepth(8).setAlpha(0.35);
     // readable wooden ladder rails + rungs
     const railL = this.add.rectangle(x - 6, y + h / 2, 2, h, 0x7a5230).setDepth(9);
     const railR = this.add.rectangle(x + 6, y + h / 2, 2, h, 0x7a5230).setDepth(9);
@@ -535,7 +509,6 @@ export class GameScene extends Phaser.Scene {
     }
     railL.setAlpha(0.9); railR.setAlpha(0.9);
     const rect = new Phaser.Geom.Rectangle(x - 10, y + 2, 20, h + 4);
-    this.ladders.push({ sprite: sp, rect });
     this.ladderRects.push(rect);
   }
 
@@ -590,8 +563,6 @@ export class GameScene extends Phaser.Scene {
         rectTop: new Phaser.Geom.Rectangle(gx - 11, bounds.top, 22, topH),
         rectBottom: new Phaser.Geom.Rectangle(gx - 11, bounds.top + botY, 22, Math.max(4, bounds.height - botY)),
         visTop, visBottom, trimTop, trimBottom,
-        baseTopY: bounds.top,
-        baseBottomY: bounds.top + botY,
         moving: g.moving,
         amp: (g.amp ?? 0) * ts,
         speed: g.speed ?? 1,
@@ -599,8 +570,7 @@ export class GameScene extends Phaser.Scene {
       };
     });
     this.flightZones.push({
-      bounds, gates, def: o, active: false,
-      tile: ts, startX: bounds.left, endX: bounds.right,
+      bounds, gates, active: false, endX: bounds.right,
     });
     const entry = this.add.image(bounds.left + 8, bounds.centerY, 'fx_glow').setTint(0x9ff5ff).setScale(3).setAlpha(0.35).setDepth(6);
     this.tweens.add({ targets: entry, alpha: 0.1, scale: 4.4, duration: 1200, yoyo: true, repeat: -1 });
@@ -637,8 +607,8 @@ export class GameScene extends Phaser.Scene {
     else if (kind === 'nova') {
       const blast = this.add.sprite(this.player.x, this.player.y - 20, 'energy_smack').setDepth(25).setScale(1.8).play('energy-burst');
       blast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => blast.destroy());
-      for (const enemy of [...this.enemies.getChildren()] as Enemy[]) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
-      for (const barrel of [...this.barrels.getChildren()] as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
+      for (const enemy of this.enemies.getChildren() as Enemy[]) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
+      for (const barrel of this.barrels.getChildren() as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
       this.fx.shake(0.004, 180); AudioManager.sfx('magic', { volume: 0.5, rate: 0.8 });
     }
     else if (kind === 'heart') {
@@ -665,7 +635,6 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.existing(sp, true);
     (sp.body as Phaser.Physics.Arcade.StaticBody).setSize(w, 10).setOffset(0, 6);
     this.dangers.add(sp);
-    this.spikes.push(sp);
   }
 
   private addSteam(x: number, y: number, period: number, phase: number): void {
@@ -709,6 +678,7 @@ export class GameScene extends Phaser.Scene {
     const ts = this.level.tile;
     const sp = this.level.spawn;
     this.player = new Player(this, sp.x * ts + ts / 2, sp.y * ts, this.resumeRun?.character ?? SaveManager.get().selectedCharacter);
+    this.player.setCollideWorldBounds(true);
     this.checkpoint = { x: this.player.x, y: this.player.y };
     this.player.hearts = this.player.maxHearts;
     this.player.invulnUntil = playTime(this) + 1200;
@@ -724,8 +694,8 @@ export class GameScene extends Phaser.Scene {
       const body = (platform as Phaser.GameObjects.GameObject & { body: Phaser.Physics.Arcade.StaticBody }).body;
       return this.player.mode !== 'climb' && playTime(this) > this.player.dropThroughUntil && this.player.body.velocity.y >= 0 && this.player.body.prev.y + this.player.body.height <= body.top + 6;
     });
-    this.physics.add.collider(this.enemies, this.solids);
-    this.physics.add.collider(this.enemies, this.oneWays);
+    this.physics.add.collider(this.enemies, this.solids, undefined, e => !(e as Enemy).isFlyer);
+    this.physics.add.collider(this.enemies, this.oneWays, undefined, e => !(e as Enemy).isFlyer);
     this.physics.add.collider(this.barrels, this.solids);
     this.physics.add.collider(this.barrels, this.oneWays);
     for (const c of this.conveyors) this.physics.add.collider(this.player, c.sprite);
@@ -752,7 +722,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildIntro(): void {
-    this.introUntil = playTime(this) + 1900;
     this.player.invulnUntil = playTime(this) + 2600;
     const th = THEMES[this.level.theme];
     const card = this.add.container(this.scale.width / 2, Math.min(this.scale.height / 2, 150)).setScrollFactor(0).setDepth(210);
@@ -777,7 +746,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private wireEvents(): void {
-    this.events.on('sfx', (key: any, opts: any) => AudioManager.sfx(key, opts), this);
+    this.events.on('sfx', (key: Parameters<typeof AudioManager.sfx>[0], opts: Parameters<typeof AudioManager.sfx>[1]) => AudioManager.sfx(key, opts), this);
     this.events.on('fx-dust', (x: number, y: number, n: number) => this.fx.dust(x, y, n), this);
     this.events.on('fx-step', (x: number, y: number, d: number) => this.fx.step(x, y, d), this);
     this.events.on('fx-gust', (x: number, y: number, d: number, s: boolean) => this.fx.gust(x, y, d, s), this);
@@ -790,17 +759,15 @@ export class GameScene extends Phaser.Scene {
       this.hud.toast('SHIELD BROKEN', '#8fd0ff', 1000);
     }, this);
     this.events.on('enemy-defeated', (score: number, x: number, y: number, id: number) => { this.defeated.add(id); this.addScore(score); this.fx.pickup(x, y, 0xffe6a8); }, this);
-    this.events.on('barrel-smash', (x: number, y: number) => { this.addScore(50); }, this);
-    this.events.on('player-flap', () => { this.lastFlapAt = playTime(this); }, this);
+    this.events.on('barrel-smash', () => { this.addScore(50); }, this);
     this.events.on('enemy-projectile', (x: number, y: number, tx: number, ty: number) => this.spawnBolt(x, y, tx, ty), this);
-    this.events.on('boss-hit-player', (x: number) => this.hurtPlayer(x), this);
     this.events.on('boss-barrel', (x: number, y: number) => {
       const b = new Barrel(this, x, y, Math.random() < 0.5 ? -1 : 1, 'standard');
       this.barrels.add(b);
     }, this);
     this.events.on('boss-bolt', (x: number, y: number, dir: number) => this.spawnBoltDir(x, y, dir), this);
     this.events.on('boss-gust', (x: number, y: number, dir: number) => {
-      for (let i = 0; i < 3; i++) this.time.delayedCall(i * 160, () => this.spawnBoltDir(x + dir * 40, y - 10 + (i - 1) * 20, dir));
+      this.fx.gust(x, y, dir, true);
       this.fx.shake(0.004, 200);
     }, this);
     this.events.on('boss-breath-start', (x: number, y: number, dir: number) => {
@@ -873,7 +840,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (time > this.introUntil) this.player.controlLocked = false;
 
     // flight zones
     this.updateFlightZones(time);
@@ -922,8 +888,6 @@ export class GameScene extends Phaser.Scene {
     for (let i = this.bossBolts.length - 1; i >= 0; i--) {
       const p = this.bossBolts[i];
       p.life -= dt;
-      p.sprite.x += p.vx * (dt / 1000);
-      p.sprite.y += p.vy * (dt / 1000);
       p.sprite.rotation += dt / 220;
       if (p.life <= 0) { p.sprite.destroy(); this.bossBolts.splice(i, 1); }
     }
@@ -957,9 +921,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateConveyors(dt: number): void {
-    if (!this.player.grounded || this.player.mode !== 'normal') return;
     for (const c of this.conveyors) {
-      if (this.player.x > c.x - 10 && this.player.x < c.x + c.w + 10 &&
+      if (this.player.grounded && this.player.mode === 'normal' && this.player.x > c.x - 10 && this.player.x < c.x + c.w + 10 &&
           Math.abs(this.player.y - c.y) < 16) {
         this.player.x += c.dir * c.speed * dt / 1000;
       }
@@ -1011,9 +974,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateFlightZones(time: number): void {
+    if (this.player.dead || this.respawning) return;
     for (const z of this.flightZones) {
       const inside = z.bounds.contains(this.player.x, this.player.y - 10);
-      if (!z.active && inside) {
+      if (!z.active && inside && this.player.x < z.endX - 6) {
         z.active = true;
         this.player.setFlightBounds(z.bounds);
         this.cameras.main.setFollowOffset(40, 0);
@@ -1028,13 +992,16 @@ export class GameScene extends Phaser.Scene {
       // moving gates (visuals and collision stay locked together)
       for (const g of z.gates) {
         if (g.moving === 'y' && g.amp) {
-          const off = Math.sin((time / 1000) * g.speed + g.phase) * g.amp;
-          g.rectTop.y = g.baseTopY + off;
-          g.rectBottom.y = g.baseBottomY + off;
-          g.visTop.y = g.baseTopY + off;
-          g.visBottom.y = g.baseBottomY + off;
-          g.trimTop.y = g.baseTopY + g.rectTop.height + off;
-          g.trimBottom.y = g.baseBottomY + off;
+          const center = Phaser.Math.Clamp(g.gap + Math.sin((time / 1000) * g.speed + g.phase) * g.amp,
+            z.bounds.top + g.size / 2 + 4, z.bounds.bottom - g.size / 2 - 4);
+          const topH = center - g.size / 2 - z.bounds.top;
+          const bottomY = center + g.size / 2;
+          g.rectTop.setTo(g.rectTop.x, z.bounds.top, 22, topH);
+          g.rectBottom.setTo(g.rectBottom.x, bottomY, 22, z.bounds.bottom - bottomY);
+          g.visTop.setSize(22, topH);
+          g.visBottom.setY(bottomY).setSize(22, z.bounds.bottom - bottomY);
+          g.trimTop.y = center - g.size / 2;
+          g.trimBottom.y = bottomY;
         }
       }
       // collision
@@ -1044,12 +1011,14 @@ export class GameScene extends Phaser.Scene {
         const topR = g.rectTop;
         const botR = g.rectBottom;
         if (Phaser.Geom.Intersects.RectangleToRectangle(pr, topR) || Phaser.Geom.Intersects.RectangleToRectangle(pr, botR)) {
+          if (this.player.isInvulnerable) continue;
           const gapCenter = (topR.bottom + botR.top) / 2;
           this.hurtPlayer(this.player.x - 10);
+          if (this.player.dead) break;
           // never trap the courier against a gate: place them in the opening
-          this.player.setPosition(topR.centerX - 4, gapCenter + 10);
+          this.player.body.reset(topR.centerX - 28, gapCenter + 10);
+          this.player.body.updateFromGameObject();
           this.player.body.velocity.set(FLIGHT.forwardSpeed * 0.6, 0);
-          this.player.x -= 24;
           this.fx.hit(this.player.x, this.player.y - 12, 0x9ff5ff);
           this.fx.shake(0.004, 120);
           break;
@@ -1127,7 +1096,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    this.hud.resize(this.scale.width);
     this.hud.update({
       hearts: this.player.hearts,
       maxHearts: this.player.maxHearts,
@@ -1151,6 +1119,7 @@ export class GameScene extends Phaser.Scene {
         if (this.player.tripleUntil > now) out.push({ kind: 'triple', ratio: (this.player.tripleUntil - now) / (15000 * this.player.powerDuration) });
         return out; })(),
       bossPhase: this.boss?.phase ?? 1,
+      delivery: { deaths: this.deaths, damageTaken: this.damageTaken, parTime: this.level.parTime },
     });
   }
 
@@ -1206,6 +1175,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private enemyContact(e: Enemy): void {
+    if (!this.canInteract) return;
     if (!e.active || e.defeated) return;
     const stomping = this.player.body.velocity.y > -20 && this.player.body.bottom <= e.body.top + 8;
     if (stomping && e.stompable) {
@@ -1222,6 +1192,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private barrelContact(b: Barrel): void {
+    if (!this.canInteract) return;
     if (!b.active) return;
     const dropping = this.player.body.velocity.y > 20 && this.player.body.center.y < b.body.center.y;
     if (dropping && !b.indestructible) {
@@ -1237,6 +1208,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private springContact(s: Phaser.GameObjects.Image): void {
+    if (!this.canInteract) return;
     const power = (s.getData('power') as number) ?? 470;
     if (this.player.body.velocity.y > -40) {
       this.player.body.velocity.y = -power;
@@ -1250,6 +1222,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private dangerContact(d: Phaser.GameObjects.GameObject): void {
+    if (!this.canInteract) return;
     const id = d.getData('id') as string | undefined;
     if (id) {
       const sw = this.switches.find(s => s.id === id && !s.used);
@@ -1267,6 +1240,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private checkpointContact(c: Phaser.GameObjects.Rectangle): void {
+    if (!this.canInteract) return;
     if (c.getData('active')) return;
     c.setData('active', true);
     const x = c.getData('x') as number;
@@ -1297,12 +1271,17 @@ export class GameScene extends Phaser.Scene {
   private hurtPlayer(fromX: number): void {
     if (this.levelDone || this.gameOver || this.respawning || this.player.dead || this.deathAt > 0) return;
     if (!this.player.hurt(fromX)) return;
+    this.damageTaken++;
     this.player.hearts -= 1;
     this.fx.shake(0.005, 160);
     this.fx.flash(0xe4546a, 110, 0.22);
     this.fx.hit(this.player.x, this.player.y - 14, 0xff9a9a);
     AudioManager.sfx('hurt', { volume: 0.5, rate: 1 });
     if (this.player.hearts <= 0) this.killPlayer(false);
+  }
+
+  private get canInteract(): boolean {
+    return !this.player.dead && !this.player.victory && !this.respawning && !this.gameOver && !this.levelDone;
   }
 
   private grantExtraLife(): void {
@@ -1313,9 +1292,10 @@ export class GameScene extends Phaser.Scene {
     this.fx.sparkle(this.player.x, this.player.y - 20, 0xf0c060);
   }
 
-  private killPlayer(pit: boolean): void {
+  private killPlayer(_pit: boolean): void {
     if (this.levelDone || this.gameOver || this.respawning || this.player.dead || this.deathAt > 0) return;
     this.player.kill();
+    this.deaths++;
     this.player.hearts = 0;
     AudioManager.sfx('defeat', { volume: 0.55, rate: 0.7 });
     this.fx.shake(0.008, 300);
@@ -1344,7 +1324,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private clearTransient(): void {
-    for (const b of [...this.barrels.getChildren()] as Barrel[]) b.destroy();
+    for (const mover of this.movers) mover.reset();
+    for (const b of this.barrels.getChildren() as Barrel[]) b.destroy();
     for (const p of this.bossBolts) p.sprite.destroy();
     this.bossBolts = [];
     this.bossFlameRect = null;
@@ -1366,6 +1347,7 @@ export class GameScene extends Phaser.Scene {
   restartFromCheckpoint(): void {
     if (this.levelDone || this.gameOver || this.player.dead || this.respawning) return;
     this.lives--;
+    this.deaths++;
     this.persistRun();
     if (this.lives <= 0) { this.showGameOver(); return; }
     this.cameras.main.fadeOut(180, 0, 0, 0);
@@ -1390,15 +1372,10 @@ export class GameScene extends Phaser.Scene {
   continueAfterGameOver(): void { this.continueLevel(); }
 
   private continueLevel(): void {
-    if (this.gameOverKey) this.input.keyboard?.off('keydown', this.gameOverKey);
-    this.gameOverKey = undefined;
-    this.gameOverContainer?.destroy();
-    this.gameOverContainer = undefined;
     this.clearTransient();
     this.gameOver = false;
     this.physics.resume();
     this.lives = SaveManager.stats.startingLives;
-    this.scoreAtLevelStart = 0;
     this.score = 0;
     this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
     this.cameras.main.centerOn(this.player.x, this.player.y);
@@ -1411,17 +1388,22 @@ export class GameScene extends Phaser.Scene {
 
   private spawnBolt(x: number, y: number, tx: number, ty: number): void {
     const angle = Math.atan2(ty - y, tx - x);
-    this.spawnBoltDir(x, y, Math.cos(angle) >= 0 ? 1 : -1, Math.sin(angle));
+    this.spawnProjectile(x, y, Math.cos(angle) * 120, Math.sin(angle) * 120);
   }
 
-  private spawnBoltDir(x: number, y: number, dir: number, vy = 0): void {
+  private spawnBoltDir(x: number, y: number, dir: number): void {
+    this.spawnProjectile(x, y, dir * 120, 0);
+  }
+
+  private spawnProjectile(x: number, y: number, vx: number, vy: number): void {
     const s = this.physics.add.sprite(x, y, 'fireball').setDepth(23).setScale(1.1);
     s.play('fireball-fly');
     s.body.setAllowGravity(false);
-    s.body.setVelocity(0, 0);
+    const body = s.body as Phaser.Physics.Arcade.Body;
+    body.setSize(14, 14).setOffset(6, 7).setVelocity(vx, vy);
     this.projGroup.add(s);
-    this.bossBolts.push({ sprite: s, vx: dir * 120, vy: vy * 90, life: 4200 });
-    if (dir < 0) s.setFlipX(true);
+    this.bossBolts.push({ sprite: s, life: 4200 });
+    if (vx < 0) s.setFlipX(true);
   }
 
   private projectileHit(s: Phaser.Physics.Arcade.Sprite): void {
@@ -1462,6 +1444,10 @@ export class GameScene extends Phaser.Scene {
       });
     }
     const prevBest = SaveManager.get().levels[this.level.id]?.bestScore ?? 0;
+    const previousMastery = SaveManager.get().levels[this.level.id].mastery;
+    const shardsBefore = SaveManager.shards;
+    const mastery = evaluateMastery({ gems: this.gemsCollected, timeMs: this.elapsedMs, deaths: this.deaths, damageTaken: this.damageTaken }, this.level.parTime);
+    const newStamps = STAMPS.filter(key => mastery[key] && !previousMastery[key]);
     const bonus = 1000 + this.player.hearts * 200 + Math.max(0, Math.floor((this.level.parTime - this.elapsedMs / 1000) * 10));
     this.score += bonus;
     const newBest = this.score > prevBest;
@@ -1472,6 +1458,7 @@ export class GameScene extends Phaser.Scene {
         timeMs: this.elapsedMs,
         gems: [...this.gemsCollected] as [boolean, boolean, boolean],
         completed: true,
+        mastery,
       });
     SaveManager.setRating(this.level.id, rating);
     SaveManager.addTotalScore(this.score);
@@ -1479,7 +1466,7 @@ export class GameScene extends Phaser.Scene {
       if (this.level.id === 9) {
         SaveManager.get().completedGame = true;
         SaveManager.save();
-        this.scene.start('Ending', { score: this.score, timeMs: this.elapsedMs, gems: this.gemsCollected });
+        this.scene.start('Ending', { score: this.score, timeMs: this.elapsedMs, gems: this.gemsCollected, character: this.player.characterId });
       } else {
         this.scene.start('Results', {
           levelId: this.level.id,
@@ -1489,6 +1476,7 @@ export class GameScene extends Phaser.Scene {
           rating,
           bonus,
           newBest,
+          newStamps, shardsEarned: SaveManager.shards - shardsBefore,
         });
       }
     });
@@ -1504,8 +1492,6 @@ export class GameScene extends Phaser.Scene {
     this.bossDefeated = true;
     this.persistRun();
     this.openGate('escape');
-    this.bossBarVisible = false;
-    this.escapeMode = true;
     this.fx.shake(0.01, 1200);
     this.hud.toast('THE AIRSHIP IS FALLING — ESCAPE!', '#ff9a9a', 2600);
     AudioManager.stopMusic(400);
@@ -1564,6 +1550,7 @@ export class GameScene extends Phaser.Scene {
       switches: this.switches.filter(s => s.used).map(s => s.id),
       bossDefeated: this.bossDefeated, bossHp: this.boss?.hp ?? 6, bossPhase: this.boss?.phase ?? 1,
       character: this.player.characterId, objectVersion: 2,
+      deaths: this.deaths, damageTaken: this.damageTaken,
     });
   }
 
@@ -1574,6 +1561,7 @@ export class GameScene extends Phaser.Scene {
     this.checkpoint = { x: Phaser.Math.Clamp(r.checkpoint.x, 8, W - 8), y: Phaser.Math.Clamp(r.checkpoint.y, 24, H) };
     this.lives = r.lives; this.score = r.score; this.coinsCollected = r.coins;
     this.elapsedMs = r.elapsedMs; this.gemsCollected = [...r.gems];
+    this.deaths = r.deaths; this.damageTaken = r.damageTaken;
     this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
     this.player.hearts = Phaser.Math.Clamp(r.hearts, 1, this.player.maxHearts);
     this.cameras.main.centerOn(this.player.x, this.player.y);
@@ -1603,7 +1591,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.off(Phaser.Core.Events.BLUR, this.saveOnHide);
     this.game.events.off(Phaser.Core.Events.HIDDEN, this.saveOnHide);
     this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
-    for (const name of ['sfx', 'fx-dust', 'fx-step', 'fx-gust', 'fx-dash', 'fx-defeat', 'fx-shield-break', 'enemy-defeated', 'barrel-smash', 'player-flap', 'enemy-projectile', 'boss-hit-player', 'boss-barrel', 'boss-bolt', 'boss-gust', 'boss-breath-start', 'boss-defeated', 'boss-vulnerable', 'boss-telegraph', 'boss-sweep', 'boss-phase', 'boss-enter']) this.events.removeAllListeners(name);
+    for (const name of ['sfx', 'fx-dust', 'fx-step', 'fx-gust', 'fx-dash', 'fx-defeat', 'fx-shield-break', 'enemy-defeated', 'barrel-smash', 'enemy-projectile', 'boss-barrel', 'boss-bolt', 'boss-gust', 'boss-breath-start', 'boss-defeated', 'boss-vulnerable', 'boss-telegraph', 'boss-sweep', 'boss-phase', 'boss-enter']) this.events.removeAllListeners(name);
     this.fx?.destroy();
     this.hud?.destroy();
     for (const s of this.spawners) s.destroy();

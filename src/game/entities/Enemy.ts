@@ -46,6 +46,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private aiState: 'patrol' | 'alert' | 'charge' | 'shoot' | 'hurt' = 'patrol';
   private stateUntil = 0;
   private hitUntil = 0;
+  private nextEdgeCheck = 0;
+  private hopAt = 0;
 
   constructor(scene: Phaser.Scene, cfg: EnemyConfig) {
     const st = STATS[cfg.kind];
@@ -92,12 +94,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.kind === 'bee' || this.kind === 'wisp' || this.kind === 'bird' || this.kind === 'stormbee' || this.kind === 'diver';
   }
 
-  get isArmored(): boolean {
-    return this.kind === 'gator';
-  }
-
   updateAI(time: number, dt: number, player: Phaser.Physics.Arcade.Sprite): void {
     if (this.defeated || !this.active) return;
+    if (time < this.hitUntil) return;
+    if (!this.isFlyer && this.kind !== 'plant' && this.grounded && time >= this.nextEdgeCheck) {
+      this.nextEdgeCheck = time + 100;
+      const x = this.body.center.x + this.dir * (this.body.halfWidth + 8);
+      const floor = this.scene.physics.overlapRect(x - 3, this.body.bottom + 1, 6, 10, false, true);
+      if (!floor.some(body => body.enable && body.checkCollision.up) || this.body.blocked.left || this.body.blocked.right) this.dir *= -1;
+    }
     if (this.kind !== 'diver' && this.kind !== 'wisp' && time < this.stateUntil) {
       if (this.aiState === 'charge') {
         this.body.velocity.x = this.dir * 205;
@@ -107,8 +112,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       }
       return;
     }
-
-    if (time < this.hitUntil) return;
 
     const dx = player.x - this.x;
     const dy = player.y - this.y;
@@ -145,7 +148,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private plantAI(time: number, dt: number): void {
+  private plantAI(_time: number, dt: number): void {
     this.body.velocity.set(0, 0);
     this.plantTimer += dt;
     if (this.plantTimer > 2.1) {
@@ -161,22 +164,28 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private patrol(time: number, dt: number, player: Phaser.Physics.Arcade.Sprite): void {
+  private patrol(time: number, dt: number, _player: Phaser.Physics.Arcade.Sprite): void {
     if (this.kind === 'plant') {
       this.body.velocity.set(0, 0);
       return;
     }
     if (this.kind === 'hopper') {
       this.timer += dt;
-      if (this.timer > 1.1 && this.grounded) {
+      if (this.hopAt > 0 && time >= this.hopAt && this.grounded) {
+        this.hopAt = 0;
         this.timer = 0;
+        this.clearTint();
         this.body.velocity.y = -230;
         this.body.velocity.x = this.dir * 65;
         this.play('hopper-jump', true);
         this.scene.time.delayedCall(650, () => { if (this.active) this.play('hopper-idle', true); });
+      } else if (this.timer > 1.1 && this.grounded && this.hopAt === 0) {
+        this.hopAt = time + 240;
+        this.setTint(0xffd27a);
+        this.scene.events.emit('sfx', 'bump', { volume: 0.1, rate: 1.3 });
       }
       if (this.grounded) {
-        this.body.velocity.x *= 0.9;
+        this.body.velocity.x *= Math.exp(-6.32 * dt);
       }
     } else {
       if (this.grounded && Math.abs(this.body.velocity.y) < 1) {
@@ -241,7 +250,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   private diverAI(time: number, dt: number, dx: number, dy: number, dist: number): void {
     if (this.aiState === 'hurt') {
-      this.body.velocity.x *= 0.92;
+      this.body.velocity.x *= Math.exp(-5 * dt);
       this.body.velocity.y = -90;
       if (time > this.stateUntil) this.aiState = 'patrol';
       return;
@@ -279,7 +288,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private birdAI(time: number, dt: number, dx: number, dy: number, dist: number): void {
+  private birdAI(_time: number, dt: number, dx: number, dy: number, dist: number): void {
     this.timer += dt;
     this.body.setAllowGravity(false);
     if (dist < 150 && Math.abs(dy) < 70) {

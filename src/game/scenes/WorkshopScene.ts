@@ -30,12 +30,12 @@ export class WorkshopScene extends Phaser.Scene {
       return { label: meta.label, action: () => {
         const ok = SaveManager.buyUpgrade(kind);
         AudioManager.sfx(ok ? 'life' : 'bump', { volume: 0.4 });
-        this.message.setText(ok ? 'UPGRADE SAVED — READY FOR YOUR NEXT RUN' : SaveManager.get().upgrades[kind] === 2 ? 'ALREADY MASTERED' : 'FIND NEW GEMS OR IMPROVE STAGE RATINGS');
+        this.message.setText(ok ? 'UPGRADE SAVED — READY FOR YOUR NEXT RUN' : SaveManager.get().upgrades[kind] === 2 ? 'ALREADY MASTERED' : 'EARN NEW GEMS, RATINGS OR DELIVERY STAMPS');
         this.refresh();
       } };
     });
     this.menu = new Menu(this, items, { x: 82, y: 80, spacing: 35, align: 'left', fontSize: '8px', showHints: false });
-    this.message = this.add.text(240, 222, 'NEW GEM = 1 SHARD  /  RATING STAR = 1 SHARD', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0' }).setOrigin(0.5);
+    this.message = this.add.text(240, 222, 'GEMS, RATING STARS AND STAMPS EACH EARN 1 SHARD', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0' }).setOrigin(0.5);
     this.add.text(240, 243, 'BACK TO MAP  ·  ESC', { fontFamily: FONT_SMALL, fontSize: '8px', color: '#f0c060' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.close());
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.close(); else this.menu.handleKey(e); };
     this.input.keyboard?.on('keydown', onKey);

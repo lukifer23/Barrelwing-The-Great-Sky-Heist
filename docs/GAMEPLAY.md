@@ -47,6 +47,8 @@ Clear stages to bank newly found gems and improved rating stars. Each unique gem
 
 Replaying a stage without improving its saved gems or rating does not create more shards. Temporary pickups and permanent upgrades are separate systems.
 
+Delivery stamps add three optional goals to every campaign stage and trial. All Gems requires all three gems in the run. Express requires beating par without losing a life, including checkpoint restarts. Untouched requires no health damage or lost lives; shields may absorb hits. Each stamp earns one shard once and remains earned across replays. The HUD tracks current eligibility, while the map and results show saved stamps. Damage and lost-life history survive reload and Continue even when Continue resets the attempt timer.
+
 ## Checkpoints and lives
 
 Flags heal the courier and save a checkpoint. Losing all hearts or falling spends a life and returns to the checkpoint. A manual checkpoint restart also spends a life. At game over, Continue grants another set of starting lives and resets the attempt score and timer. Saved completed-stage records and permanent upgrades remain.

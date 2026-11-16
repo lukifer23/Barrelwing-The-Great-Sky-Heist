@@ -24,9 +24,3 @@ export const WORLD_NAMES: Record<number, string> = {
   2: 'COPPERWORKS',
   3: 'THE STORM ABOVE',
 };
-
-export const WORLD_SUBTITLES: Record<number, string> = {
-  1: 'Sunlit woodland and old wooden scaffolds.',
-  2: 'Copper, steam and relentless machinery.',
-  3: 'High altitude. Higher stakes.',
-};

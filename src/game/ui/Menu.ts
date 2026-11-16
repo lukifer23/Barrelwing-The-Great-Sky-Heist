@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONT_SMALL } from '../config';
+import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 export interface MenuItem {
@@ -30,7 +30,6 @@ export class Menu {
   private hint?: Phaser.GameObjects.Text;
   private opts: Required<MenuOptions>;
   private enabled: boolean[] = [];
-  private onHover?: (i: number) => void;
 
   constructor(scene: Phaser.Scene, items: MenuItem[], opts: MenuOptions) {
     this.scene = scene;
@@ -46,7 +45,7 @@ export class Menu {
     this.index = first >= 0 ? first : 0;
 
     items.forEach((it, i) => {
-      const x = this.opts.align === 'center' ? this.opts.x : this.opts.x;
+      const x = this.opts.x;
       const y = this.opts.y + i * this.opts.spacing;
       const t = scene.add.text(x, y, it.label, {
         fontFamily: FONT_SMALL,
@@ -73,7 +72,6 @@ export class Menu {
     this.repaint();
   }
 
-  setHover(cb: (i: number) => void): void { this.onHover = cb; }
 
   repaint(): void {
     this.labels.forEach((t, i) => {
@@ -104,7 +102,6 @@ export class Menu {
       this.index = next;
       AudioManager.sfx('ui_move', { volume: 0.4 });
       this.repaint();
-      this.onHover?.(this.index);
     }
   }
 
@@ -126,40 +123,10 @@ export class Menu {
 
 }
 
-/** Small wooden/cream framed label used across menus. */
-export function addLabel(
-  scene: Phaser.Scene, x: number, y: number, text: string,
-  size = '8px', color = '#f4e6c8', origin: [number, number] = [0.5, 0.5],
-): Phaser.GameObjects.Text {
-  return scene.add.text(x, y, text, {
-    fontFamily: FONT_SMALL, fontSize: size, color,
-  }).setOrigin(origin[0], origin[1]);
-}
-
+/** Shared menu panel. */
 export function addPanel(
   scene: Phaser.Scene, x: number, y: number, w: number, h: number,
   fill = 0x141a2e, alpha = 0.92, stroke = 0x6b5a3a,
 ): Phaser.GameObjects.Rectangle {
   return scene.add.rectangle(x, y, w, h, fill, alpha).setStrokeStyle(1, stroke, 1);
-}
-
-export function drawHeader(scene: Phaser.Scene, title: string, subtitle?: string): void {
-  scene.add.text(240, 22, title, {
-    fontFamily: '"Press Start 2P"', fontSize: '15px', color: '#f4e6c8',
-  }).setOrigin(0.5).setShadow(2, 2, '#000000', 0, true, true);
-  if (subtitle) {
-    scene.add.text(240, 40, subtitle, {
-      fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
-    }).setOrigin(0.5);
-  }
-  scene.add.rectangle(240, 48, 150, 1, 0x6b5a3a, 0.8);
-}
-
-export function makeStars(scene: Phaser.Scene, x: number, y: number, rating: number): void {
-  for (let i = 0; i < 3; i++) {
-    const filled = i < rating;
-    const s = scene.add.image(x + i * 11, y, filled ? 'ui_gem' : 'ui_gem')
-      .setScale(0.62).setAlpha(filled ? 1 : 0.2);
-    if (filled) s.setTint(i === 2 ? 0xffe9a0 : i === 1 ? 0xdfe8ff : 0xe0a06a);
-  }
 }

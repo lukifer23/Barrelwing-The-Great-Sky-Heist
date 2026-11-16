@@ -27,3 +27,7 @@ The implementation and focused regression tests cover these behaviors. They do n
 | Medium | Session pacing | Review difficulty ramps, checkpoint spacing, upgrade costs, rewards, and level-end feedback through a fresh save. |
 
 New modes and additional levels should follow completion of these acceptance items. Existing automated geometry checks do not replace route playthroughs. Local device captures and profiling output remain outside the public repository.
+
+## November audit pass
+
+The [project audit](AUDIT.md) tracks concrete corrections and evidence. This pass adds delivery stamps to existing stages and addresses text redraws, asset duplication, world boundaries, flight/input fairness, enemy warnings, projectile aim, boss reset ownership, pickup reach, recovery ordering, and unused code. Geometry checks now reject pickups inside solid terrain or beyond nearby flight collection reach. TypeScript rejects unused locals and parameters. Native save ordering and mobile frame pacing still require physical acceptance checks.

@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { LEVELS, MAIN_LEVELS, TRIALS, WORLD_NAMES } from '../data/levels';
+import { MAIN_LEVELS, TRIALS, WORLD_NAMES } from '../data/levels';
 import type { LevelDef } from '../data/levels/types';
 import { RATING_COLORS, RATING_LABELS } from '../data/levels/types';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
-import { addLabel } from '../ui/Menu';
+import { STAMPS, STAMP_LABELS } from '../data/mastery';
 
 interface NodeView {
   id: number;
@@ -240,7 +240,8 @@ export class WorldMapScene extends Phaser.Scene {
     const score = rec.bestScore ? rec.bestScore.toLocaleString('en-US') : '—';
     this.infoMeta.setText(`${level.subtitle}   ·   BEST ${score}   ·   TIME ${time}`);
     const gems = rec.gems.filter(Boolean).length;
-    this.infoGems.setText(`GEMS ${gems}/3   ·   RATING ${RATING_LABELS[rec.rating]}   ·   PAR ${this.formatTime(level.parTime * 1000)}`);
+    this.infoGems.setText(`GEMS ${gems}/3 · ${RATING_LABELS[rec.rating]} · PAR ${this.formatTime(level.parTime * 1000)}\nSTAMPS: ${STAMPS.map(key => `${rec.mastery[key] ? '+' : '-'}${STAMP_LABELS[key]}`).join(' / ')}`);
+    this.infoGems.setFontSize('6px').setY(241);
     this.infoHint.setText(rec.completed ? 'ENTER — REPLAY' : 'ENTER — PLAY');
   }
 
@@ -303,7 +304,7 @@ export class WorldMapScene extends Phaser.Scene {
     }
     AudioManager.sfx('ui_confirm', { volume: 0.5 });
     AudioManager.stopMusic(250);
-    this.scene.start('Game', { levelId: level.id, fromMap: true });
+    this.scene.start('Game', { levelId: level.id });
   }
 
   override update(_t: number, delta: number): void {

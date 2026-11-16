@@ -41,7 +41,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private stepTimer = 0;
   private squashTween?: Phaser.Tweens.Tween;
   private flapPoseUntil = 0;
-  private trailTimer = 0;
   private climbPaws: Phaser.GameObjects.Image[] = [];
   private climbPhase = false;
   private climbPhaseAt = 0;
@@ -81,6 +80,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (rect) {
       if (this.mode === 'climb') this.exitClimb();
       this.mode = 'flight';
+      this.facing = 1;
+      this.setFlipX(false);
       this.body.setAllowGravity(true);
       this.body.setGravityY(FLIGHT.gravity - PHYSICS.gravity);
       this.body.setDragX(0);
@@ -89,6 +90,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     } else if (this.mode === 'flight') {
       this.mode = 'normal';
       this.body.setGravityY(0);
+      this.flapCharges = this.maxFlapCharges;
       this.setFrame(16);
     }
   }
@@ -153,7 +155,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // --- dash -------------------------------------------------------------
-    if (input.consumeDash() && this.dashReady && !this.controlLocked) {
+    if (this.dashReady && !this.controlLocked && input.consumeDash()) {
       this.dashUntil = now + PHYSICS.dashMs;
       this.dashReadyAt = now + PHYSICS.dashCooldownMs * this.dashCooldown;
       this.body.velocity.x = this.facing * PHYSICS.dashSpeed;
@@ -226,7 +228,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.updateAnim(dtMs);
   }
 
-  private updateFlight(dtMs: number, input: InputManager): void {
+  private updateFlight(_dtMs: number, input: InputManager): void {
     const now = this.now;
     if (this.flightBounds) {
       // keep the bird inside the channel
@@ -235,7 +237,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.y > b.bottom - 4) { this.y = b.bottom - 4; this.body.velocity.y = Math.min(0, this.body.velocity.y); }
       this.body.velocity.x = FLIGHT.forwardSpeed;
     }
-    if (input.consumeJump() && now - this.lastFlapAt > FLIGHT.minFlapGapMs) {
+    if (now - this.lastFlapAt > FLIGHT.minFlapGapMs && input.consumeJump()) {
       this.body.velocity.y = Math.max(FLIGHT.maxRise, this.body.velocity.y + FLIGHT.flapImpulse);
       this.lastFlapAt = now;
       this.setFrame(14);
@@ -282,7 +284,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (input.consumeJump()) {
       this.exitClimb();
       this.body.velocity.y = PHYSICS.jumpVelocity * 0.9;
+      this.lastGroundedAt = -9999;
       this.scene.events.emit('sfx', 'jump', { volume: 0.35, rate: 1.1 });
+      return;
     }
     // reached the top: step off onto the platform
     if (this.y <= rect.top + 6) {

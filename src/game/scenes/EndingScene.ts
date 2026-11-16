@@ -2,17 +2,18 @@ import Phaser from 'phaser';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
+import { CHARACTERS, type CharacterId } from '../data/characters';
 import { Menu } from '../ui/Menu';
 
 interface EndingData {
   score: number;
   timeMs: number;
   gems: boolean[];
+  character?: CharacterId;
 }
 
 export class EndingScene extends Phaser.Scene {
   private ending!: EndingData;
-  private stage = 0;
   private sky!: Phaser.GameObjects.TileSprite;
   private overlay!: Phaser.GameObjects.Rectangle;
   private credits?: Phaser.GameObjects.Container;
@@ -22,7 +23,6 @@ export class EndingScene extends Phaser.Scene {
   init(data: EndingData): void {
     this.cameras.main.fadeIn(600, 0, 0, 0);
     this.ending = data ?? { score: 0, timeMs: 0, gems: [] };
-    this.stage = 0;
   }
 
   create(): void {
@@ -42,7 +42,7 @@ export class EndingScene extends Phaser.Scene {
     const seq = [
       { at: 400, text: 'THE SKY SEEDS RETURN', sub: 'The roots remember how to hold the sky.' },
       { at: 2600, text: 'THE CLOUDS PART', sub: 'Sunlight finds the forest again.' },
-      { at: 4700, text: 'PIP MADE IT HOME', sub: 'The courier. The wind. The great sky heist.' },
+      { at: 4700, text: `${CHARACTERS[this.ending.character ?? SaveManager.get().selectedCharacter].name} MADE IT HOME`, sub: 'The courier. The wind. The great sky heist.' },
     ];
     for (const s of seq) {
       this.time.delayedCall(s.at, () => this.showCard(s.text, s.sub));
@@ -69,13 +69,14 @@ export class EndingScene extends Phaser.Scene {
   }
 
   private showFinale(): void {
-    const pip = this.add.sprite(GAME_WIDTH / 2, 196, 'pip', 0).setOrigin(0.5, 1).setScale(1.4).setDepth(12);
-    pip.play('pip-idle');
+    const courier = CHARACTERS[this.ending.character ?? SaveManager.get().selectedCharacter];
+    const pip = this.add.sprite(GAME_WIDTH / 2, 196, courier.sheet, 0).setOrigin(0.5, 1).setScale(1.4).setDepth(12);
+    pip.play(`${courier.sheet}-idle`);
     this.add.image(GAME_WIDTH / 2, 198, 'branch3').setOrigin(0.5, 0.7).setDepth(11).setScale(1.2);
-    const title = this.add.text(GAME_WIDTH / 2, 62, 'BARRELWING', {
+    this.add.text(GAME_WIDTH / 2, 62, 'BARRELWING', {
       fontFamily: '"Press Start 2P"', fontSize: '20px', color: '#f8ecc9',
     }).setOrigin(0.5).setDepth(12).setShadow(3, 3, '#1a1020', 0, true, true);
-    const sub = this.add.text(GAME_WIDTH / 2, 84, 'THE GREAT SKY HEIST', {
+    this.add.text(GAME_WIDTH / 2, 84, 'THE GREAT SKY HEIST', {
       fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060',
     }).setOrigin(0.5).setDepth(12);
 
@@ -83,7 +84,7 @@ export class EndingScene extends Phaser.Scene {
     const total = Object.entries(d.levels).filter(([id]) => Number(id) <= 9).map(([, record]) => record).reduce((n, l) => n + (l.completed ? l.bestScore : 0), 0);
     const gems = Object.entries(d.levels).filter(([id]) => Number(id) <= 9).map(([, record]) => record).reduce((n, l) => n + l.gems.filter(Boolean).length, 0);
     const all = Object.entries(d.levels).filter(([id]) => Number(id) <= 9).map(([, record]) => record).filter(l => l.completed).length;
-    const summary = this.add.text(GAME_WIDTH / 2, 112, [
+    this.add.text(GAME_WIDTH / 2, 112, [
       `STAGES CLEARED   ${all} / 9`,
       `SKY GEMS         ${gems} / 27`,
       `TOTAL SCORE      ${total.toLocaleString('en-US')}`,
@@ -130,11 +131,10 @@ export class EndingScene extends Phaser.Scene {
     c.add(text);
     text.y = GAME_HEIGHT + 4;
     this.add.rectangle(0, 0, GAME_WIDTH, 26, 0x0a0f1c, 0.85).setOrigin(0).setDepth(21);
-    const skip = this.add.text(GAME_WIDTH - 8, 8, 'ESC — SKIP', {
+    this.add.text(GAME_WIDTH - 8, 8, 'ESC — SKIP', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
     }).setOrigin(1, 0).setDepth(22).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.tweens.killTweensOf(text); this.openMenu(); });
 
-    const totalHeight = text.height + GAME_HEIGHT;
     this.tweens.add({
       targets: text, y: -text.height - 10, duration: 26000, ease: 'Linear',
       onComplete: () => this.openMenu(),
@@ -153,7 +153,7 @@ export class EndingScene extends Phaser.Scene {
     if (this.credits?.getData('done')) return;
     this.credits?.setData('done', true);
     this.credits?.destroy();
-    const panel = this.add.rectangle(240, 160, 300, 116, 0x101528, 0.95).setStrokeStyle(2, 0x6b5a3a).setDepth(30);
+    this.add.rectangle(240, 160, 300, 116, 0x101528, 0.95).setStrokeStyle(2, 0x6b5a3a).setDepth(30);
     this.add.text(240, 126, 'THE END', {
       fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#f0c060',
     }).setOrigin(0.5).setDepth(31);

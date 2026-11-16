@@ -10,6 +10,8 @@ Play in a WebGL browser or install the offline Android app directly on a persona
 
 This is a playable development build. Route playtesting, balance, and device polish are ongoing; see the [quality priorities](docs/QUALITY.md) and [validation evidence](docs/VALIDATION.md).
 
+The [project audit](docs/AUDIT.md) records corrected gameplay and performance issues, review coverage, and remaining acceptance work.
+
 ## The game
 
 - Nine campaign stages across Verdant Canopy, the Copperworks, and the Storm Above.
@@ -22,6 +24,7 @@ This is a playable development build. Route playtesting, balance, and device pol
 - Barrel Brawl: solo-versus-CPU platform fighting with directional attacks, rising knockback, three stocks, three arenas, saved matches, and three difficulty levels.
 - Three playable couriers: Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
+- Three delivery stamps per stage: all gems, a deathless par clear, and a clear without damage or deaths. Each new stamp earns a permanent Sky Shard, with live eligibility and saved map/results feedback.
 - Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, and longer powerups. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
 - Checkpoint recovery after closing the app, including collected items, defeated enemies, switches, lives, score, gems, elapsed time, and boss progress.
 

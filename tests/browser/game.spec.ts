@@ -1,16 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function boot(page: Page) {
-  const errors: string[] = [];
-  page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/');
-  await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
-  return errors;
-}
-async function start(page: Page, id = 1) {
-  await page.evaluate(id => { const game = (window as any).__game; for (const s of game.scene.getScenes(true)) game.scene.stop(s.scene.key); game.scene.start('Game', { levelId: id }); }, id);
-  await page.waitForFunction(id => { const s = (window as any).__game.scene.getScene('Game'); return s.scene.isActive() && s.level.id === id && !!s.inputMgr; }, id);
-}
+import { boot, start } from './helpers';
 
 test('all fifteen stages load with unique gems and configured physics; restarts do not leak handlers', async ({ page }) => {
   const errors = await boot(page);

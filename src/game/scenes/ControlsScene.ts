@@ -61,7 +61,7 @@ export class ControlsScene extends Phaser.Scene {
       this.add.text(left + width * (i + 0.5) / 3, 56 * size, tab, { fontFamily: FONT_SMALL, fontSize: `${10 * size}px`, color: this.guide === tab ? '#f0c060' : '#9fb0d0' })
         .setOrigin(0.5).setPadding(8, 8).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.guide = tab; this.draw(); });
     });
-    this.add.text(W / 2, 77 * size, 'REACH THE EXIT. GEMS AND STARS BUY WORKSHOP UPGRADES.', { fontFamily: FONT_SMALL, fontSize: `${6 * size}px`, color: '#9ff5ff', align: 'center', wordWrap: { width } }).setOrigin(0.5);
+    this.add.text(W / 2, 77 * size, 'STAMPS: ALL GEMS / PAR WITHOUT DEATHS / NO DAMAGE OR DEATHS. EACH EARNS 1 SHARD.', { fontFamily: FONT_SMALL, fontSize: `${6 * size}px`, color: '#9ff5ff', align: 'center', wordWrap: { width } }).setOrigin(0.5);
     const rows: [string, string][] = this.guide === 'POWERUPS' ? Object.values(POWER_META).map(p => [p.label, `${p.blurb}${p.durationMs ? ` (${p.durationMs / 1000}s before upgrades)` : ''}`]) : GUIDES[this.guide];
     const start = 94 * size, spacing = (H - start - 28 * size) / rows.length;
     rows.forEach(([label, description], i) => {
