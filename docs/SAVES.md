@@ -41,6 +41,8 @@ On Android, initialization reads Capacitor Preferences before gameplay starts. W
 
 Each save increments `revision`, including campaign resets. Loading compares valid primary and recovery copies and selects the greatest revision, including the local journal and both native copies on Android. Saves without a revision migrate as revision zero. Revision ordering prevents an older native write from superseding newer journal progress after a process interruption; it does not guarantee that the operating system allows a pending native write to finish before termination.
 
+`SaveManager.flush()` awaits queued native writes so lifecycle handlers and device validation can distinguish a queued save from a completed write. The background handler awaits it; the synchronous journal remains available if native persistence fails or the process terminates first.
+
 The game has no account, backend, cloud backup, telemetry, or shared leaderboard. Removing application data removes local progress. Android operating-system backup behavior depends on device configuration and is not a game-managed synchronization service.
 
 ## Independent modes

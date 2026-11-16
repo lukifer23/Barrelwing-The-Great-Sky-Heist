@@ -27,6 +27,8 @@ The November 16, 2026 review covers the game runtime, all fifteen authored stage
 | Characters | The ending always named and displayed Pip. | The ending names and animates the courier who completed the stage. |
 | Maintenance | Unused scene fields, obsolete menu helpers, duplicate bookkeeping, and loose event argument types obscured ownership. | Removed unused code and enabled TypeScript's unused-local and unused-parameter checks for subsequent builds. |
 | Asset tooling | The main asset command omitted the later courier and icon generators. | The full command now includes characters and icons. Regeneration still requires the separately obtained upstream source packs. |
+| Confirmation input | The New Game modal allowed pointer activation of menu items behind it. | The underlying menu suspends input until confirmation is dismissed. A real pointer regression checks both capture and restoration. |
+| Ending navigation | Skip input was installed late, and the duplicate-menu guard lived on a destroyed credits container. | Skip works from the first frame, one scene-owned menu handles navigation, queued narrative events cancel, and replaying with another courier resets ownership. |
 
 ## Delivery progression
 
@@ -57,6 +59,10 @@ The HUD shows current eligibility. The map shows saved stamps and par, results i
 Initial route probes cleared stages 1 through 5 with unupgraded Pip. Barrel Bridge and Copper Mill cleared without deaths; a refined Acorn Trail run cleared without deaths, and Furnace Ladder cleared with one death. The initial Cloudvine Drift controller needed eight deaths and two continues. These outcomes establish ordinary-input completion for those attempts, not balanced difficulty or all-gem acceptance. Later gem-layout revisions and controller changes need their own reports. A failed controller run is a reproduction to inspect, not automatic proof that a human route is blocked.
 
 `npm run check` now runs the browser regressions against the minified production build. `npm run test:browser` remains available for development-server checks. The approach envelope is deliberately optimistic: it uses maximum rise/fall speeds and full moving-gate ranges, without claiming a complete trajectory simulation.
+
+The route, soak, and Brawl acceptance tools share an isolated production-build server. Each writes build provenance and reports into ignored artifacts. `npm run test:soak -- --cycles=45 --dwell=20` exercises ordinary keyboard movement through repeated stage lifecycles and samples heap after shutdown and garbage collection. `npm run test:brawl` runs a keyboard controller through the three couriers and three CPU difficulties, with arenas rotated across the matrix. Neither changes health, stocks, damage, actor positions, or the match timer.
+
+The first fifteen soak cycles traversed all authored stages with no runtime errors or duplicated enemy/resume handlers. Post-GC JavaScript heap ranged from 8.04 to 9.81 MiB during that initial warmup. This is desktop lifecycle evidence, not a native-memory, thermal, or mobile frame-rate claim. Later rounds and physical-device acceptance remain separate evidence.
 
 ## Next work priorities
 

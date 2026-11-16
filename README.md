@@ -47,6 +47,8 @@ npx playwright install chromium
 npm run test:browser    # Browser integration and touch tests
 npm run test:production # Build and run browser checks against production output
 npm run test:routes -- --levels=1,2 --seconds=120 # Ordinary-input route probes
+npm run test:soak -- --cycles=45 --dwell=20 # Longer lifecycle and heap sampling
+npm run test:brawl     # Nine ordinary-input courier/difficulty matches
 npm run check           # Content checks, build, and browser tests
 ```
 

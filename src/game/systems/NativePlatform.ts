@@ -6,7 +6,7 @@ import { SaveManager } from './SaveManager';
 export async function installNativePlatform(game: Phaser.Game): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   document.body.classList.add('native');
-  await App.addListener('appStateChange', ({ isActive }) => {
+  await App.addListener('appStateChange', async ({ isActive }) => {
     if (!isActive) {
       const scene = game.scene.getScene('Game') as Phaser.Scene & { persistRun(): void; pauseForApp(): void };
       if (scene.scene.isActive()) { scene.persistRun(); scene.pauseForApp(); }
@@ -15,6 +15,7 @@ export async function installNativePlatform(game: Phaser.Game): Promise<void> {
       const sprint = game.scene.getScene('SkySprint') as Phaser.Scene & { pauseForApp(): void };
       if (sprint.scene.isActive()) sprint.pauseForApp();
       SaveManager.save();
+      await SaveManager.flush().catch(() => undefined);
     }
   });
   await App.addListener('backButton', () => {

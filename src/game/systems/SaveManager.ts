@@ -260,6 +260,11 @@ export class SaveManager {
     this.save();
   }
 
+  /** Await queued native persistence before verifying it or leaving a session. */
+  static async flush(): Promise<void> {
+    await this.nativeWrite;
+  }
+
   static get shards(): number {
     const d = this.get();
     const earned = Object.values(d.levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);

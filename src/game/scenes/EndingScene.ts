@@ -17,12 +17,18 @@ export class EndingScene extends Phaser.Scene {
   private sky!: Phaser.GameObjects.TileSprite;
   private overlay!: Phaser.GameObjects.Rectangle;
   private credits?: Phaser.GameObjects.Container;
+  private sequence: Phaser.Time.TimerEvent[] = [];
+  private finaleShown = false;
+  private menu?: Menu;
+  private skipLabel?: Phaser.GameObjects.Text;
 
   constructor() { super('Ending'); }
 
   init(data: EndingData): void {
     this.cameras.main.fadeIn(600, 0, 0, 0);
     this.ending = data ?? { score: 0, timeMs: 0, gems: [] };
+    this.sequence = []; this.finaleShown = false;
+    this.menu = undefined; this.credits = undefined; this.skipLabel = undefined;
   }
 
   create(): void {
@@ -36,6 +42,18 @@ export class EndingScene extends Phaser.Scene {
     AudioManager.stopMusic(500);
     AudioManager.playMusic('ending', { fade: 900 });
 
+    this.skipLabel = this.add.text(GAME_WIDTH - 8, 8, 'ESC / TAP — SKIP', {
+      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0', padding: { x: 5, y: 5 },
+    }).setOrigin(1, 0).setDepth(40).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.skipEnding());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      if (e.key === 'Escape') {
+        if (this.menu) this.scene.start('Title'); else this.skipEnding();
+      } else this.menu?.handleKey(e);
+    };
+    this.input.keyboard?.on('keydown', onKey);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
+
     // dawn breaks in
     this.tweens.add({ targets: this.overlay, alpha: 0, duration: 5000, ease: 'Sine.easeOut' });
 
@@ -45,9 +63,9 @@ export class EndingScene extends Phaser.Scene {
       { at: 4700, text: `${CHARACTERS[this.ending.character ?? SaveManager.get().selectedCharacter].name} MADE IT HOME`, sub: 'The courier. The wind. The great sky heist.' },
     ];
     for (const s of seq) {
-      this.time.delayedCall(s.at, () => this.showCard(s.text, s.sub));
+      this.queue(s.at, () => this.showCard(s.text, s.sub));
     }
-    this.time.delayedCall(6600, () => this.showFinale());
+    this.queue(6600, () => this.showFinale());
   }
 
   private showCard(title: string, sub: string): void {
@@ -68,7 +86,9 @@ export class EndingScene extends Phaser.Scene {
     this.time.delayedCall(1000, () => em.stop());
   }
 
-  private showFinale(): void {
+  private showFinale(playCredits = true): void {
+    if (this.finaleShown) return;
+    this.finaleShown = true;
     const courier = CHARACTERS[this.ending.character ?? SaveManager.get().selectedCharacter];
     const pip = this.add.sprite(GAME_WIDTH / 2, 196, courier.sheet, 0).setOrigin(0.5, 1).setScale(1.4).setDepth(12);
     pip.play(`${courier.sheet}-idle`);
@@ -95,7 +115,7 @@ export class EndingScene extends Phaser.Scene {
 
     this.tweens.add({ targets: pip, y: 190, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    this.time.delayedCall(500, () => this.showCreditsRoll());
+    if (playCredits) this.queue(500, () => this.showCreditsRoll());
   }
 
   private showCreditsRoll(): void {
@@ -131,28 +151,18 @@ export class EndingScene extends Phaser.Scene {
     c.add(text);
     text.y = GAME_HEIGHT + 4;
     this.add.rectangle(0, 0, GAME_WIDTH, 26, 0x0a0f1c, 0.85).setOrigin(0).setDepth(21);
-    this.add.text(GAME_WIDTH - 8, 8, 'ESC — SKIP', {
-      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
-    }).setOrigin(1, 0).setDepth(22).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.tweens.killTweensOf(text); this.openMenu(); });
-
     this.tweens.add({
       targets: text, y: -text.height - 10, duration: 26000, ease: 'Linear',
       onComplete: () => this.openMenu(),
     });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        this.tweens.killTweensOf(text);
-        this.openMenu();
-      }
-    };
-    this.input.keyboard?.on('keydown', onKey);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
   }
 
   private openMenu(): void {
-    if (this.credits?.getData('done')) return;
-    this.credits?.setData('done', true);
+    if (this.menu) return;
+    for (const child of this.credits?.list ?? []) this.tweens.killTweensOf(child);
     this.credits?.destroy();
+    this.credits = undefined;
+    this.skipLabel?.setVisible(false);
     this.add.rectangle(240, 160, 300, 116, 0x101528, 0.95).setStrokeStyle(2, 0x6b5a3a).setDepth(30);
     this.add.text(240, 126, 'THE END', {
       fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#f0c060',
@@ -163,10 +173,21 @@ export class EndingScene extends Phaser.Scene {
       { label: 'SKY SPRINT', action: () => this.scene.start('SkySprint') },
       { label: 'TITLE SCREEN', action: () => this.scene.start('Title') },
     ];
-    const menu = new Menu(this, items, { x: 240, y: 140, spacing: 16, align: 'center', fontSize: '7px', showHints: false, depth: 32 });
-    const onKey = (e: KeyboardEvent) => menu.handleKey(e);
-    this.input.keyboard?.on('keydown', onKey);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
+    this.menu = new Menu(this, items, { x: 240, y: 140, spacing: 16, align: 'center', fontSize: '7px', showHints: false, depth: 32 });
+  }
+
+  private queue(delay: number, callback: () => void): void {
+    const timer = this.time.delayedCall(delay, () => {
+      this.sequence = this.sequence.filter(t => t !== timer); callback();
+    });
+    this.sequence.push(timer);
+  }
+
+  private skipEnding(): void {
+    for (const timer of this.sequence) timer.remove(false);
+    this.sequence = [];
+    this.showFinale(false);
+    this.openMenu();
   }
 
   override update(_t: number, delta: number): void {

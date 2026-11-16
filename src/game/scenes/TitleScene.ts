@@ -123,9 +123,10 @@ export class TitleScene extends Phaser.Scene {
 
   private confirmNewGame(): void {
     if (this.modal) return;
+    this.menu.setActive(false);
     const W = this.scale.width, H = this.scale.height;
     const c = this.add.container(0, 0).setDepth(300); this.modal = c;
-    const dim = this.add.rectangle(0, 0, W, H, 0x05070d, 0.8).setOrigin(0);
+    const dim = this.add.rectangle(0, 0, W, H, 0x05070d, 0.8).setOrigin(0).setInteractive();
     const panel = addPanel(this, W / 2, H / 2, 340, 116, 0x141a2e, 1, 0xc98a52);
     const title = this.add.text(W / 2, H / 2 - 34, 'START OVER?', { fontFamily: '"Press Start 2P"', fontSize: '12px', color: '#f0c060' }).setOrigin(0.5);
     const body = this.add.text(W / 2, H / 2 - 10, 'Progress, gems and upgrades will be erased.', { fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0' }).setOrigin(0.5);
@@ -133,7 +134,7 @@ export class TitleScene extends Phaser.Scene {
     const no = this.add.text(W / 2 + 76, H / 2 + 28, 'CANCEL', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060', padding: { x: 12, y: 10 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     c.add([dim, panel, title, body, yes, no]);
     let selection = 1;
-    const close = () => { this.input.keyboard?.off('keydown', key); c.destroy(); this.modal = null; };
+    const close = () => { this.input.keyboard?.off('keydown', key); c.destroy(); this.modal = null; this.menu.setActive(true); };
     const key = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.key === 'Escape') close();

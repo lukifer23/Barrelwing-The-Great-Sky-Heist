@@ -30,6 +30,7 @@ export class Menu {
   private hint?: Phaser.GameObjects.Text;
   private opts: Required<MenuOptions>;
   private enabled: boolean[] = [];
+  private active = true;
 
   constructor(scene: Phaser.Scene, items: MenuItem[], opts: MenuOptions) {
     this.scene = scene;
@@ -52,9 +53,9 @@ export class Menu {
         fontSize: this.opts.fontSize,
         color: it.disabled ? '#5a6480' : '#f4e6c8',
       }).setOrigin(this.opts.align === 'center' ? 0.5 : 0, 0.5).setInteractive({ useHandCursor: !it.disabled });
-      t.on('pointerover', () => { if (!it.disabled) { this.index = i; this.repaint(); } });
+      t.on('pointerover', () => { if (this.active && !it.disabled) { this.index = i; this.repaint(); } });
       t.setPadding(4, Math.max(2, (this.opts.spacing - t.height) / 2));
-      t.on('pointerdown', () => { if (!it.disabled) { this.index = i; this.confirm(); } });
+      t.on('pointerdown', () => { if (this.active && !it.disabled) { this.index = i; this.confirm(); } });
       t.setDepth(this.opts.depth);
       this.labels.push(t);
 
@@ -91,7 +92,13 @@ export class Menu {
     });
   }
 
+  setActive(active: boolean): void {
+    this.active = active;
+    this.labels.forEach(label => { if (label.input) label.input.enabled = active; });
+  }
+
   move(dir: number): void {
+    if (!this.active) return;
     if (this.enabled.filter(Boolean).length === 0) return;
     let next = this.index;
     for (let i = 0; i < this.items.length; i++) {
@@ -106,6 +113,7 @@ export class Menu {
   }
 
   confirm(): void {
+    if (!this.active) return;
     const it = this.items[this.index];
     if (!it || !this.enabled[this.index]) return;
     AudioManager.sfx('ui_confirm', { volume: 0.5 });
@@ -113,6 +121,7 @@ export class Menu {
   }
 
   handleKey(e: KeyboardEvent): boolean {
+    if (!this.active) return false;
     if (e.repeat) return true;
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { this.move(-1); return true; }
     if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { this.move(1); return true; }

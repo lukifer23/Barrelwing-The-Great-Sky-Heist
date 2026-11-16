@@ -270,3 +270,51 @@ test('stepping off a ladder summit gives a full ground jump and fresh air flaps'
   await page.keyboard.up('w');
   expect(errors).toEqual([]);
 });
+
+test('new-game confirmation captures pointer input until it is dismissed', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => {
+    const game = (window as any).__game;
+    game.registry.get('saves').recordLevel(1, { score: 100, timeMs: 1000, gems: [false, false, false], completed: true });
+    game.scene.getScene('Title').scene.restart();
+  });
+  await page.waitForTimeout(100);
+  await page.evaluate(() => (window as any).__game.scene.getScene('Title').confirmNewGame());
+  const point = await page.evaluate(() => {
+    const game = (window as any).__game, title = game.scene.getScene('Title');
+    const label = title.menu.labels.find((t: any) => t.text === 'SETTINGS'), bounds = label.getBounds(), canvas = game.canvas.getBoundingClientRect();
+    return { x: canvas.x + bounds.centerX * canvas.width / game.scale.width, y: canvas.y + bounds.centerY * canvas.height / game.scale.height };
+  });
+  await page.mouse.click(point.x, point.y); await page.waitForTimeout(100);
+  expect(await page.evaluate(() => (window as any).__game.scene.isActive('Settings'))).toBe(false);
+  expect(await page.evaluate(() => !!(window as any).__game.scene.getScene('Title').modal)).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.mouse.click(point.x, point.y);
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Settings'));
+  expect(errors).toEqual([]);
+});
+
+test('ending skips immediately, owns one menu, and resets correctly for another courier', async ({ page }) => {
+  const errors = await boot(page);
+  for (const character of ['fenn', 'mallow']) {
+    await page.evaluate(character => {
+      const game = (window as any).__game;
+      game.scene.stop('Title'); game.scene.start('Ending', { character, score: 100, timeMs: 1000, gems: [] });
+    }, character);
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Ending'));
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !!(window as any).__game.scene.getScene('Ending').menu);
+    const state = await page.evaluate(() => {
+      const scene = (window as any).__game.scene.getScene('Ending');
+      return { children: scene.children.length, handlers: scene.input.keyboard.listenerCount('keydown'),
+        courier: scene.children.list.find((o: any) => o.type === 'Sprite')?.texture.key,
+        sequence: scene.sequence.length, credits: !!scene.credits };
+    });
+    expect(state).toMatchObject({ handlers: 1, courier: character, sequence: 0, credits: false });
+    await page.waitForTimeout(800);
+    expect(await page.evaluate(() => (window as any).__game.scene.getScene('Ending').children.length)).toBe(state.children);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+  }
+  expect(errors).toEqual([]);
+});

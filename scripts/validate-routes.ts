@@ -1,33 +1,21 @@
-import { chromium, type Page } from '@playwright/test';
-import { execFileSync, spawn } from 'node:child_process';
-import { cp, mkdir, writeFile } from 'node:fs/promises';
+import type { Page } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
+import { delay, option, prepareBrowserRun } from './browser-harness';
 import { LEVELS } from '../src/game/data/levels/index';
 import { CHARACTERS, type CharacterId } from '../src/game/data/characters';
 
 // An acceptance aid, separate from the fast regression suite. The controller
 // reads the actual game and sends keyboard input. It never moves actors,
 // changes health, grants powers, completes a stage, or bypasses collisions.
-const option = (name: string, fallback: string) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.split('=')[1] ?? fallback;
 const ids = option('levels', '1,2,3,4,5,6,7,8,9').split(',').map(Number);
 const seconds = Number(option('seconds', '120'));
 const character = option('character', 'pip') as CharacterId;
 const collectFlightGems = option('gems', 'false') === 'true';
 if (!Object.hasOwn(CHARACTERS, character) || !Number.isFinite(seconds) || seconds < 5 || ids.some(id => !LEVELS.some(level => level.id === id))) throw new Error('Use valid --levels=1,2 --seconds=120 --character=pip options.');
 const port = Number(option('port', '5175'));
-const url = `http://127.0.0.1:${port}`;
-const directory = `artifacts/routes/${new Date().toISOString().replaceAll(':', '-')}`;
-await mkdir(directory, { recursive: true });
-execFileSync('npm', ['run', 'build'], { stdio: 'inherit' });
-await cp('dist', `${directory}/site`, { recursive: true });
-await writeFile(`${directory}/build.json`, JSON.stringify({ commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(), ids, character, seconds }, null, 2));
-// A private production snapshot prevents later source edits from reloading an
-// acceptance run halfway through a route.
-const browser = await chromium.launch();
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', `${directory}/site`, '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'] });
-let serverError = '';
-server.stderr.on('data', chunk => { serverError += String(chunk); });
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const results: unknown[] = [];
+const harness = await prepareBrowserRun('routes', port, { ids, character, seconds, collectFlightGems });
+const { browser, directory, url } = harness;
+const results: { cleared: boolean; errors: string[]; [key: string]: unknown }[] = [];
 
 async function read(page: Page) {
   return page.evaluate(() => {
@@ -51,12 +39,6 @@ async function read(page: Page) {
 }
 
 try {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (server.exitCode !== null) throw new Error(serverError || 'Route server stopped before it was ready.');
-    try { if ((await fetch(url)).ok) break; } catch { /* Wait for the local server. */ }
-    if (attempt === 99) throw new Error('Route server did not become ready.');
-    await delay(100);
-  }
   for (const id of ids) {
     const level = LEVELS.find(l => l.id === id)!;
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -161,6 +143,6 @@ try {
     await context.close();
   }
 } finally {
-  await browser.close(); server.kill('SIGTERM');
+  await harness.close();
 }
-if (results.some((result: any) => !result.cleared || result.errors.length)) process.exitCode = 1;
+if (results.some(result => !result.cleared || result.errors.length)) process.exitCode = 1;
