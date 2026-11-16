@@ -40,8 +40,8 @@ export const TRIAL_10: LevelDef = {
     ...coinLine(192, 16, 6, 2),
 
     gem(32, 6),
-    gem(96, 5),
-    { t: 'gem', x: 150, y: 5, persistentId: 79742306 },
+    { t: 'gem', x: 96, y: 14, persistentId: 1131319420 },
+    { t: 'gem', x: 150, y: 13, persistentId: 79742306 },
 
     { t: 'enemy', kind: 'bird', x: 74, y: 12, patrol: 5 },
     { t: 'enemy', kind: 'wisp', x: 120, y: 10, patrol: 2 },

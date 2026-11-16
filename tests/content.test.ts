@@ -5,6 +5,29 @@ import sharp from 'sharp';
 import { LEVELS } from '../src/game/data/levels/index';
 import { IMAGES, SHEETS, BOSS_SHEETS, MUSIC, SFX, ANIMS } from '../src/game/data/assets';
 import { evaluateMastery } from '../src/game/data/mastery';
+import type { LevelDef, LevelObject } from '../src/game/data/levels/types';
+import { FLIGHT, PHYSICS } from '../src/game/config';
+
+/** An optimistic speed envelope: failing it proves a pickup needs a gate hit.
+ * Passing it is only a necessary condition, not a full flight simulation. */
+function hasFlightApproach(level: LevelDef, pickup: LevelObject, zone: Extract<LevelObject, { t: 'flight' }>): boolean {
+  const x = (pickup.x + 0.5) * level.tile, y = (pickup.y + 0.5) * level.tile;
+  for (let offset = -14; offset <= 14; offset++) {
+    const px = x + offset;
+    let top = Math.max(zone.y * level.tile + 24, y + 12 - 16);
+    let bottom = Math.min((zone.y + zone.h) * level.tile - 4, y + 12 + 16);
+    for (const gate of zone.gates) {
+      const gx = (zone.x + gate.at) * level.tile;
+      const low = (zone.y + gate.gap - gate.size / 2 - (gate.amp ?? 0)) * level.tile + 24;
+      const high = (zone.y + gate.gap + gate.size / 2 + (gate.amp ?? 0)) * level.tile;
+      const seconds = Math.max(0, Math.abs(px - gx) - 16) / FLIGHT.forwardSpeed;
+      top = Math.max(top, low - (gx < px ? -FLIGHT.maxRise : PHYSICS.maxFall) * seconds);
+      bottom = Math.min(bottom, high + (gx < px ? PHYSICS.maxFall : -FLIGHT.maxRise) * seconds);
+    }
+    if (top <= bottom) return true;
+  }
+  return false;
+}
 
 for (const level of LEVELS) test(`${level.id}: ${level.name} has complete, valid content`, () => {
   assert.equal(LEVELS.filter(l => l.id === level.id).length, 1);
@@ -25,6 +48,7 @@ for (const level of LEVELS) test(`${level.id}: ${level.name} has complete, valid
         const center = (o.y + 0.5) * level.tile;
         const reach = o.t === 'coin' ? 16 : o.t === 'powerup' ? 19 : 17;
         assert.ok(center > zone.y * level.tile + 12 - reach && center < (zone.y + zone.h) * level.tile - 16 + reach, `pickup outside flight reach: ${JSON.stringify(o)}`);
+        if (o.t === 'gem') assert.ok(hasFlightApproach(level, o, zone), `gem requires exceeding flight speed between gates: ${JSON.stringify(o)}`);
       }
     }
     if (o.persistentId !== undefined) assert.ok(Number.isInteger(o.persistentId) && o.persistentId >= 0 && o.persistentId <= 0xffffffff);
@@ -50,6 +74,14 @@ test('delivery stamps enforce complete gems, par boundaries, and the entire run 
   assert.equal(evaluateMastery({ ...clean, timeMs: 0 }, 110).express, false);
 });
 
+test('flight approach checks reject released gem placements that required a gate hit', () => {
+  for (const [id, x, y] of [[3, 53, 8], [3, 72, 7], [3, 131, 6], [6, 133, 8], [7, 103, 6], [7, 136, 6], [9, 58, 10], [10, 96, 5], [10, 150, 4]]) {
+    const level = LEVELS[id - 1];
+    const zone = level.objects.find(o => o.t === 'flight' && x + 0.5 > o.x && x + 0.5 < o.x + o.w) as Extract<LevelObject, { t: 'flight' }>;
+    assert.equal(hasFlightApproach(level, { t: 'gem', x, y }, zone), false, `${id}: ${x},${y}`);
+  }
+});
+
 test('runtime texture keys are unique and no image redundantly loads a sprite sheet', () => {
   const allSheets = [...SHEETS, ...BOSS_SHEETS];
   const keys = [...Object.keys(IMAGES), ...allSheets.map(s => s.key)];
@@ -59,7 +91,7 @@ test('runtime texture keys are unique and no image redundantly loads a sprite sh
 
 test('relocated pickups retain their released save IDs', async () => {
   const { objectIds } = await import('../src/game/data/objectIds');
-  for (const [levelId, id] of [[2, 3948057148], [4, 3042373520], [9, 3626503116], [10, 79742306], ...[533317531, 1312657372, 3923452012, 29579533, 4165041695, 1962812971].map(id => [7, id])]) {
+  for (const [levelId, id] of [[2, 3948057148], [4, 3042373520], [9, 3626503116], [10, 79742306], [10, 1131319420], [6, 2585903463], [9, 3506672990], ...[533317531, 1312657372, 3923452012, 29579533, 4165041695, 1962812971, 2737106020, 1076062324].map(id => [7, id]), ...[2538732052, 3602375236, 4081961275].map(id => [3, id])]) {
     assert.equal(objectIds(LEVELS[levelId - 1]).filter(value => value === id).length, 1);
   }
 });

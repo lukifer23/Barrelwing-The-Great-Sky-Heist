@@ -36,6 +36,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private facing = 1;
   private hurtUntil = 0;
   private climbRect: Phaser.Geom.Rectangle | null = null;
+  private climbReadyAt = 0;
   private flightBounds: Phaser.Geom.Rectangle | null = null;
   private wasGrounded = false;
   private stepTimer = 0;
@@ -192,7 +193,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // --- ladders ----------------------------------------------------------
     const inLadder = this.findLadder(ladders);
-    if (inLadder && !this.controlLocked) {
+    if (inLadder && !this.controlLocked && now >= this.climbReadyAt) {
       const wantsUp = input.up;
       const wantsDown = input.down;
       if (wantsUp || wantsDown) {
@@ -285,6 +286,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.exitClimb();
       this.body.velocity.y = PHYSICS.jumpVelocity * 0.9;
       this.lastGroundedAt = -9999;
+      this.climbReadyAt = this.now + 250;
       this.scene.events.emit('sfx', 'jump', { volume: 0.35, rate: 1.1 });
       return;
     }
@@ -294,6 +296,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.exitClimb();
       this.body.velocity.y = 0;
       this.body.velocity.x = this.facing * 60;
+      this.lastGroundedAt = this.now;
+      this.flapCharges = this.maxFlapCharges;
+      this.climbReadyAt = this.now + 200;
     }
     if (this.y >= rect.bottom - 2) {
       this.y = rect.bottom - 2;
@@ -428,6 +433,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.flightBounds = null;
     this.lastGroundedAt = -9999;
     this.lastFlapAt = -9999;
+    this.climbReadyAt = 0;
     this.dashUntil = 0;
     this.dashReadyAt = 0;
     this.hurtUntil = 0;

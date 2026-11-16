@@ -13,7 +13,7 @@ The November 16, 2026 review covers the game runtime, all fifteen authored stage
 | Moving flight gates | Translating both complete columns left holes at the channel edges and could move openings beyond their intended envelope. | Column heights change around a bounded opening; columns remain anchored to the channel's top and bottom. |
 | Flight transitions | Leaving a channel slightly before its right edge could immediately reenter it. Remaining air flaps could also be depleted on exit. | The exit edge cannot reactivate the same channel, and normal air flaps refill on exit. Flight faces the courier forward. |
 | Controls | Dash and flight-flap requests were consumed before their cooldowns finished. | Requests remain buffered until the action is available or the buffer expires. |
-| Ladders | Jumping from the ladder's top could have its upward velocity overwritten by the top-exit branch. | A ladder jump returns immediately and clears stale ground grace. |
+| Ladders | Jumping from the ladder's top could have its velocity overwritten. Holding Up could immediately reattach after departure. | Ladder jumps return immediately. Summit exits refill flaps and grant ground-jump grace; a short regrab delay preserves departure input. |
 | Enemy movement | Ground patrols had authored bounds and wall turns but no actual floor-edge check. | Ground enemies inspect nearby static support at a bounded interval and turn before walking off a ledge. |
 | Enemy readability | Hoppers jumped immediately when their wait expired. | A visible, audible 240 ms preparation precedes the leap. Hopper and diver damping uses elapsed time. |
 | Flying enemies | Ground terrain colliders also separated flyers from terrain, disrupting their movement. | Flying enemies follow their aerial patterns through terrain; ground enemies retain collisions. |
@@ -22,7 +22,7 @@ The November 16, 2026 review covers the game runtime, all fifteen authored stage
 | Boss recovery | Queued attack callbacks could survive encounter resets. Saving at a phase boundary could restore the wrong phase. | Encounter timers cancel on reset, defeat, and destruction; phase recovery reconciles remaining health and the rematch's starting phase. |
 | Death interactions | Overlaps could still trigger springs, checkpoints, switches, or enemy attacks after player death. | Stage interactions require a live, interactive player. |
 | Checkpoint machinery | Moving platforms retained arbitrary positions through a checkpoint reset. | Platforms reset their tween, visual position, physics body, and movement deltas together. |
-| Level pickups | Three acorns were inside solid terrain; six storm acorns and the final Windward Gauntlet gem exceeded flight collection reach. | Ten pickups repositioned. Their released collection IDs remain stable, including legacy index-save migration. |
+| Level pickups | Three acorns were inside solid terrain; six storm acorns exceeded flight collection reach. Nine flight gems also failed an optimistic approach-speed envelope between gates, including the trial gem above its channel ceiling. | Eighteen pickups repositioned. Flight gems now have possible approaches within the speed envelope; complete collection routes remain acceptance work. Released collection IDs remain stable, including legacy index-save migration. |
 | Native recovery | Startup preferred native Preferences without comparing its age to the synchronous journal. | Saves carry increasing revisions. Loading chooses the newest valid copy, and native writes maintain a recovery copy. |
 | Characters | The ending always named and displayed Pip. | The ending names and animates the courier who completed the stage. |
 | Maintenance | Unused scene fields, obsolete menu helpers, duplicate bookkeeping, and loose event argument types obscured ownership. | Removed unused code and enabled TypeScript's unused-local and unused-parameter checks for subsequent builds. |
@@ -49,6 +49,14 @@ The HUD shows current eligibility. The map shows saved stamps and par, results i
 | Persistence | Real browser storage, corruption recovery, revision ordering, legacy defaults, stable relocated IDs, and stamp-funded upgrades across reload | Force-stop during native writes, native recovery after failure, app update, and physical background/process termination. |
 | Performance | Removed a confirmed per-frame text redraw, duplicate texture preloads, and redundant group snapshot copies; existing culling and transient lifetimes retained | Sustained device frame intervals, memory growth, audio/touch load, and thermal behavior. Desktop or short menu results do not establish mobile frame pacing. |
 | Build and distribution | Production build, Android debug APK, CI configuration, and dependency audit | Install/update acceptance on the available test device. The APK is for personal debug installation. |
+
+## Route acceptance tooling
+
+`npm run test:routes -- --levels=1,2,3 --seconds=120 --character=pip` builds an isolated production snapshot and drives it with keyboard input. It records position, health, deaths, gems, continues, errors, screenshots, and source/build provenance under ignored `artifacts/routes/`. `--gems=true` asks the flight controller to pursue gems. The controller never changes actor positions, health, powers, collisions, or completion state. It allows up to three normal Continue choices and reports them explicitly.
+
+Initial route probes cleared stages 1 through 5 with unupgraded Pip. Barrel Bridge and Copper Mill cleared without deaths; a refined Acorn Trail run cleared without deaths, and Furnace Ladder cleared with one death. The initial Cloudvine Drift controller needed eight deaths and two continues. These outcomes establish ordinary-input completion for those attempts, not balanced difficulty or all-gem acceptance. Later gem-layout revisions and controller changes need their own reports. A failed controller run is a reproduction to inspect, not automatic proof that a human route is blocked.
+
+`npm run check` now runs the browser regressions against the minified production build. `npm run test:browser` remains available for development-server checks. The approach envelope is deliberately optimistic: it uses maximum rise/fall speeds and full moving-gate ranges, without claiming a complete trajectory simulation.
 
 ## Next work priorities
 

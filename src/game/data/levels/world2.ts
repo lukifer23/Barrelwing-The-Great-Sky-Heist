@@ -227,7 +227,7 @@ export const LEVEL_6: LevelDef = {
 
     gem(48, 12),
     gem(84, 8),
-    gem(133, 8),
+    { t: 'gem', x: 133, y: 14, persistentId: 2585903463 },
 
     { t: 'enemy', kind: 'bee', x: 18, y: 14, patrol: 3, amp: 12 },
     { t: 'enemy', kind: 'ant', x: 40, y: 20, patrol: 4 },

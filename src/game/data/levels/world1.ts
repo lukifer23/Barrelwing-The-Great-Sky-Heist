@@ -209,9 +209,9 @@ export const LEVEL_3: LevelDef = {
     ...coinArc(147, 10, 5, 3),
     ...coinLine(162, 16, 6, 2),
 
-    gem(53, 8),
-    gem(72, 7),
-    gem(131, 6),
+    { t: 'gem', x: 56, y: 10, persistentId: 2538732052 },
+    { t: 'gem', x: 74, y: 13, persistentId: 3602375236 },
+    { t: 'gem', x: 133, y: 8, persistentId: 4081961275 },
 
     { t: 'enemy', kind: 'bee', x: 14, y: 12, patrol: 2, amp: 12 },
     { t: 'enemy', kind: 'bird', x: 50, y: 10, patrol: 4 },

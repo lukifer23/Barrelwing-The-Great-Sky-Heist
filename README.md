@@ -45,6 +45,8 @@ npm run preview         # Serve dist locally
 npm test                # Validate all stages and runtime assets
 npx playwright install chromium
 npm run test:browser    # Browser integration and touch tests
+npm run test:production # Build and run browser checks against production output
+npm run test:routes -- --levels=1,2 --seconds=120 # Ordinary-input route probes
 npm run check           # Content checks, build, and browser tests
 ```
 

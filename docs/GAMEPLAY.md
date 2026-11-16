@@ -12,6 +12,8 @@ The touch buttons show remaining air charges and dash recharge. FLAP replaces JU
 
 Down drops through one-way platforms. Springs launch higher than a normal jump. Conveyors move the ground beneath the courier; moving platforms carry them.
 
+At a ladder summit, air flaps refill and a short grace period permits a full jump. Briefly preventing regrab after departure lets you keep holding Up while jumping away.
+
 ## Couriers
 
 Choose a courier from the title or map. The selection applies to a new stage; Continue retains the courier used by that saved run.

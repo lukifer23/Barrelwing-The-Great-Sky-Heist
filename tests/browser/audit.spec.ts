@@ -240,16 +240,33 @@ test('campaign side bounds stop players running out of the authored world', asyn
   expect(errors).toEqual([]);
 });
 
-test('Windward Gauntlet final gem can be collected at the actual flight ceiling', async ({ page }) => {
+test('Windward Gauntlet final gem is inside flight bounds and retains its save identity', async ({ page }) => {
   const errors = await boot(page); await start(page, 10);
   const state = await page.evaluate(() => {
     const s = (window as any).__game.scene.getScene('Game'), z = s.flightZones[0];
     const gem = s.gems.getChildren().find((g: any) => g.getData('gemIndex') === 2);
     const id = gem.getData('objectId');
-    s.player.setFlightBounds(z.bounds); s.player.setPosition(gem.x, z.bounds.top + 24);
+    s.player.setFlightBounds(z.bounds); s.player.setPosition(gem.x, gem.y + 12);
     s.updatePickups(16);
     return { collected: s.gemsCollected[2], id, saved: s.collected.has(id) };
   });
   expect(state).toEqual({ collected: true, id: 79742306, saved: true });
+  expect(errors).toEqual([]);
+});
+
+test('stepping off a ladder summit gives a full ground jump and fresh air flaps', async ({ page }) => {
+  const errors = await boot(page); await start(page, 2);
+  await page.keyboard.down('w');
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game'), p = s.player, ladder = s.ladderRects[0];
+    p.body.reset(ladder.centerX, ladder.top + 5); p.body.updateFromGameObject();
+    p.mode = 'climb'; p.climbRect = ladder; p.lastGroundedAt = -9999; p.flapCharges = 0;
+    p.updatePlayer(16, s.inputMgr, s.ladderRects);
+  });
+  await page.keyboard.down('Space');
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').player.body.velocity.y < -250);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.flapCharges)).toBe(2);
+  await page.keyboard.up('Space');
+  await page.keyboard.up('w');
   expect(errors).toEqual([]);
 });
