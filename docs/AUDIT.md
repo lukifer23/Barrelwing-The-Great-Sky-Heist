@@ -23,6 +23,7 @@ The November 16, 2026 review covers the game runtime, all fifteen authored stage
 | Death interactions | Overlaps could still trigger springs, checkpoints, switches, or enemy attacks after player death. | Stage interactions require a live, interactive player. |
 | Checkpoint machinery | Moving platforms retained arbitrary positions through a checkpoint reset. | Platforms reset their tween, visual position, physics body, and movement deltas together. |
 | Level pickups | Three acorns were inside solid terrain; six storm acorns exceeded flight collection reach. Nine flight gems also failed an optimistic approach-speed envelope between gates, including the trial gem above its channel ceiling. | Eighteen pickups repositioned. Flight gems now have possible approaches within the speed envelope; complete collection routes remain acceptance work. Released collection IDs remain stable, including legacy index-save migration. |
+| Native backgrounding | Android onStop notification could arrive late, advancing gameplay while leaving the app; death could not pause. | Handle onPause and retain the onStop fallback, flush saves, and allow death sequences to pause. Native Home/return and browser death-clock regressions passed. |
 | Native recovery | Startup preferred native Preferences without comparing its age to the synchronous journal. | Saves carry increasing revisions. Loading chooses the newest valid copy, and native writes maintain a recovery copy. |
 | Characters | The ending always named and displayed Pip. | The ending names and animates the courier who completed the stage. |
 | Maintenance | Unused scene fields, obsolete menu helpers, duplicate bookkeeping, and loose event argument types obscured ownership. | Removed unused code and enabled TypeScript's unused-local and unused-parameter checks for subsequent builds. |
@@ -50,7 +51,7 @@ The HUD shows current eligibility. The map shows saved stamps and par, results i
 | Animation and presentation | Valid sprite frames, courier-specific animation keys and ending, warning poses, result/map screenshots, responsive field guide | Full animation-transition and audio-mix review on small screens. Mallow remains a recolored squirrel, as documented. |
 | Persistence | Real browser storage, corruption recovery, revision ordering, legacy defaults, stable relocated IDs, and stamp-funded upgrades across reload | Force-stop during native writes, native recovery after failure, app update, and physical background/process termination. |
 | Performance | Removed a confirmed per-frame text redraw, duplicate texture preloads, and redundant group snapshot copies; existing culling and transient lifetimes retained | Sustained device frame intervals, memory growth, audio/touch load, and thermal behavior. Desktop or short menu results do not establish mobile frame pacing. |
-| Build and distribution | Production build, Android debug APK, CI configuration, and dependency audit | Install/update acceptance on the available test device. The APK is for personal debug installation. |
+| Build and distribution | Production build, Android debug APK, CI configuration, and dependency audit | Installed update retained existing progress; 13 native smoke checks and paused physical fold/portrait checks passed. Remaining device checks are tracked in VALIDATION.md. The APK is for personal debug installation. |
 
 ## Route acceptance tooling
 
@@ -62,7 +63,7 @@ Initial route probes cleared stages 1 through 5 with unupgraded Pip. Barrel Brid
 
 The route, soak, and Brawl acceptance tools share an isolated production-build server. Each writes build provenance and reports into ignored artifacts. `npm run test:soak -- --cycles=45 --dwell=20` exercises ordinary keyboard movement through repeated stage lifecycles and samples heap after shutdown and garbage collection. `npm run test:brawl` runs a keyboard controller through the three couriers and three CPU difficulties, with arenas rotated across the matrix. Neither changes health, stocks, damage, actor positions, or the match timer.
 
-The first fifteen soak cycles traversed all authored stages with no runtime errors or duplicated enemy/resume handlers. Post-GC JavaScript heap ranged from 8.04 to 9.81 MiB during that initial warmup. This is desktop lifecycle evidence, not a native-memory, thermal, or mobile frame-rate claim. Later rounds and physical-device acceptance remain separate evidence.
+All 45 soak cycles completed with no runtime errors or duplicated enemy/resume handlers. Post-GC JavaScript heap stayed within 8.04–9.81 MiB, including warmup; round means were 9.30, 9.52, and 9.67 MiB. Nine Brawl matches across all couriers/difficulties finished through real stock losses without runtime errors. The controller won all nine; human balance review remains necessary. These are desktop lifecycle and combat-completion results. Native acceptance, physical fold/portrait checks, and their limits are recorded in [VALIDATION.md](VALIDATION.md#device-evidence).
 
 ## Next work priorities
 

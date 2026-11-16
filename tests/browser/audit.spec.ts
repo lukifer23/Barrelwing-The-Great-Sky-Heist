@@ -318,3 +318,27 @@ test('ending skips immediately, owns one menu, and resets correctly for another 
   }
   expect(errors).toEqual([]);
 });
+
+test('background pause also freezes an in-progress death until the player resumes', async ({ page }) => {
+  const errors = await boot(page); await start(page);
+  await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game');
+    scene.killPlayer(true); scene.pauseForApp();
+  });
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  const paused = await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game');
+    return { now: scene.player.now, deadline: scene.deathAt, lives: scene.lives, dead: scene.player.dead };
+  });
+  await page.waitForTimeout(1300);
+  expect(await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game');
+    return { now: scene.player.now, deadline: scene.deathAt, lives: scene.lives, dead: scene.player.dead };
+  })).toEqual(paused);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(lives => {
+    const scene = (window as any).__game.scene.getScene('Game');
+    return scene.lives === lives - 1 && !scene.player.dead && !scene.respawning;
+  }, paused.lives);
+  expect(errors).toEqual([]);
+});

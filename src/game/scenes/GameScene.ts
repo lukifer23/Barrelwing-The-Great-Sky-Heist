@@ -117,7 +117,7 @@ export class GameScene extends Phaser.Scene {
   private collected = new Set<number>();
   private defeated = new Set<number>();
   private autosaveAt = 0;
-  private saveOnHide = () => { this.persistRun(); this.openPause(); };
+  private saveOnHide = () => this.openPause();
   private pageHide = () => this.persistRun();
 
   constructor() {
@@ -1509,7 +1509,7 @@ export class GameScene extends Phaser.Scene {
   pauseForApp(): void { this.openPause(); }
 
   private openPause(): void {
-    if (this.paused || this.gameOver || this.levelDone || this.deathAt > 0) return;
+    if (this.paused || this.gameOver || this.levelDone) return;
     this.persistRun();
     this.inputMgr.reset();
     this.paused = true;

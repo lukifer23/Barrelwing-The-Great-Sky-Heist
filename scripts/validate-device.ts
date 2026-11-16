@@ -1,0 +1,165 @@
+import { _android, type Page } from 'playwright';
+import { execFileSync } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
+import { delay, option } from './browser-harness';
+
+const pkg = 'com.barrelwing.skyheist';
+const devices = await _android.devices({ omitDriverInstall: true });
+const device = process.env.ANDROID_SERIAL ? devices.find(d => d.serial() === process.env.ANDROID_SERIAL) : devices.length === 1 ? devices[0] : undefined;
+if (!device) throw new Error('Connect one authorized device, or set ANDROID_SERIAL.');
+const directory = option('out', `artifacts/device/${new Date().toISOString().replaceAll(':', '-')}`);
+await mkdir(directory, { recursive: true });
+const adb = (...args: string[]) => execFileSync('adb', ['-s', device.serial(), ...args], { timeout: 20000, maxBuffer: 25000000 });
+const results: { check: string; details?: unknown }[] = [];
+const errors: string[] = [];
+let page: Page;
+let original: any;
+let restored = false;
+const check = (condition: unknown, label: string, details?: unknown) => {
+  if (!condition) throw new Error(`${label}: ${JSON.stringify(details)}`);
+  results.push({ check: label, details }); console.log(`PASS ${label}`);
+};
+async function attach() {
+  const pid = adb('shell', 'pidof', pkg).toString().trim();
+  if (!/^\d+$/.test(pid)) throw new Error('The game has no single running process.');
+  // Playwright prioritizes pkg over socketName when both are supplied. Select
+  // the current process socket so force-stop cannot return a cached old page.
+  page = await (await device.webView({ socketName: `webview_devtools_remote_${pid}` })).page();
+  page.on('pageerror', error => errors.push(error.message));
+  await page.waitForFunction(() => !!(window as any).__game?.registry.get('saves'));
+}
+async function screenshot(name: string) {
+  const displays = adb('shell', 'dumpsys', 'display').toString().split('\n');
+  const active = displays.find(line => line.includes('DisplayDeviceInfo{') && line.includes(', state ON,'));
+  const id = active?.match(/uniqueId="local:(\d+)"/)?.[1];
+  if (!id) throw new Error('Cannot identify the active physical display for evidence.');
+  const bytes = adb('exec-out', 'screencap', '-p', '-d', id);
+  const start = bytes.indexOf(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (start < 0) throw new Error('Physical display capture returned no PNG.');
+  await writeFile(`${directory}/${name}.png`, bytes.subarray(start));
+}
+async function tapCss(x: number, y: number) {
+  const dpr = await page.evaluate(() => devicePixelRatio);
+  adb('shell', 'input', 'tap', String(Math.round(x * dpr)), String(Math.round(y * dpr)));
+}
+async function tapText(sceneKey: string, label: string) {
+  await delay(100);
+  const point = await page.evaluate(({ sceneKey, label }) => {
+    const game = (window as any).__game, scene = game.scene.getScene(sceneKey);
+    const objects = [...scene.children.list];
+    for (let i = 0; i < objects.length; i++) if (objects[i].list) objects.push(...objects[i].list);
+    const text = objects.find(o => o.type === 'Text' && o.text.startsWith(label) && o.input?.enabled);
+    if (!text) throw new Error(`No interactive ${label} in ${sceneKey}`);
+    const bounds = text.getBounds(), canvas = game.canvas.getBoundingClientRect();
+    return { x: canvas.x + bounds.centerX * canvas.width / game.scale.width, y: canvas.y + bounds.centerY * canvas.height / game.scale.height };
+  }, { sceneKey, label });
+  await tapCss(point.x, point.y);
+}
+async function tapDom(selector: string) {
+  const bounds = await page.locator(selector).boundingBox();
+  if (!bounds) throw new Error(`${selector} is not visible.`);
+  await tapCss(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+}
+async function state() {
+  return page.evaluate(() => {
+    const game = (window as any).__game, scene = game.scene.getScene('Game'), p = scene.player;
+    return { active: game.scene.isActive('Game'), paused: game.scene.isPaused('Game'), pauseMenu: game.scene.isActive('Pause'),
+      level: scene.level.id, x: p.x, y: p.y, now: p.now, elapsedMs: scene.elapsedMs, lives: scene.lives, hearts: p.hearts,
+      coins: scene.coinsCollected, score: scene.score, gems: [...scene.gemsCollected], checkpoint: { ...scene.checkpoint } };
+  });
+}
+async function flush() { await page.evaluate(async () => { await (window as any).__game.registry.get('saves').flush(); }); }
+try {
+  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+  original = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
+  await writeFile(`${directory}/save-before.json`, JSON.stringify(original, null, 2));
+  check(!!original.run, 'Existing checkpoint is available for an ordinary Continue test', { level: original.run?.levelId });
+  await screenshot('title');
+  await tapText('Title', 'CONTINUE');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+  const resumed = await state();
+  check(resumed.level === original.run.levelId && resumed.lives === original.run.lives && JSON.stringify(resumed.gems) === JSON.stringify(original.run.gems), 'Continue retains checkpoint, lives, and gems', resumed);
+  check(Math.abs(resumed.x - original.run.checkpoint.x) < 2 && Math.abs(resumed.y - original.run.checkpoint.y) < 3, 'Continue places the courier on the saved checkpoint', resumed);
+  await delay(350);
+  const stick = await page.locator('#joystick').boundingBox();
+  if (!stick) throw new Error('Native touch joystick is not visible.');
+  const dpr = await page.evaluate(() => devicePixelRatio), sx = stick.x + stick.width / 2, sy = stick.y + stick.height / 2;
+  const beforeMove = await state();
+  adb('shell', 'input', 'swipe', String(Math.round(sx * dpr)), String(Math.round(sy * dpr)), String(Math.round((sx - stick.width * 0.32) * dpr)), String(Math.round(sy * dpr)), '400');
+  const afterMove = await state();
+  check(afterMove.x < beforeMove.x - 5, 'Physical Android joystick gesture moves the real courier', { before: beforeMove.x, after: afterMove.x });
+  const jump = await page.locator('[data-action="jump"]').boundingBox();
+  if (!jump) throw new Error('Native jump button is not visible.');
+  const beforeJump = await state(), jx = String(Math.round((jump.x + jump.width / 2) * dpr)), jy = String(Math.round((jump.y + jump.height / 2) * dpr));
+  adb('shell', 'input', 'swipe', jx, jy, jx, jy, '180');
+  const afterJump = await state();
+  check(afterJump.y < beforeJump.y - 8, 'Physical Android jump gesture raises the courier', { before: beforeJump.y, after: afterJump.y });
+  await screenshot('native-touch-gameplay');
+  adb('shell', 'input', 'keyevent', '4');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  const paused = await state(); await delay(1000); const stillPaused = await state();
+  check(stillPaused.now === paused.now && stillPaused.elapsedMs === paused.elapsedMs, 'Android Back freezes gameplay time in Pause', { paused, after: stillPaused });
+  await tapText('Pause', 'CONTROLS');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Controls'));
+  const outside = await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Controls');
+    return scene.children.list.filter((o: any) => o.type === 'Text').filter((o: any) => { const b = o.getBounds(); return b.left < 0 || b.top < 0 || b.right > scene.scale.width || b.bottom > scene.scale.height; }).map((o: any) => o.text);
+  });
+  check(outside.length === 0, 'Field guide text fits the physical-device viewport', outside);
+  await screenshot('field-guide'); adb('shell', 'input', 'keyevent', '4');
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  await tapDom('#audio-toggle'); await flush();
+  const muted = await page.evaluate(() => ({ setting: (window as any).__game.registry.get('saves').get().settings.muted, manager: (window as any).__game.sound.mute }));
+  check(muted.setting !== original.settings.muted && muted.manager === muted.setting, 'Native master mute updates saved settings and the sound manager', muted);
+  await tapDom('#audio-toggle'); await flush();
+  adb('shell', 'input', 'keyevent', '4'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+  const beforeHome = await state(); adb('shell', 'input', 'keyevent', '3'); await delay(1200);
+  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+  const afterHome = await state();
+  check(afterHome.now - beforeHome.now < 250 && afterHome.lives === beforeHome.lives && afterHome.score === beforeHome.score, 'Background and foreground retain a paused session without consuming its clock', { beforeHome, afterHome });
+  await flush();
+  const durable = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
+  await writeFile(`${directory}/save-before-force-stop.json`, JSON.stringify(durable, null, 2));
+  await writeFile(`${directory}/native-before-force-stop.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
+  adb('shell', 'am', 'force-stop', pkg); await delay(350);
+  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+  const recovered = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
+  check(isDeepStrictEqual(recovered.run, durable.run), 'Force-stop recovery retains the flushed run snapshot', { revision: recovered.revision, level: recovered.run?.levelId });
+  await tapText('Title', 'CONTINUE'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+  const checkpoint = await state();
+  check(checkpoint.level === durable.run.levelId && checkpoint.lives === durable.run.lives && Math.abs(checkpoint.x - durable.run.checkpoint.x) < 2, 'Continue after force-stop restores the actual checkpoint', checkpoint);
+  await screenshot('force-stop-recovery');
+  check(errors.length === 0, 'Native smoke test has no JavaScript runtime errors', errors);
+} catch (error) {
+  errors.push(String(error)); console.error(error);
+} finally {
+  if (original) {
+    try {
+      if (!page || page.isClosed()) {
+        adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`); await attach();
+        await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+      }
+      await page.evaluate(async original => {
+        const game = (window as any).__game, saves = game.registry.get('saves');
+        for (const scene of game.scene.getScenes(false)) if (scene.scene.isActive() || scene.scene.isPaused()) game.scene.stop(scene.scene.key);
+        const revision = saves.get().revision;
+        Object.assign(saves.get(), original); saves.get().revision = revision;
+        saves.save(); await saves.flush(); game.registry.get('audioRefresh')?.(); game.scene.start('Title');
+      }, original);
+      const after = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
+      const expected = { ...original, revision: after.revision };
+      restored = isDeepStrictEqual(after, expected);
+      await writeFile(`${directory}/save-restored.json`, JSON.stringify(after, null, 2));
+      await writeFile(`${directory}/native-restored.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
+      check(restored, 'Original user progress and settings are restored after validation');
+    } catch (error) { errors.push(`Restoration: ${String(error)}`); }
+  }
+  await writeFile(`${directory}/device-smoke.json`, JSON.stringify({ results, errors, restored, completedAt: new Date().toISOString() }, null, 2));
+  await device.close();
+}
+console.log(`Device report: ${directory}; ${results.length} passed checks, ${errors.length} errors; original save restored: ${restored}.`);
+if (errors.length || !restored) process.exitCode = 1;

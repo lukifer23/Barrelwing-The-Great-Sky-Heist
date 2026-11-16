@@ -6,18 +6,18 @@ import { SaveManager } from './SaveManager';
 export async function installNativePlatform(game: Phaser.Game): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   document.body.classList.add('native');
-  await App.addListener('appStateChange', async ({ isActive }) => {
-    if (!isActive) {
-      const scene = game.scene.getScene('Game') as Phaser.Scene & { persistRun(): void; pauseForApp(): void };
-      if (scene.scene.isActive()) { scene.persistRun(); scene.pauseForApp(); }
-      const brawl = game.scene.getScene('Brawl') as Phaser.Scene & { pauseForApp(): void };
-      if (brawl.scene.isActive()) brawl.pauseForApp();
-      const sprint = game.scene.getScene('SkySprint') as Phaser.Scene & { pauseForApp(): void };
-      if (sprint.scene.isActive()) sprint.pauseForApp();
-      SaveManager.save();
-      await SaveManager.flush().catch(() => undefined);
+  const pauseAndSave = async () => {
+    for (const key of ['Game', 'Brawl', 'SkySprint']) {
+      const scene = game.scene.getScene(key) as (Phaser.Scene & { pauseForApp(): void }) | null;
+      if (scene?.scene.isActive()) scene.pauseForApp();
     }
-  });
+    SaveManager.save();
+    await SaveManager.flush().catch(() => undefined);
+  };
+  // Android emits pause from Activity.onPause; appStateChange waits for onStop,
+  // whose notification can arrive after the WebView returns to the foreground.
+  await App.addListener('pause', pauseAndSave);
+  await App.addListener('appStateChange', async ({ isActive }) => { if (!isActive) await pauseAndSave(); });
   await App.addListener('backButton', () => {
     const active = game.scene.getScenes(true).at(-1);
     if (!active) return;

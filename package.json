@@ -20,7 +20,8 @@
     "icons": "node scripts/build-icons.mjs",
     "characters": "node scripts/build-characters.mjs",
     "android:apk": "node scripts/android.mjs build",
-    "android:install": "node scripts/android.mjs install"
+    "android:install": "node scripts/android.mjs install",
+    "test:device": "tsx scripts/validate-device.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
