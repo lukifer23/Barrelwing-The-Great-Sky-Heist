@@ -49,7 +49,7 @@ The HUD shows current eligibility. The map shows saved stamps and par, results i
 | Combat and boss | Actual damage, attacks, warnings, volley counts, reset cancellation, phase recovery, Nova, and Brawl stocks/persistence | Full boss fights, all courier/difficulty combinations, fairness during checkpoint recovery, and balance through fresh progression. |
 | Sprint and Brawl | Existing mode integration, restart ownership, held attacks, pause timing, backgrounding, responsive results, and stock/damage preservation | Long sessions and real-device combat/flight feel. |
 | Animation and presentation | Valid sprite frames, courier-specific animation keys and ending, warning poses, result/map screenshots, responsive field guide | Full animation-transition and audio-mix review on small screens. Mallow remains a recolored squirrel, as documented. |
-| Persistence | Real browser storage, corruption recovery, revision ordering, legacy defaults, stable relocated IDs, and stamp-funded upgrades across reload | Force-stop during native writes, native recovery after failure, app update, and physical background/process termination. |
+| Persistence | Browser recovery/revision/migration checks; device update retention, Home/resume, and force-stop after native flush; original progress restored | Interruption during an unfinished native write and injected native-storage failures. |
 | Performance | Removed a confirmed per-frame text redraw, duplicate texture preloads, and redundant group snapshot copies; existing culling and transient lifetimes retained | Sustained device frame intervals, memory growth, audio/touch load, and thermal behavior. Desktop or short menu results do not establish mobile frame pacing. |
 | Build and distribution | Production build, Android debug APK, CI configuration, and dependency audit | Installed update retained existing progress; 13 native smoke checks and paused physical fold/portrait checks passed. Remaining device checks are tracked in VALIDATION.md. The APK is for personal debug installation. |
 
@@ -66,6 +66,8 @@ The route, soak, and Brawl acceptance tools share an isolated production-build s
 All 45 soak cycles completed with no runtime errors or duplicated enemy/resume handlers. Post-GC JavaScript heap stayed within 8.04–9.81 MiB, including warmup; round means were 9.30, 9.52, and 9.67 MiB. Nine Brawl matches across all couriers/difficulties finished through real stock losses without runtime errors. The controller won all nine; human balance review remains necessary. These are desktop lifecycle and combat-completion results. Native acceptance, physical fold/portrait checks, and their limits are recorded in [VALIDATION.md](VALIDATION.md#device-evidence).
 
 ## Next work priorities
+
+Session handoff and local evidence locations are recorded in [SESSION.md](SESSION.md). One-handed portrait controls are requested and remain unimplemented.
 
 1. Record campaign and trial routes with ordinary controls, starting with the vertical ladder stages and moving flight gates. Treat failed automation as a reproduction to investigate, not automatic proof that a human route is impossible.
 2. Validate the new reward pacing through a fresh campaign. Check whether Express and Untouched encourage useful routes and whether shard income makes upgrades trivial before their intended encounters.
