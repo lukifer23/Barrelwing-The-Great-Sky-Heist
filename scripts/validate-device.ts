@@ -65,6 +65,16 @@ async function tapText(sceneKey: string, label: string) {
   }, { sceneKey, label });
   await tapCss(point.x, point.y);
 }
+async function tapCard(sceneKey: string, field: string, value: string) {
+  await delay(100);
+  const point = await page.evaluate(({ sceneKey, field, value }) => {
+    const game = (window as any).__game, scene = game.scene.getScene(sceneKey);
+    const card = scene.children.list.find((o: any) => o.input?.enabled && o.getData(field) === value);
+    const b = card.getBounds(), canvas = game.canvas.getBoundingClientRect();
+    return { x: canvas.left + b.centerX * canvas.width / game.scale.width, y: canvas.top + b.centerY * canvas.height / game.scale.height };
+  }, { sceneKey, field, value });
+  await tapCss(point.x, point.y);
+}
 async function tapDom(selector: string) {
   const bounds = await page.locator(selector).boundingBox();
   if (!bounds) throw new Error(`${selector} is not visible.`);
@@ -186,6 +196,15 @@ try {
     await tapText('Pause', 'RETURN TO TITLE');
     await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
     await tapText('Title', 'BARREL BRAWL'); await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlSetup'));
+    for (const [side, fighter] of [['player', 'clover'], ['cpu', 'mallow']]) {
+      await tapCard('BrawlSetup', 'side', side);
+      await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlRoster'));
+      await tapCard('BrawlRoster', 'fighter', fighter);
+      if (side === 'player') await screenshot('cover-roster');
+      await tapText('BrawlRoster', 'PICK ' + fighter.toUpperCase());
+      await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlSetup'));
+    }
+    if (await page.evaluate(() => (window as any).__game.scene.getScene('BrawlSetup').rules !== 'timed')) await tapText('BrawlSetup', 'RULES');
     await screenshot('cover-brawl-setup');
     await tapText('BrawlSetup', original.brawlRun ? 'NEW MATCH' : 'START MATCH');
     await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').elapsedMs > 0);
@@ -195,6 +214,7 @@ try {
       const scene = (window as any).__game.scene.getScene('Brawl');
       const meter = { started: performance.now(), last: 0, intervals: [] as number[],
         collect() {
+          if (!scene.scene.isActive() || scene.ended) return;
           const now = performance.now();
           meter.intervals.push(now - meter.last); meter.last = now;
         } };
@@ -202,6 +222,11 @@ try {
       scene.registry.set('deviceFrameSample', meter);
       scene.game.events.on('poststep', meter.collect);
     });
+    const picked = await page.evaluate(() => {
+      const s = (window as any).__game.scene.getScene('Brawl'); return [s.human.id, s.cpu.id, s.options.rules];
+    });
+    check(isDeepStrictEqual(picked, ['clover', 'mallow', 'timed']), 'Physical roster picks reach the live KO Race', picked);
+    await screenshot('cover-brawl-live');
     const deadline = Date.now() + sampleSeconds * 1000;
     while (Date.now() < deadline && await page.locator('[data-action="attack"]').isVisible()) {
       await tapDom('[data-action="attack"]'); await delay(1800);

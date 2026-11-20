@@ -90,11 +90,12 @@ test('moving flight gates stay anchored and protected contact never teleports ag
     s.updateFlightZones(1500);
     return { before, after: { x: p.x, y: p.y }, hearts, finalHearts: p.hearts,
       top: gate.rectTop.top, zoneTop: z.bounds.top, bottom: gate.rectBottom.bottom, zoneBottom: z.bounds.bottom,
+      guide: gate.guide.y, center: (gate.rectBottom.top + gate.rectTop.bottom) / 2,
       gap: gate.rectBottom.top - gate.rectTop.bottom, expectedGap: gate.size };
   });
   expect(state.after).toEqual(state.before); expect(state.finalHearts).toBe(state.hearts);
   expect(state.hearts).toBe(2); expect(state.top).toBe(state.zoneTop); expect(state.bottom).toBe(state.zoneBottom);
-  expect(state.gap).toBeCloseTo(state.expectedGap);
+  expect(state.gap).toBeCloseTo(state.expectedGap); expect(state.guide).toBeCloseTo(state.center);
   expect(errors).toEqual([]);
 });
 

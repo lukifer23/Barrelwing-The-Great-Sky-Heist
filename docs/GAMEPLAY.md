@@ -27,7 +27,7 @@ Choose a courier from the title or map. The selection applies to a new stage; Co
 | Clover | Recruit at courier level 2. Ground jumps have 12% more takeoff speed and dash recharges 15% slower. | Rooftop scout |
 | Mallow | One extra heart, 8% slower running. Dashes deal two damage to ordinary enemies. | Delivers eventually, survives enthusiastically |
 
-All couriers have the same base jump, two air flaps, and access to permanent upgrades. Sky Sprint uses three hearts for everyone and the same flight speed.
+Every courier has two air flaps and access to permanent upgrades. Sky Sprint uses three hearts for everyone and the same flight speed.
 
 ## Pickups
 

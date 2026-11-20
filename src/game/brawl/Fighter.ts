@@ -1,6 +1,8 @@
 import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { CHARACTERS, type CharacterId } from '../data/characters';
+import { attackPose, FIGHT_STYLES, swipeFrame } from '../data/brawl';
+import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 export interface FightInput { move: number; jump: boolean; heldJump: boolean; dash: boolean; attack: boolean; aim: number; dashAim?: number; attackAim?: number }
@@ -27,6 +29,9 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   private attackFacing = 1;
   private bufferedDashAim = 0;
   private readonly swingCue: Phaser.GameObjects.Ellipse;
+  private readonly swingArt: Phaser.GameObjects.Sprite;
+  private readonly teamMarker: Phaser.GameObjects.Text;
+  private lunged = false;
   private groundAt = -9999;
   private lastAnimation = '';
   private bufferedJump = 0;
@@ -43,13 +48,21 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.play(`${this.courier.sheet}-idle`);
     const color = isCpu ? 0xff9f89 : 0x9ff5ff;
     this.swingCue = scene.add.ellipse(x, y, 60, 40, color, 0.12).setStrokeStyle(2, color, 0.9).setDepth(22).setVisible(false);
-    this.once('destroy', () => this.swingCue.destroy());
+    this.swingArt = scene.add.sprite(x, y, 'slash-circular').setDepth(23).setVisible(false);
+    this.teamMarker = scene.add.text(x, y, isCpu ? 'CPU' : 'P1', { fontFamily: FONT_SMALL, fontSize: '10px',
+      color: isCpu ? '#ffb5a1' : '#b8f5ff', backgroundColor: '#101528', padding: { x: 3, y: 1 } }).setOrigin(0.5, 1).setDepth(24);
+    this.once('destroy', () => { this.swingCue.destroy(); this.swingArt.destroy(); this.teamMarker.destroy(); });
   }
 
   get grounded(): boolean { return this.body.blocked.down || this.body.touching.down; }
   get now(): number { return playTime(this.scene); }
   get attackWindup(): number { return this.isCpu ? 200 : 65; }
-  get attackCooldown(): number { return this.id === 'fenn' ? 360 : this.id === 'mallow' ? 570 : 450; }
+  get style() { return FIGHT_STYLES[this.id]; }
+  get attackCooldown(): number { return this.style.cooldown; }
+  face(direction: number): void {
+    if (!direction || this.stunned || this.guarding || this.windingUp || this.attacking) return;
+    this.facing = Math.sign(direction); this.setFlipX(this.facing < 0);
+  }
   get attackProgress(): number { return Phaser.Math.Clamp(1 - (this.attackReady - this.now) / this.attackCooldown, 0, 1); }
   private get dashCooldown(): number { return this.id === 'clover' ? 1150 : 1000; }
   get dashProgress(): number { return Phaser.Math.Clamp(1 - (this.dashReady - this.now) / this.dashCooldown, 0, 1); }
@@ -57,7 +70,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   get guarding(): boolean { return this.now < this.guardUntil; }
   get canLift(): boolean { return !this.liftSpent; }
   get windingUp(): boolean { return this.now >= this.attackAt && this.now < this.attackAt + this.attackWindup; }
-  get attacking(): boolean { const t = this.now - this.attackAt; return t >= this.attackWindup && t <= this.attackWindup + 125; }
+  get attacking(): boolean { const t = this.now - this.attackAt; return t >= this.attackWindup && t < this.attackWindup + this.style.activeMs; }
 
   updateFighter(dtMs: number, input: FightInput): void {
     const now = this.now, dt = dtMs / 1000;
@@ -68,9 +81,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     if (this.grounded) { this.liftSpent = false; this.airJumps = 2; this.groundAt = now; }
     this.setAlpha(now < this.invulnerableUntil ? 0.45 + Math.abs(Math.sin(now / 75)) * 0.5 : 1);
     if (now >= this.stunUntil) {
-      if (!this.guarding && !this.windingUp && !this.attacking && Math.abs(input.move) > 0.1) {
-        this.facing = Math.sign(input.move); this.setFlipX(this.facing < 0);
-      }
+      if (Math.abs(input.move) > 0.1) this.face(input.move);
       const target = this.guarding ? 0 : input.move * 180 * this.courier.speed;
       if (now < this.dashUntil) this.body.velocity.x = this.facing * 390;
       else this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, target, 1 - Math.exp(-(this.grounded ? 18 : 8) * dt));
@@ -102,41 +113,68 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
         }
       }
       if (!this.guarding && this.bufferedAttack > now && now >= this.attackReady) {
-        this.bufferedAttack = 0;
+        this.bufferedAttack = 0; this.lunged = false;
         this.attackFacing = this.facing; this.attackAt = now; this.attackAim = this.bufferedAim; this.hitThisSwing = false;
         this.attackReady = now + this.attackCooldown;
         this.scene.events.emit('brawl-swing', this);
         AudioManager.sfx('throw', { volume: 0.2, rate: 1.4 });
       }
+      if (this.id === 'fenn' && this.attacking && this.attackAim === 0 && !this.lunged) {
+        this.body.velocity.x = this.attackFacing * 270; this.lunged = true;
+      }
       if (!input.heldJump && this.body.velocity.y < -50) this.body.velocity.y += 700 * dt;
     }
-    let animation = this.grounded ? Math.abs(this.body.velocity.x) > 20 ? 'run' : 'idle' : '';
-    if (this.guarding || this.windingUp) animation = 'crouch';
-    if (now < this.stunUntil) animation = 'hurt';
-    if (animation) {
-      const key = `${this.courier.sheet}-${animation}`;
-      if (key !== this.lastAnimation || !this.anims.isPlaying) { this.play(key, true); this.lastAnimation = key; }
-    } else { this.anims.stop(); this.setFrame(this.body.velocity.y < 0 ? 14 : 17); this.lastAnimation = ''; }
-    this.rotation = Phaser.Math.Linear(this.rotation, now < this.stunUntil ? this.facing * -0.22 : 0, 1 - Math.exp(-14 * dt));
+    this.animateFighter(dt);
+    this.teamMarker.setPosition(this.x + (this.isCpu ? 9 : -9), this.y - this.body.height - 6);
     this.updateCue();
   }
 
-  private get strikeX(): number { return this.x + (this.attackAim === 0 ? this.attackFacing * 36 : 0); }
+  private animateFighter(dt: number): void {
+    const t = this.now - this.attackAt, style = this.style;
+    const recovering = t >= this.attackWindup + style.activeMs && t < this.attackWindup + style.activeMs + 85;
+    let angle = 0;
+    let state = this.grounded ? Math.abs(this.body.velocity.x) > 20 ? 'run' : 'idle' : '';
+    let frame = this.body.velocity.y < 0 ? 14 : 17;
+    if (this.stunned) { state = 'hurt'; angle = -0.22 * this.facing; }
+    else if (this.guarding) state = 'crouch';
+    else if (this.windingUp || this.attacking || recovering) {
+      state = '';
+      const swing = Phaser.Math.Clamp((t - this.attackWindup) / style.activeMs, 0, 1);
+      frame = attackPose(this.id, (t - this.attackWindup) / style.activeMs);
+      angle = this.attackFacing * (this.windingUp ? -0.18 : recovering ? 0.08 : (this.attackAim || 1) * (0.18 + swing * 0.30));
+    }
+    if (state) {
+      const key = `${this.courier.sheet}-${state}`;
+      if (key !== this.lastAnimation || !this.anims.isPlaying) this.play(key, true);
+      this.lastAnimation = key;
+    } else { this.anims.stop(); this.setFrame(frame); this.lastAnimation = ''; }
+    this.rotation = Phaser.Math.Linear(this.rotation, angle, 1 - Math.exp(-22 * dt));
+  }
+
+  private get strikeX(): number { return this.x + (this.attackAim === 0 ? this.attackFacing * this.style.reach : 0); }
   private get strikeY(): number { return this.y - 16 + (this.attackAim < 0 ? -30 : this.attackAim > 0 ? 24 : 0); }
 
   private updateCue(): void {
     const guard = this.guarding;
-    this.swingCue.setVisible(guard || this.windingUp || this.attacking && !this.hitThisSwing);
-    if (!this.swingCue.visible) return;
-    this.swingCue.setPosition(guard ? this.x : this.strikeX, guard ? this.y - 16 : this.strikeY);
-    const width = guard ? 48 : this.attackAim === 0 ? 92 : 58;
-    if (this.swingCue.width !== width) this.swingCue.setSize(width, guard ? 56 : this.attackAim === 0 ? 55 : 70);
-    this.swingCue.setAlpha(guard || this.attacking ? 1 : 0.55);
+    this.swingCue.setVisible(guard || this.windingUp);
+    if (this.swingCue.visible) {
+      this.swingCue.setPosition(guard ? this.x : this.strikeX, guard ? this.y - 16 : this.strikeY);
+      const width = guard ? 48 : this.attackAim === 0 ? this.style.radius * 2 : 58;
+      if (width !== this.swingCue.width) this.swingCue.setSize(width, guard ? 56 : this.attackAim === 0 ? 55 : 70);
+      this.swingCue.setAlpha(guard ? 1 : 0.45 + 0.45 * (this.now - this.attackAt) / this.attackWindup);
+    }
+    this.swingArt.setVisible(this.attacking && !guard);
+    if (!this.swingArt.visible) return;
+    const progress = (this.now - this.attackAt - this.attackWindup) / this.style.activeMs;
+    const { key, frame } = swipeFrame(this.id, this.attackAim, progress);
+    this.swingArt.setTexture(key, frame)
+      .setTint(this.style.color).setPosition(this.strikeX, this.strikeY)
+      .setFlip(this.attackFacing < 0, this.attackAim > 0).setDisplaySize(this.attackAim ? 56 : this.style.radius * 1.8, this.attackAim ? 68 : 52);
   }
 
   canStrike(target: Fighter): boolean {
     if (!this.attacking || this.hitThisSwing || target.now < target.invulnerableUntil || target.stocks <= 0) return false;
-    return Math.abs(target.x - this.strikeX) <= (this.attackAim === 0 ? 55 : 40)
+    return Math.abs(target.x - this.strikeX) <= (this.attackAim === 0 ? this.style.radius : 40)
       && Math.abs(target.y - 16 - this.strikeY) <= (this.attackAim === 0 ? 38 : 48);
   }
 
@@ -148,11 +186,13 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       target.scene.events.emit('brawl-parry', target);
       return;
     }
-    target.damage += this.id === 'mallow' ? 13 : this.id === 'fenn' ? 8 : 10;
-    const weight = target.id === 'mallow' ? 1.18 : target.id === 'fenn' ? 0.92 : 1;
+    target.damage += this.style.damage;
+    if (this.id === 'clover' && this.attackAim > 0 && !this.grounded) this.body.velocity.y = -255;
+    const weight = target.style.weight;
     const force = (suddenDeath ? 640 : 160 + target.damage * 4.1) / weight;
     const dir = target.x >= this.x ? 1 : -1;
-    target.body.velocity.set(this.attackAim === 0 ? dir * force : dir * force * 0.45, this.attackAim < 0 ? -force * 1.1 : this.attackAim > 0 ? force * 0.8 : -100 - force * 0.40);
+    const launch = this.id === 'mallow' ? force * 1.11 : force;
+    target.body.velocity.set(this.attackAim === 0 ? dir * launch : dir * launch * 0.45, this.attackAim < 0 ? -launch * 1.1 : this.attackAim > 0 ? launch * 0.8 : -100 - launch * 0.40);
     target.stunUntil = target.now + Math.min(450, 160 + target.damage * 1.4);
     target.invulnerableUntil = target.now + 280;
     target.attackAt = -9999; target.hitThisSwing = true;
@@ -170,7 +210,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   respawn(x: number, y: number): void {
-    this.guardUntil = 0; this.liftSpent = false; this.swingCue.setVisible(false);
+    this.guardUntil = 0; this.liftSpent = false; this.swingCue.setVisible(false); this.swingArt.setVisible(false);
     this.damage = 0; this.airJumps = 2; this.body.reset(x, y); this.body.velocity.set(0, 0);
     this.body.setAllowGravity(true); this.body.enable = true; this.setVisible(true).setAngle(0);
     this.invulnerableUntil = this.now + 1700; this.stunUntil = 0; this.dashUntil = 0;

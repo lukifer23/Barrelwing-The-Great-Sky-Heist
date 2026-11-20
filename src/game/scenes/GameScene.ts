@@ -33,6 +33,7 @@ interface FlightGateRuntime {
   visBottom: Phaser.GameObjects.TileSprite;
   trimTop: Phaser.GameObjects.Rectangle;
   trimBottom: Phaser.GameObjects.Rectangle;
+  guide: Phaser.GameObjects.Rectangle;
   moving?: 'y';
   amp: number;
   speed: number;
@@ -565,7 +566,7 @@ export class GameScene extends Phaser.Scene {
         size,
         rectTop: new Phaser.Geom.Rectangle(gx - 11, bounds.top, 22, topH),
         rectBottom: new Phaser.Geom.Rectangle(gx - 11, bounds.top + botY, 22, Math.max(4, bounds.height - botY)),
-        visTop, visBottom, trimTop, trimBottom,
+        visTop, visBottom, trimTop, trimBottom, guide: warn,
         moving: g.moving,
         amp: (g.amp ?? 0) * ts,
         speed: g.speed ?? 1,
@@ -1013,6 +1014,7 @@ export class GameScene extends Phaser.Scene {
           g.visBottom.setY(bottomY).setSize(22, z.bounds.bottom - bottomY);
           g.trimTop.y = center - g.size / 2;
           g.trimBottom.y = bottomY;
+          g.guide.y = center;
         }
       }
       // collision

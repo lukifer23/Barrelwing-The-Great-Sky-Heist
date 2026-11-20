@@ -76,6 +76,9 @@ export const SHEETS: SpriteSheetDef[] = [
   { key: 'wisp', path: 'assets/sprites/wisp.png', frameWidth: 64, frameHeight: 64, frames: 6 },
   { key: 'acorn', path: 'assets/objects/acorn.png', frameWidth: 20, frameHeight: 20, frames: 3 },
   { key: 'fireball', path: 'assets/sprites/fireball.png', frameWidth: 26, frameHeight: 29, frames: 6 },
+  { key: 'slash-circular', path: 'assets/sprites/slash-circular.png', frameWidth: 52, frameHeight: 48, frames: 6 },
+  { key: 'slash-horizontal', path: 'assets/sprites/slash-horizontal.png', frameWidth: 65, frameHeight: 40, frames: 5 },
+  { key: 'slash-upward', path: 'assets/sprites/slash-upward.png', frameWidth: 52, frameHeight: 56, frames: 5 },
   { key: 'energy_smack', path: 'assets/sprites/energy_smack.png', frameWidth: 64, frameHeight: 96, frames: 16 },
   { key: 'shield_aura', path: 'assets/sprites/shield_aura.png', frameWidth: 51, frameHeight: 47, frames: 8 },
 ];

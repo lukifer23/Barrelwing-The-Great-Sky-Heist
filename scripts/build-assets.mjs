@@ -244,6 +244,9 @@ async function main() {
   // Storm bolts (fireball FX sheet)
   fs.copyFileSync(path.join(sideSprites, 'Grotto-escape-2-FX/PNG/spritesheets/fire-ball.png'), write('sprites/fireball.png'));
   fs.copyFileSync(path.join(sideSprites, 'Grotto-escape-2-FX/PNG/spritesheets/energy-smack.png'), write('sprites/energy_smack.png'));
+  for (const kind of ['circular', 'horizontal', 'upward']) {
+    fs.copyFileSync(path.join(sideSprites, `Grotto-escape-2-FX/PNG/spritesheets/slash-${kind}.png`), write(`sprites/slash-${kind}.png`));
+  }
   fs.copyFileSync(path.join(sideSprites, 'Grotto-escape-2-FX/PNG/spritesheets/energy-shield.png'), write('sprites/shield_aura.png'));
 
   // Boss dragon: three native 144x64 sheets.

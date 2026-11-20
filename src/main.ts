@@ -14,6 +14,7 @@ import { CreditsScene } from './game/scenes/CreditsScene';
 import { SkySprintScene } from './game/scenes/SkySprintScene';
 import { GameOverScene } from './game/scenes/GameOverScene';
 import { BrawlScene } from './game/scenes/BrawlScene';
+import { BrawlRosterScene } from './game/scenes/BrawlRosterScene';
 import { BrawlSetupScene } from './game/scenes/BrawlSetupScene';
 import { BrawlPauseScene, BrawlResultsScene } from './game/scenes/BrawlMenus';
 import { ProfilesScene } from './game/scenes/ProfilesScene';
@@ -56,7 +57,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [
     BootScene, PreloadScene, TitleScene, WorldMapScene, GameScene,
     PauseScene, ResultsScene, EndingScene, SettingsScene, ControlsScene,
-    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene, ProfilesScene, BrawlScene, BrawlSetupScene, BrawlPauseScene, BrawlResultsScene, GameOverScene,
+    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene, ProfilesScene, BrawlScene, BrawlSetupScene, BrawlRosterScene, BrawlPauseScene, BrawlResultsScene, GameOverScene,
   ],
 };
 

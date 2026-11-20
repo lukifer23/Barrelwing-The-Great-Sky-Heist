@@ -253,3 +253,69 @@ test('holding climb ascends the stacked Skyhook ladders and the Return to Pressu
   }
   expect(errors).toEqual([]);
 });
+
+test('Brawl roster picks survive reload and reach a live match independently of the campaign courier', async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 411, height: 960 } });
+  const page = await context.newPage(); const errors = await boot(page);
+  await choose(page, 'Title', 'BARREL BRAWL'); await active(page, 'BrawlSetup');
+  const tapCard = async (scene: string, field: string, value: string) => {
+    const point = await page.evaluate(({ scene, field, value }) => {
+      const g = (window as any).__game, s = g.scene.getScene(scene);
+      const obj = s.children.list.find((o: any) => o.getData(field) === value);
+      const b = obj.getBounds(), canvas = g.canvas.getBoundingClientRect();
+      return { x: canvas.x + b.centerX * canvas.width / g.scale.width, y: canvas.y + b.centerY * canvas.height / g.scale.height };
+    }, { scene, field, value });
+    await page.touchscreen.tap(point.x, point.y);
+  };
+  await tapCard('BrawlSetup', 'side', 'player'); await active(page, 'BrawlRoster');
+  await tapCard('BrawlRoster', 'fighter', 'clover');
+  await page.waitForFunction(() => {
+    const s = (window as any).__game.scene.getScene('BrawlRoster');
+    return s.swipe.visible && s.swipe.texture.key === 'slash-upward';
+  });
+  await choose(page, 'BrawlRoster', 'PICK CLOVER');
+  await active(page, 'BrawlSetup'); await page.keyboard.press('ArrowRight'); await active(page, 'BrawlRoster');
+  const selected = () => page.evaluate(() => (window as any).__game.scene.getScene('BrawlRoster').selected);
+  expect(await selected()).toBe('fenn');
+  await page.keyboard.press('ArrowRight'); expect(await selected()).toBe('mallow');
+  await page.keyboard.press('Enter'); await active(page, 'BrawlSetup');
+  const preset = () => page.evaluate(() => (window as any).__game.registry.get('saves').get().brawlPreset);
+  expect(await preset()).toMatchObject({ player: 'clover', cpu: 'mallow' });
+  await page.reload(); await active(page, 'Title'); await choose(page, 'Title', 'BARREL BRAWL'); await active(page, 'BrawlSetup');
+  expect(await preset()).toMatchObject({ player: 'clover', cpu: 'mallow' });
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('BrawlSetup').cpu)).toBe('mallow');
+  await choose(page, 'BrawlSetup', 'START MATCH'); await active(page, 'Brawl');
+  const fighters = await page.evaluate(() => {
+    const g = (window as any).__game, s = g.scene.getScene('Brawl');
+    return [s.human.id, s.cpu.id, g.registry.get('saves').get().selectedCharacter, s.cpu.teamMarker.text];
+  });
+  expect(fighters).toEqual(['clover', 'mallow', 'pip', 'CPU']);
+  await page.waitForFunction(() => {
+    const s = (window as any).__game.scene.getScene('Brawl'), c = s.cameras.main;
+    return c.zoom > 1.35 && Math.abs(s.hud.scaleX * c.zoom - 1) < 0.001 &&
+      c.worldView.contains(s.human.x, s.human.y) && c.worldView.contains(s.cpu.x, s.cpu.y);
+  });
+  await page.evaluate(() => (window as any).__game.registry.get('saves').patchSettings({ reducedMotion: true }));
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').cameras.main.zoom === 1);
+  expect(errors).toEqual([]); await context.close();
+});
+
+test('Clover rebounds on an actual downward aerial hit and displays the directional strike', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => {
+    const g = (window as any).__game; g.scene.stop('Title');
+    g.scene.start('Brawl', { arena: 'forest', difficulty: 'easy', player: 'clover', cpu: 'mallow' });
+  });
+  await active(page, 'Brawl');
+  await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Brawl'); s.startAt = 0;
+    s.cpu.body.reset(s.W * 0.5, s.floor); s.human.body.reset(s.W * 0.5, s.floor - 48);
+    s.cpu.invulnerableUntil = 0; s.nextThink = Infinity;
+    s.events.once('brawl-hit', () => { s.contact = [s.cpu.damage, s.human.body.velocity.y, s.human.swingArt.texture.key, s.human.swingArt.visible]; });
+  });
+  await page.keyboard.down('s'); await page.keyboard.press('k');
+  await page.waitForFunction(() => !!(window as any).__game.scene.getScene('Brawl').contact);
+  const [damage, rise, art, visible] = await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').contact);
+  expect(damage).toBe(9); expect(rise).toBeLessThan(-200); expect(art).toBe('slash-upward'); expect(visible).toBe(true);
+  await page.keyboard.up('s'); expect(errors).toEqual([]);
+});

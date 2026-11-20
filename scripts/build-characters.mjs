@@ -17,7 +17,34 @@ for (const [i, file] of frames.entries()) {
   composites.push({ input, left: i * 57 + Math.round((57 - w) / 2), top: 35 - h });
 }
 await sharp({ create: { width: 57 * 22, height: 45, channels: 4, background: '#00000000' } }).composite(composites).png().toFile('public/assets/sprites/fenn.png');
-await sharp('public/assets/sprites/pip.png').modulate({ hue: 155, saturation: 0.8, brightness: 1.08 }).png().toFile('public/assets/sprites/mallow.png');
+// Mallow carries the parcel on his back. Each anchor follows its pose, including
+// the four rolling frames, while the original sheet keeps the shared foot baseline.
+const fur = { f68f37: 'a5cee0', ad4e1a: '597d98', '4f1507': '263647',
+  f5b784: 'efe0be', ae6c37: 'ac9477', e03c28: 'de7661' };
+const pack = ['.dddddddd.', 'dlllltllld', 'dggggtgggd', 'dggggtgggd', 'dttttttttd',
+  'dggggtgggd', 'dbbbbtbbbd', '.dddddddd.'];
+const inks = { d: '452d2a', l: 'ffd294', g: 'cd854c', t: 'ffe9ad', b: '965536' };
+const parcel = Buffer.alloc(10 * 8 * 4);
+for (const [y, row] of pack.entries()) for (const [x, swatch] of [...row].entries()) {
+  if (swatch !== '.') parcel.write(inks[swatch] + 'ff', (y * 10 + x) * 4, 4, 'hex');
+}
+const packSprite = await sharp(parcel, { raw: { width: 10, height: 8, channels: 4 } }).png().toBuffer();
+const packPoses = [[23,18],[24,18],[24,18],[26,17],[26,17],[24,18],[24,18],[24,19],
+  [24,21],[30,16],[25,17],[30,19],[29,18],[28,19],[19,20],[21,11],[39,11],[40,26],
+  [24,12],[24,10],[24,20],[24,20]];
+const mallow = await sharp('public/assets/sprites/pip.png').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+for (let i = 0; i < mallow.data.length; i += 4) {
+  if (mallow.data[i + 3]) {
+    const color = fur[mallow.data.toString('hex', i, i + 3)];
+    if (color) mallow.data.write(color, i, 3, 'hex');
+  }
+}
+const packs = [];
+for (const [i, [x, y]] of packPoses.entries()) {
+  const angle = i >= 14 && i <= 17 ? (i - 14) * 90 : 0;
+  packs.push({ input: await sharp(packSprite).rotate(angle).png().toBuffer(), left: i * 57 + x, top: y });
+}
+await sharp(mallow.data, { raw: mallow.info }).composite(packs).png().toFile('public/assets/sprites/mallow.png');
 const nova = '<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0 10 5 15 2 12 7 16 8 11 10 14 15 9 12 8 16 6 11 1 14 4 9 0 8 5 6 2 1 7 4Z" fill="#ffe178"/><path d="M8 4 12 8 8 12 4 8Z" fill="#fff6d5"/></svg>';
 await sharp(Buffer.from(nova)).png().toFile('public/assets/ui/power_nova.png');
 const bunny = '_assets_src/sideview_fantasy/Sideview Fantasy Patreon Collection/Sprites/sunny-bunny/PNG';

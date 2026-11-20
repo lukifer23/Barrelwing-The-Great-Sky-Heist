@@ -2,7 +2,7 @@
 
 ## 2026-11-20
 
-Work resumed on local profiles, campaign scoring, courier skills, the Sorting Office trial, one-thumb controls and Brawl rules. Current verification is recorded in [VALIDATION.md](VALIDATION.md). The November 16 notes below describe the earlier installed milestone.
+This pass added local profiles, campaign scoring, courier skills, the Sorting Office trial, full-height one-thumb cover play, a four-fighter Brawl roster, signature moves and KO Race. Ordinary keyboard routes reached all 16 exits across the pass. Current verification is recorded in [VALIDATION.md](VALIDATION.md). The November 16 notes below describe the earlier installed milestone.
 
 ## Archived checkpoint — 2026-11-16
 

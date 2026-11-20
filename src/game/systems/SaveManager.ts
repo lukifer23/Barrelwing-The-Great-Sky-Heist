@@ -1,6 +1,6 @@
 import { TOTAL_LEVELS, TRIAL_IDS } from '../data/progression';
 import { emptyMastery, STAMPS, type Mastery } from '../data/mastery';
-import { emptyBrawlRecord, MATCH_LENGTH, type BrawlRecord, type BrawlRun } from '../data/brawl';
+import { emptyBrawlRecord, MATCH_LENGTH, type BrawlRecord, type BrawlRun, type BrawlOptions, type BrawlPreset } from '../data/brawl';
 import legacyObjectIds from '../data/legacyObjectIds.json';
 import { characterId, type CharacterId } from '../data/characters';
 import { Capacitor } from '@capacitor/core';
@@ -70,6 +70,7 @@ export interface ProfileData {
   selectedCharacter: CharacterId;
   brawl: BrawlRecord;
   brawlRun: BrawlRun | null;
+  brawlPreset: BrawlPreset | null;
 }
 
 export interface SaveData extends ProfileData {
@@ -135,7 +136,7 @@ function emptyProfile(): ProfileData {
     settings: defaultSettings(),
     upgrades: emptyUpgrades(),
     run: null,
-    cloverUnlocked: false, selectedCharacter: 'pip', brawl: emptyBrawlRecord(), brawlRun: null,
+    cloverUnlocked: false, selectedCharacter: 'pip', brawl: emptyBrawlRecord(), brawlRun: null, brawlPreset: null,
   };
 }
 
@@ -240,6 +241,7 @@ export class SaveManager {
       selectedCharacter: raw.selectedCharacter === 'clover' && !cloverUnlocked ? 'pip' : characterId(raw.selectedCharacter),
       brawl: { wins: Math.floor(finite(raw.brawl?.wins)), losses: Math.floor(finite(raw.brawl?.losses)), streak: Math.floor(finite(raw.brawl?.streak)), bestStreak: Math.floor(finite(raw.brawl?.bestStreak)), knockouts: Math.floor(finite(raw.brawl?.knockouts)) },
       brawlRun: this.cleanBrawlRun(raw.brawlRun),
+      brawlPreset: this.cleanBrawlPreset(raw.brawlPreset ?? raw.brawlRun),
     };
   }
 
@@ -325,14 +327,22 @@ export class SaveManager {
     return true;
   }
 
+  private static cleanBrawlPreset(raw: BrawlOptions | null | undefined): BrawlPreset | null {
+    if (!raw || !['forest', 'factory', 'storm'].includes(raw.arena) || !['easy', 'normal', 'hard'].includes(raw.difficulty)) return null;
+    return { arena: raw.arena, difficulty: raw.difficulty, player: characterId(raw.player), cpu: characterId(raw.cpu),
+      rules: raw.rules === 'timed' ? 'timed' : 'stock' };
+  }
+
+  static setBrawlPreset(preset: BrawlPreset): void { this.get().brawlPreset = preset; this.save(); }
+
   private static cleanBrawlRun(raw: BrawlRun | null | undefined): BrawlRun | null {
-    if (!raw || !['forest', 'factory', 'storm'].includes(raw.arena) || !['easy', 'normal', 'hard'].includes(raw.difficulty) || raw.playerStocks < 1 || raw.cpuStocks < 1) return null;
-    const rules = raw.rules === 'timed' ? 'timed' : 'stock';
+    const preset = this.cleanBrawlPreset(raw);
+    if (!raw || !preset || raw.playerStocks < 1 || raw.cpuStocks < 1) return null;
     const playerStocks = Math.max(1, Math.floor(finite(raw.playerStocks, 3, 3)));
     const cpuStocks = Math.max(1, Math.floor(finite(raw.cpuStocks, 3, 3)));
     // Released stock snapshots in overtime stored elapsed time but no explicit flag.
     const suddenDeath = raw.suddenDeath === true || (raw.suddenDeath === undefined && raw.elapsedMs > MATCH_LENGTH.stock);
-    return { rules, suddenDeath, arena: raw.arena, difficulty: raw.difficulty, player: characterId(raw.player), cpu: characterId(raw.cpu),
+    return { ...preset, suddenDeath,
       playerStocks, cpuStocks, playerKOs: Math.floor(finite(raw.playerKOs, 3 - cpuStocks)), cpuKOs: Math.floor(finite(raw.cpuKOs, 3 - playerStocks)),
       playerDamage: finite(raw.playerDamage, 0, 999), cpuDamage: finite(raw.cpuDamage, 0, 999), elapsedMs: finite(raw.elapsedMs) };
   }
@@ -368,13 +378,13 @@ export class SaveManager {
     const revision = this.get().revision;
     const settings = { ...this.get().settings };
     const selectedCharacter = this.get().selectedCharacter;
-    const { brawl, brawlRun, bonusBest, cloverUnlocked, slot, otherProfiles } = this.get();
+    const { brawl, brawlRun, brawlPreset, bonusBest, cloverUnlocked, slot, otherProfiles } = this.get();
     this.data = { ...emptyProfile(), slot, otherProfiles };
     // Reset is a newer save too; retain ordering against older recovery copies.
     this.data.revision = revision;
     this.data.settings = settings;
     this.data.selectedCharacter = selectedCharacter; this.data.cloverUnlocked = cloverUnlocked;
-    this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
+    this.data.brawlPreset = brawlPreset; this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
     this.save();
   }
 

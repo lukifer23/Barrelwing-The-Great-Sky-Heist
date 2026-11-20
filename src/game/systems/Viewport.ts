@@ -75,7 +75,7 @@ export function installViewport(game: Phaser.Game): void {
     const { width, height } = game.scale.gameSize;
     layoutHeight = height;
     for (const scene of game.scene.getScenes(true)) {
-      if (['Game', 'SkySprint', 'Title', 'Brawl', 'Controls'].includes(scene.scene.key)) continue;
+      if (['Game', 'SkySprint', 'Title', 'Brawl', 'BrawlSetup', 'BrawlRoster', 'Controls'].includes(scene.scene.key)) continue;
       const key = `${width}:${height}:${scene.children.length}:${scene.sys.settings.status}`;
       const last = scene.children.list.at(-1);
       if (seen.get(scene) === key && lastObject.get(scene) === last) continue;

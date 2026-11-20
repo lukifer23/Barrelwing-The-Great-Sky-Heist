@@ -21,6 +21,7 @@ export class BrawlScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.TileSprite;
   private barrels!: Phaser.GameObjects.Group;
   private scenery!: Phaser.GameObjects.TileSprite;
+  private hud!: Phaser.GameObjects.Container;
   private humanHud!: Phaser.GameObjects.Text;
   private cpuHud!: Phaser.GameObjects.Text;
   private timerHud!: Phaser.GameObjects.Text;
@@ -69,7 +70,8 @@ export class BrawlScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup(); this.barrels = this.add.group();
     for (const plate of ARENA_PLATFORMS[this.options.arena]) this.addPlate(...plate);
     this.human = new Fighter(this, this.W * 0.34, this.floor - 30, this.options.player, false);
-    this.cpu = new Fighter(this, this.W * 0.66, this.floor - 30, this.options.cpu, true); this.cpu.facing = -1; this.cpu.setFlipX(true);
+    this.cpu = new Fighter(this, this.W * 0.66, this.floor - 30, this.options.cpu, true); this.cpu.face(-1);
+    if (this.options.cpu === this.options.player) this.cpu.setTint(0xffa69d);
     for (const fighter of [this.human, this.cpu]) {
       this.physics.add.collider(fighter, this.platforms, undefined, (_f, platform) => {
         const body = (platform as Phaser.GameObjects.TileSprite).body as Phaser.Physics.Arcade.StaticBody;
@@ -86,6 +88,7 @@ export class BrawlScene extends Phaser.Scene {
     this.cpuHud = this.add.text(this.W - 12, 12, '', { fontFamily: FONT_SMALL, fontSize: '10px', color: '#ffb0a0', align: 'right', backgroundColor: '#101528', padding: { x: 8, y: 5 } }).setOrigin(1, 0).setDepth(100);
     this.timerHud = this.add.text(this.W / 2, 18, '', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060', backgroundColor: '#101528', padding: { x: 6, y: 4 } }).setOrigin(0.5, 0).setDepth(101);
     this.banner = this.add.text(this.W / 2, 94, ARENA_NAMES[this.options.arena], { fontFamily: '"Press Start 2P"', fontSize: '10px', color: '#f0c060', backgroundColor: '#101528', align: 'center', padding: { x: 8, y: 6 }, wordWrap: { width: this.W - 40 } }).setOrigin(0.5).setDepth(110);
+    this.hud = this.add.container(0, 0, [this.humanHud, this.cpuHud, this.timerHud, this.banner]).setScrollFactor(0).setDepth(100);
     const saved = this.options.resume ? SaveManager.get().brawlRun : null;
     if (saved) {
       this.human.stocks = saved.playerStocks; this.cpu.stocks = saved.cpuStocks;
@@ -137,12 +140,32 @@ export class BrawlScene extends Phaser.Scene {
     this.banner?.setFontSize(cover ? 15 : 10);
     if (this.timerHud) this.timerHud.x = this.W / 2;
     if (this.banner) this.banner.setX(this.W / 2).setWordWrapWidth(this.W - 40);
+    this.frameFighters(1);
+  }
+
+  private frameFighters(blend: number): void {
+    const camera = this.cameras.main;
+    if (this.H <= this.W * 1.3 || SaveManager.get().settings.reducedMotion) {
+      if (camera.zoom !== 1 || camera.scrollX || camera.scrollY) {
+        camera.setZoom(1).setScroll(0, 0); this.hud.setScale(1).setPosition(0, 0);
+      }
+      return;
+    }
+    const span = Math.abs(this.human.x - this.cpu.x) + 130;
+    const zoom = Phaser.Math.Linear(camera.zoom, Phaser.Math.Clamp(this.W / span, 1, 1.85), blend);
+    const halfW = this.W / (2 * zoom), halfH = this.H / (2 * zoom);
+    const x = Phaser.Math.Clamp((this.human.x + this.cpu.x) / 2, halfW, this.W - halfW);
+    const y = Phaser.Math.Clamp((this.human.y + this.cpu.y) / 2 - halfH * 0.20, halfH, this.H - halfH);
+    camera.setZoom(zoom).setScroll(Phaser.Math.Linear(camera.scrollX, x - this.W / 2, blend),
+      Phaser.Math.Linear(camera.scrollY, y - this.H / 2, blend));
+    // Cancel the world zoom around the viewport center for the fixed match readouts.
+    this.hud.setScale(1 / zoom).setPosition(this.W / 2 - halfW, this.H / 2 - halfH);
   }
 
   override update(_time: number, delta: number): void {
     const time = playTime(this);
     if (this.ended) return;
-    const dt = Math.min(delta, 40); this.inputMgr.update(dt);
+    const dt = Math.min(delta, 40); this.frameFighters(1 - Math.exp(-7 * dt / 1000)); this.inputMgr.update(dt);
     if (this.inputMgr.pressedPause) { this.pauseForApp(); return; }
     if (time < this.startAt) {
       this.banner.setText(`${ARENA_NAMES[this.options.arena]}\n${Math.ceil((this.startAt - time) / 1000)}`);
@@ -193,7 +216,8 @@ export class BrawlScene extends Phaser.Scene {
       intent.jump = true; this.nextCpuJump = time + (offstage ? 340 : 650); this.cpuJumpHeldUntil = time + 300;
     }
     intent.heldJump = offstage || dy < -35 || time < this.cpuJumpHeldUntil;
-    const reach = this.options.difficulty === 'easy' ? 43 : 65;
+    if (!offstage && Math.abs(dx) > 4) this.cpu.face(dx);
+    const reach = this.cpu.style.reach + this.cpu.style.radius - (this.options.difficulty === 'easy' ? 42 : 22);
     intent.attack = time >= this.nextCpuAttack && !this.cpu.stunned && Math.abs(dx) < reach && Math.abs(dy) < 62;
     if (intent.attack) this.nextCpuAttack = time + (this.options.difficulty === 'easy' ? 1200 : this.options.difficulty === 'hard' ? 650 : 950);
     intent.aim = dy < -28 ? -1 : dy > 35 ? 1 : 0;
