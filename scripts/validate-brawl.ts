@@ -12,10 +12,18 @@ const rules = option('rules', 'stock');
 if (rules !== 'stock' && rules !== 'timed') throw new Error('Use --rules=stock or --rules=timed.');
 const difficulties: BrawlDifficulty[] = ['easy', 'normal', 'hard'];
 const arenas: ThemeId[] = ['forest', 'factory', 'storm'];
-const cases = characters.flatMap((player, i) => difficulties.map((difficulty, j) => ({ player, rules, cpu: COURIERS[(COURIERS.indexOf(player) + j + 1) % COURIERS.length], difficulty, arena: arenas[(i + j) % 3] })));
-const harness = await prepareBrowserRun('brawl', Number(option('port', '5177')), { seconds, cases, purpose: 'Ordinary keyboard matches; controller outcomes are not human balance scores.' });
+const opponent = option('cpu', ''), arena = option('arena', ''), difficulty = option('difficulty', '');
+if (opponent && !COURIERS.includes(opponent as CharacterId) || arena && !arenas.includes(arena as ThemeId) ||
+    difficulty && !difficulties.includes(difficulty as BrawlDifficulty)) throw new Error('Unknown opponent, arena or difficulty.');
+const display = option('display', 'desktop'), record = option('video', 'false') === 'true';
+if (!['desktop', 'unfolded'].includes(display)) throw new Error('Use --display=desktop or unfolded.');
+const cases = characters.flatMap((player, i) => difficulties.filter(value => !difficulty || difficulty === value).map((difficulty, j) => ({ player, rules, cpu: opponent || COURIERS[(COURIERS.indexOf(player) + j + 1) % COURIERS.length], difficulty, arena: arena || arenas[(i + j) % 3] })));
+const harness = await prepareBrowserRun('brawl', Number(option('port', '5177')), { seconds, cases, display, purpose: 'Ordinary keyboard matches; controller outcomes are not human balance scores.' });
 const { browser, directory, url } = harness;
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const viewport = display === 'unfolded' ? { width: 832, height: 749 } : { width: 1280, height: 720 };
+const context = await browser.newContext({ viewport, hasTouch: display === 'unfolded', isMobile: display === 'unfolded',
+  recordVideo: record ? { dir: directory, size: viewport } : undefined });
+const page = await context.newPage();
 const errors: string[] = [], results: { finished: boolean; [key: string]: unknown }[] = [];
 page.on('pageerror', error => errors.push(error.message));
 const held = new Set<string>();
@@ -34,6 +42,32 @@ try {
       game.scene.start('Brawl', options);
     }, options);
     await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').human?.active);
+    await page.evaluate(() => {
+      const g = (window as any).__game, scene = g.scene.getScene('Brawl');
+      const report = { swings: [0, 0], hits: [0, 0], parries: [0, 0], interruptedWindups: [0, 0], punishedMisses: [0, 0], ringOuts: [] as object[] };
+      const last = [{ at: -10000, connected: false }, { at: -10000, connected: false }];
+      g.registry.set('matchObservation', report);
+      const observeSwing = (f: any) => {
+        const side = Number(f.isCpu);
+        report.swings[side]++; last[side] = { at: f.now, connected: false };
+      };
+      const observeHit = (f: any) => {
+        const target = Number(f.isCpu), source = 1 - target, age = f.now - last[target].at;
+        report.hits[source]++; last[source].connected = true;
+        if (!last[target].connected && age < f.attackWindup) report.interruptedWindups[target]++;
+        else if (!last[target].connected && age >= f.attackWindup + f.style.activeMs && age < f.attackCooldown) report.punishedMisses[target]++;
+      };
+      const observeParry = (f: any) => { const side = Number(f.isCpu); report.parries[side]++; last[1 - side].connected = true; };
+      const observeRingOut = (f: any) => report.ringOuts.push({ side: f.isCpu ? 'cpu' : 'player',
+        at: Math.round(scene.elapsedMs), x: Math.round(f.x), yFromFloor: Math.round(f.y - scene.floor), damage: f.damage,
+        boundary: f.x < -110 ? 'left' : f.x > scene.W + 110 ? 'right' : f.y > scene.floor ? 'bottom' : 'top',
+        airJumps: f.airJumps, liftReady: f.canLift && f.dashProgress === 1, stunned: f.stunned });
+      const observers = { 'brawl-swing': observeSwing, 'brawl-hit': observeHit, 'brawl-parry': observeParry, 'brawl-ring-out': observeRingOut };
+      for (const [event, handler] of Object.entries(observers)) scene.events.on(event, handler);
+      scene.events.once('shutdown', () => {
+        for (const [event, handler] of Object.entries(observers)) scene.events.off(event, handler);
+      });
+    });
     const started = Date.now(), trace: unknown[] = [];
     let jumpAt = -9999, jumpUntil = 0, dashUntil = 0, nextLog = 0;
     console.log(`Starting ${options.player} vs ${options.cpu}, ${options.difficulty}, ${options.arena}.`);
@@ -75,12 +109,12 @@ try {
     for (const name of [...held]) await key(name, false);
     const outcome = await page.evaluate(() => {
       const game = (window as any).__game;
-      return { result: game.scene.isActive('BrawlResults') ? game.scene.getScene('BrawlResults').result : null, record: { ...game.registry.get('saves').get().brawl } };
+      return { combat: game.registry.get('matchObservation'), result: game.scene.isActive('BrawlResults') ? game.scene.getScene('BrawlResults').result : null, record: { ...game.registry.get('saves').get().brawl } };
     });
     results.push({ ...options, finished, wallMs: Date.now() - started, ...outcome, trace });
     await page.screenshot({ path: `${directory}/${options.player}-${options.difficulty}.png` });
     await writeFile(`${directory}/report.json`, JSON.stringify({ errors, results }, null, 2));
-    console.log(`${finished ? 'FINISHED' : 'INCOMPLETE'} ${options.player}/${options.difficulty}: ${outcome.result?.won ? 'human controller win' : 'human controller loss or incomplete'}. Report: ${directory}`);
+    console.log(`${finished ? 'FINISHED' : 'INCOMPLETE'} ${options.player}/${options.difficulty}: ${!finished ? 'time limit or error' : outcome.result?.won ? 'controller win' : 'CPU win'}. Report: ${directory}`);
   }
-} finally { await harness.close(); }
+} finally { await context.close(); await harness.close(); }
 if (errors.length || results.some(result => !result.finished)) process.exitCode = 1;

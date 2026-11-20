@@ -5,7 +5,7 @@ import { attackPose, FIGHT_STYLES, swipeFrame } from '../data/brawl';
 import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
-export interface FightInput { move: number; jump: boolean; heldJump: boolean; dash: boolean; attack: boolean; aim: number; dashAim?: number; attackAim?: number }
+export interface FightInput { move: number; face?: number; jump: boolean; heldJump: boolean; dash: boolean; attack: boolean; aim: number; dashAim?: number; attackAim?: number }
 export const neutralFightInput = (): FightInput => ({ move: 0, jump: false, heldJump: false, dash: false, attack: false, aim: 0 });
 
 export class Fighter extends Phaser.Physics.Arcade.Sprite {
@@ -81,7 +81,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     if (this.grounded) { this.liftSpent = false; this.airJumps = 2; this.groundAt = now; }
     this.setAlpha(now < this.invulnerableUntil ? 0.45 + Math.abs(Math.sin(now / 75)) * 0.5 : 1);
     if (now >= this.stunUntil) {
-      if (Math.abs(input.move) > 0.1) this.face(input.move);
+      if (input.face || Math.abs(input.move) > 0.1) this.face(input.face || input.move);
       const target = this.guarding ? 0 : input.move * 180 * this.courier.speed;
       if (now < this.dashUntil) this.body.velocity.x = this.facing * 390;
       else this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, target, 1 - Math.exp(-(this.grounded ? 18 : 8) * dt));
@@ -125,6 +125,8 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       if (!input.heldJump && this.body.velocity.y < -50) this.body.velocity.y += 700 * dt;
     }
     this.animateFighter(dt);
+    const label = this.isCpu && this.windingUp ? this.style.cue : this.isCpu ? 'CPU' : 'P1';
+    if (this.teamMarker.text !== label) this.teamMarker.setText(label);
     this.teamMarker.setPosition(this.x + (this.isCpu ? 9 : -9), this.y - this.body.height - 6);
     this.updateCue();
   }
@@ -183,6 +185,9 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     if (target.guarding) {
       this.stunUntil = this.now + 320;
       this.body.velocity.x = this.x < target.x ? -125 : 125;
+      // Successful contact opens a counterattack. An empty guard still lasts
+      // its full duration and both fighters spend the normal dash recharge.
+      target.guardUntil = target.now;
       target.scene.events.emit('brawl-parry', target);
       return;
     }

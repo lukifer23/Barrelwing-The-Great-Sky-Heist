@@ -8,13 +8,15 @@ import { CHARACTERS, type CharacterId } from '../src/game/data/characters';
 // An acceptance aid, separate from the fast regression suite. The controller
 // reads the actual game and sends keyboard input. It never moves actors,
 // changes health, grants powers, completes a stage, or bypasses collisions.
+const campaign = option('campaign', 'false') === 'true';
 const ids = option('levels', '1,2,3,4,5,6,7,8,9').split(',').map(Number);
 const seconds = Number(option('seconds', '120'));
 const character = option('character', 'pip') as CharacterId;
 const collectFlightGems = option('gems', 'false') === 'true';
 if (!Object.hasOwn(CHARACTERS, character) || !Number.isFinite(seconds) || seconds < 5 || ids.some(id => !LEVELS.some(level => level.id === id))) throw new Error('Use valid --levels=1,2 --seconds=120 --character=pip options.');
+if (campaign && (ids.join(',') !== '1,2,3,4,5,6,7,8,9' || character === 'clover')) throw new Error('A fresh campaign starts at stage 1 with an available courier.');
 const port = Number(option('port', '5175'));
-const harness = await prepareBrowserRun('routes', port, { ids, character, seconds, collectFlightGems });
+const harness = await prepareBrowserRun(campaign ? 'campaign' : 'routes', port, { campaign, ids, character, seconds, collectFlightGems });
 const { browser, directory, url } = harness;
 const results: { cleared: boolean; errors: string[]; [key: string]: unknown }[] = [];
 
@@ -87,22 +89,51 @@ function flightTap(state: Awaited<ReturnType<typeof read>>, target: number): boo
   return first;
 }
 
+async function clickChoice(page: Page, scene: string, label: string) {
+  const point = await page.waitForFunction(({ scene, label }) => {
+    const g = (window as any).__game, s = g.scene.getScene(scene);
+    if (!s.scene.isActive()) return false;
+    const obj = s.children.list.find((o: any) => o.input?.enabled && o.text?.startsWith(label));
+    if (!obj) return false;
+    const b = obj.getBounds(), c = g.canvas.getBoundingClientRect();
+    return { x: c.left + b.centerX * c.width / g.scale.width, y: c.top + b.centerY * c.height / g.scale.height };
+  }, { scene, label });
+  const xy = await point.jsonValue();
+  if (!xy) throw new Error('Missing choice ' + label);
+  await page.mouse.click(xy.x, xy.y);
+}
+
+const viewport = { width: 1280, height: 720 };
+const campaignPage = campaign ? await browser.newPage({ viewport }) : undefined;
 try {
   for (const id of ids) {
     const level = LEVELS.find(l => l.id === id)!;
-    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-    const page = await context.newPage();
+    const page = campaignPage ?? await browser.newPage({ viewport });
     const errors: string[] = [], trace: unknown[] = [];
-    page.on('pageerror', error => errors.push(error.message));
-    await page.goto(url);
-    await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
-    // Stage selection is the only setup operation; all route actions use keys.
-    await page.evaluate(({ id, character }) => {
-      const game = (window as any).__game;
-      game.registry.get('saves').selectCharacter(character);
-      game.scene.stop('Title'); game.scene.start('Game', { levelId: id });
-    }, { id, character });
-    await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').player?.active);
+    const onError = (error: Error) => errors.push(error.message);
+    page.on('pageerror', onError);
+    if (!campaign || id === 1) {
+      await page.goto(url);
+      await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
+    }
+    if (!campaign) {
+      await page.evaluate(({ id, character }) => {
+        const game = (window as any).__game;
+        game.registry.get('saves').selectCharacter(character);
+        game.scene.stop('Title'); game.scene.start('Game', { levelId: id });
+      }, { id, character });
+    } else if (id === 1) {
+      if (character !== 'pip') {
+        await clickChoice(page, 'Title', 'COURIERS');
+        await clickChoice(page, 'Characters', CHARACTERS[character].name + '  /');
+        await page.keyboard.press('Escape');
+      }
+      await clickChoice(page, 'Title', 'NEW GAME');
+    }
+    await page.waitForFunction(id => {
+      const s = (window as any).__game.scene.getScene('Game');
+      return s.scene.isActive() && s.level?.id === id && s.player?.active;
+    }, id);
     const exit = level.objects.find(o => o.t === 'exit')!;
     const exitX = (exit.x + 0.5) * level.tile;
     const ladders = level.objects.filter(o => o.t === 'ladder').sort((a, b) => b.y - a.y);
@@ -200,12 +231,35 @@ try {
     }
     for (const name of [...held]) await key(name, false);
     await delay(state.done ? 2200 : 100);
-    const result = { id, name: level.name, character, cleared: state.done, wallMs: Date.now() - began, continues, errors, final: state, trace };
+    let progression;
+    if (campaign && state.done) {
+      await page.waitForFunction(key => (window as any).__game.scene.isActive(key), id === 9 ? 'Ending' : 'Results');
+      progression = await page.evaluate(() => {
+        const store = (window as any).__game.registry.get('saves'), save = store.get();
+        return { unlocked: save.unlocked, clover: save.cloverUnlocked, shards: store.shards, vitality: save.upgrades.vitality,
+          completed: save.completedGame, courier: save.selectedCharacter };
+      });
+    }
+    const result = { id, progression, name: level.name, character, cleared: state.done, wallMs: Date.now() - began, continues, errors, final: state, trace };
     results.push(result);
     await page.screenshot({ path: `${directory}/stage-${id}.png` });
     await writeFile(`${directory}/report.json`, JSON.stringify(results, null, 2));
+    if (campaign) await page.context().storageState({ path: `${directory}/profile.json` });
     console.log(`${state.done ? 'CLEARED' : 'INCOMPLETE'} ${id}: ${level.name}; ${state.deaths} deaths, ${continues} continues, ${state.gems.filter(Boolean).length}/3 gems. Report: ${directory}`);
-    await context.close();
+    page.off('pageerror', onError);
+    if (!campaign) await page.close();
+    else if (!state.done || errors.length) break;
+    else if (id < 9 && progression) {
+      if (progression.vitality === 0 && progression.shards >= 3) {
+        await clickChoice(page, 'Results', 'WORLD MAP');
+        await clickChoice(page, 'WorldMap', 'U · UPGRADES');
+        await clickChoice(page, 'Workshop', 'MORE HEARTS');
+        await page.waitForFunction(() => (window as any).__game.registry.get('saves').get().upgrades.vitality === 1);
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => (window as any).__game.scene.isActive('WorldMap'));
+        await page.keyboard.press('Enter');
+      } else await clickChoice(page, 'Results', 'NEXT STAGE');
+    }
   }
 } finally {
   await harness.close();

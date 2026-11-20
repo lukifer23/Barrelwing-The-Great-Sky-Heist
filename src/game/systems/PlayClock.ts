@@ -6,10 +6,17 @@ const clocks = new WeakMap<Phaser.Scene, { now: number }>();
 export function installPlayClock(scene: Phaser.Scene, maxStep: number): void {
   const clock = { now: 0 };
   clocks.set(scene, clock);
-  const advance = (_time: number, delta: number) => { clock.now += Math.min(Math.max(delta, 0), maxStep); };
+  const step = (delta: number) => Math.min(Math.max(delta, 0), maxStep);
+  const advance = (_time: number, delta: number) => { clock.now += step(delta); };
+  // Arcade runs before the scene reads input. Keep its fixed-step catch-up
+  // within the same elapsed time as movement, cooldowns and flight gates.
+  scene.physics.disableUpdate();
+  const updatePhysics = (time: number, delta: number) => scene.physics.world.update(time, step(delta));
+  scene.events.on(Phaser.Scenes.Events.UPDATE, updatePhysics);
   scene.events.on(Phaser.Scenes.Events.PRE_UPDATE, advance);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     scene.events.off(Phaser.Scenes.Events.PRE_UPDATE, advance);
+    scene.events.off(Phaser.Scenes.Events.UPDATE, updatePhysics);
     clocks.delete(scene);
   });
 }

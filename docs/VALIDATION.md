@@ -2,6 +2,12 @@
 
 The initial review covered the original application source, authored stages, asset manifests, build scripts, README, credits, runtime assets, and package configuration. Upstream source archives are optional build inputs, not part of the application source maintained here.
 
+## Reproducing the unfolded and campaign checks
+
+- With the Fold7 open, run `ANDROID_SERIAL="$(adb -d get-serialno)" npm run test:device -- --unfolded=true --sample-seconds=210 --video=true`. The runner reads Android’s physical posture, uses the inner display for touch gestures, checks control bounds, and saves a game-canvas recording plus frame intervals under `artifacts/device`. The flight segment starts the authored trial at spawn. The roster and match selections use the on-screen menus. The runner restores the original profile in memory and on disk.
+- Run `npm run test:routes -- --campaign=true --character=mallow --seconds=280` to start with empty browser storage and follow the normal campaign menus. The runner buys the first heart upgrade when affordable and writes a progress report and profile snapshot after each stage.
+- Run `npm run test:brawl -- --players=clover --cpu=mallow --difficulty=hard --arena=forest --display=unfolded --video=true` to compare the keyboard controller in Chromium at the inner display’s CSS dimensions. The report records committed swings, contacts, parries, interrupted attacks and the boundary crossed for each ring-out.
+
 ## Corrected root causes
 
 - All three stage gems previously shared collection slot zero. Slots now follow authored gem order.

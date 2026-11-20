@@ -166,6 +166,23 @@ test('active gameplay time follows elapsed display time', async ({ page }) => {
   expect(sample.simulated).toBeLessThanOrEqual(sample.wall + 48);
 });
 
+test('a delayed campaign frame advances fixed-step physics with the gameplay clock', async ({ page }) => {
+  const errors = await boot(page); await start(page);
+  const sample = await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game'), world = scene.physics.world;
+    let seconds = 0;
+    const count = (step: number) => { seconds += step; };
+    world.on('worldstep', count);
+    const before = scene.player.now;
+    scene.sys.step(performance.now(), 500);
+    world.off('worldstep', count);
+    return { physicsMs: seconds * 1000, clockMs: scene.player.now - before };
+  });
+  expect(sample.clockMs).toBeCloseTo(48);
+  expect(Math.abs(sample.physicsMs - sample.clockMs)).toBeLessThan(1000 / 60);
+  expect(errors).toEqual([]);
+});
+
 test('Brawl recovery lift spends its charge, and a well-timed parry interrupts a live CPU swing', async ({ page }) => {
   const errors = await boot(page);
   await choose(page, 'Title', 'BARREL BRAWL'); await active(page, 'BrawlSetup');
@@ -182,11 +199,17 @@ test('Brawl recovery lift spends its charge, and a well-timed parry interrupts a
     s.human.body.reset(s.W / 2 - 22, s.floor); s.cpu.body.reset(s.W / 2 + 22, s.floor);
     s.cpu.facing = -1; s.nextThink = 0; s.nextCpuAttack = 0; s.human.dashReady = 0;
     s.human.invulnerableUntil = 0; s.cpu.attackReady = 0;
-    s.parries = 0; s.events.on('brawl-parry', (f: any) => { if (f === s.human) s.parries++; });
+    s.parries = 0;
+    s.events.on('brawl-parry', (f: any) => {
+      if (f !== s.human) return;
+      s.parries++;
+      s.counterWindow = !f.guarding && s.cpu.stunned && f.dashProgress < 1;
+    });
   });
   await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').cpu.windingUp);
   await page.keyboard.press('j');
   await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').parries === 1);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').counterWindow)).toBe(true);
   expect(await page.evaluate(() => (window as any).__game.scene.getScene('Brawl').human.damage)).toBe(0);
   await page.keyboard.up('s'); expect(errors).toEqual([]);
 });

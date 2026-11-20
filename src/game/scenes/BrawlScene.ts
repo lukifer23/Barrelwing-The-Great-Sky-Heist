@@ -96,7 +96,7 @@ export class BrawlScene extends Phaser.Scene {
       this.knockedOut = saved.playerKOs; this.cpuKOs = saved.cpuKOs; this.suddenDeath = saved.suddenDeath; this.nextHazard = this.elapsedMs + 12000;
     }
     this.startAt = playTime(this) + 2500; this.human.invulnerableUntil = this.startAt; this.cpu.invulnerableUntil = this.startAt;
-    this.events.on('brawl-parry', this.parry, this); this.events.on('brawl-hit', this.hit, this);
+    this.events.on('brawl-swing', this.swing, this); this.events.on('brawl-parry', this.parry, this); this.events.on('brawl-hit', this.hit, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.resumeMatch, this);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resizeArena, this);
     this.game.events.on(Phaser.Core.Events.BLUR, this.appPause); this.game.events.on(Phaser.Core.Events.HIDDEN, this.appPause);
@@ -213,37 +213,78 @@ export class BrawlScene extends Phaser.Scene {
     const left = base.x - base.width / 2, right = base.x + base.width / 2;
     const offstage = this.cpu.x < left || this.cpu.x > right || this.cpu.y > this.floor + 20;
     const hard = this.options.difficulty === 'hard';
-    const targetX = offstage ? this.W / 2 : this.options.difficulty === 'easy' ? this.human.x
-      : Phaser.Math.Clamp(this.human.x, left + 18, right - 18);
-    intent.move = Math.abs(targetX - this.cpu.x) < 36 ? 0 : Math.sign(targetX - this.cpu.x);
-    const recoverJump = offstage && (this.cpu.body.velocity.y > -70 || this.cpu.grounded);
-    const pursuitJump = !offstage && (dy < -50 || this.cpu.grounded && Math.abs(dx) > 85 && Math.abs(dx) < 170);
-    if ((recoverJump || pursuitJump) && time > this.nextCpuJump) {
-      intent.jump = true; this.nextCpuJump = time + (offstage ? 340 : 650); this.cpuJumpHeldUntil = time + 300;
-    }
-    intent.heldJump = offstage || dy < -35 || time < this.cpuJumpHeldUntil;
-    if (!offstage && Math.abs(dx) > 4) this.cpu.face(dx);
-    const reach = this.cpu.style.reach + this.cpu.style.radius - (this.options.difficulty === 'easy' ? 42 : 22);
-    intent.attack = time >= this.nextCpuAttack && !this.cpu.stunned && Math.abs(dx) < reach && Math.abs(dy) < 62;
-    if (intent.attack) this.nextCpuAttack = time + (this.options.difficulty === 'easy' ? 1200 : this.options.difficulty === 'hard' ? 650 : 950);
-    intent.aim = dy < -28 ? -1 : dy > 35 ? 1 : 0;
-    intent.dashAim = 0;
-    if (!offstage && hard && Math.abs(targetX - this.cpu.x) > 170 && time > this.nextCpuDash) {
-      intent.dash = true; this.nextCpuDash = time + 2600;
-    }
-    if (offstage && this.cpu.y > this.floor && this.cpu.canLift && this.cpu.dashProgress === 1) {
-      intent.dashAim = -1; intent.dash = true; intent.heldJump = true;
-    } else if (hard && !offstage && (this.human.windingUp || this.human.attacking) && Math.abs(dx) < this.human.style.reach + 32 && Math.abs(dy) < 45) {
-      if (this.cpu.dashProgress === 1) {
-        intent.dashAim = 1; intent.dash = true; intent.attack = false;
-      } else if (!this.cpu.attacking && !this.cpu.windingUp) {
-        const retreatX = Phaser.Math.Clamp(this.cpu.x - Math.sign(dx) * 35, left + 18, right - 18);
-        intent.move = Math.abs(retreatX - this.cpu.x) > 6 ? Math.sign(retreatX - this.cpu.x) : 0;
+    const cpu = this.cpu, rival = this.human;
+    const headroom = cpu.y > this.floor - 245;
+    const airborne = !cpu.grounded;
+    intent.aim = 0; intent.dashAim = 0;
+    if (offstage) {
+      intent.move = Math.sign(this.W / 2 - cpu.x);
+      intent.face = intent.move;
+      const falling = cpu.body.velocity.y > -70;
+      const low = cpu.y > this.floor + 55;
+      const lift = falling && cpu.canLift && cpu.dashProgress === 1 && (low || cpu.airJumps === 0 && cpu.y > this.floor);
+      intent.heldJump = headroom && (falling || cpu.body.velocity.y < 0);
+      if (lift) { intent.dash = true; intent.dashAim = -1; }
+      else if (headroom && falling && time > this.nextCpuJump && (cpu.grounded || cpu.airJumps > 0)) {
+        intent.jump = true; this.nextCpuJump = time + 240;
       }
+      this.cpuIntent = intent; return intent;
+    }
+
+    const easy = this.options.difficulty === 'easy';
+    const centerSide = rival.x >= this.W / 2 ? -1 : 1;
+    const rivalOffstage = rival.x < left || rival.x > right || rival.y > this.floor + 20;
+    const missedSwing = !rival.hitThisSwing && time >= rival.attackAt + rival.attackWindup + rival.style.activeMs && rival.attackProgress < 1;
+    const counter = rival.stunned || missedSwing;
+    const spacing = cpu.id === 'fenn' && counter ? 10 : cpu.id === 'clover' ? 16 : cpu.style.reach;
+    // Set up on the stage side of an escaping opponent to launch toward the edge.
+    const offset = rivalOffstage || Math.abs(dx) < cpu.style.reach * 1.4 ? centerSide : -Math.sign(dx);
+    const targetX = Phaser.Math.Clamp(rival.x + offset * spacing, left + 15, right - 15);
+    intent.move = Math.abs(targetX - cpu.x) > 9 ? Math.sign(targetX - cpu.x) : 0;
+    intent.face = Math.abs(dx) > 3 ? Math.sign(dx) : cpu.facing;
+
+    const pursue = !rivalOffstage && dy < -46 && Math.abs(dx) < 140;
+    const vault = cpu.id === 'clover' && cpu.grounded && !rivalOffstage && Math.abs(dx) < 72 && Math.abs(dy) < 35;
+    intent.heldJump = headroom && (time < this.cpuJumpHeldUntil || pursue);
+    if (headroom && (pursue || vault) && time > this.nextCpuJump && (cpu.grounded || cpu.airJumps > 0 && cpu.body.velocity.y > -45)) {
+      intent.jump = true; intent.heldJump = true;
+      this.nextCpuJump = time + (vault ? 1000 : 390); this.cpuJumpHeldUntil = time + (vault ? 150 : 260);
+    }
+
+    // Anticipate travel during the visible wind-up without reading player input.
+    const lead = easy ? 0 : hard ? 0.14 : 0.08;
+    const futureY = dy + Phaser.Math.Clamp((rival.body.velocity.y - cpu.body.velocity.y) * lead, -32, 32);
+    const futureX = dx + Phaser.Math.Clamp((rival.body.velocity.x - cpu.body.velocity.x) * lead, -30, 30);
+    const vertical = Math.abs(futureX) < 40 && (futureY < -24 || futureY > 25);
+    intent.aim = vertical ? Math.sign(futureY) : 0;
+    const reach = cpu.style.reach + cpu.style.radius - (easy ? 23 : 8);
+    const inRange = vertical ? Math.abs(futureY) < 72 : Math.abs(futureX) < reach && Math.abs(futureY) < 38;
+    const readyTarget = time + cpu.attackWindup >= rival.invulnerableUntil && !rival.guarding;
+    intent.attack = inRange && readyTarget && !cpu.stunned && !cpu.guarding && time >= this.nextCpuAttack;
+    if (cpu.id === 'clover' && intent.jump && !airborne && !counter) intent.attack = false;
+
+    if (hard && !cpu.stunned && (rival.windingUp || rival.attacking) && !rival.hitThisSwing &&
+        Math.abs(dx) < rival.style.reach + rival.style.radius && Math.abs(dy) < 42 && !cpu.attacking) {
+      if (cpu.dashProgress === 1) {
+        intent.dashAim = 1; intent.dash = true; intent.attack = false;
+      } else if (!cpu.windingUp && !counter) {
+        const retreatX = Phaser.Math.Clamp(cpu.x - Math.sign(dx) * 35, left + 15, right - 15);
+        intent.move = Math.abs(retreatX - cpu.x) > 6 ? Math.sign(retreatX - cpu.x) : 0;
+      }
+    } else if (hard && !rivalOffstage && cpu.dashProgress === 1 && time >= this.nextCpuDash &&
+        (Math.abs(dx) > 170 || cpu.id === 'fenn' && counter && Math.abs(dx) > reach && Math.abs(dx) < 130)) {
+      intent.dash = true; this.nextCpuDash = time + 1700;
     }
     this.cpuIntent = intent; return intent;
   }
+  private swing(fighter: Fighter): void {
+    if (!fighter.isCpu) return;
+    const delay = this.options.difficulty === 'easy' ? 620 : this.options.difficulty === 'normal' ? 220 : 45;
+    this.nextCpuAttack = fighter.now + fighter.attackCooldown + delay;
+  }
+
   private parry(fighter: Fighter): void {
+    if (fighter.isCpu) { this.nextThink = 0; this.nextCpuAttack = 0; }
     this.fx.sparkle(fighter.x, fighter.y - 16, 0x9ff5ff);
     AudioManager.sfx('bump', { volume: 0.45 });
     this.showBanner('PARRY!', 550);
@@ -267,6 +308,7 @@ export class BrawlScene extends Phaser.Scene {
 
   private resolveRingOuts(out: Fighter[]): void {
     for (const fighter of out) {
+      this.events.emit('brawl-ring-out', fighter);
       if (fighter.isCpu) this.knockedOut++;
       else this.cpuKOs++;
       if (!this.timed || this.suddenDeath) fighter.stocks--;
@@ -313,7 +355,7 @@ export class BrawlScene extends Phaser.Scene {
   private resumeMatch(): void { this.inputMgr.reset(); }
   private cleanup(): void {
     this.persistMatch(); this.inputMgr.destroy(); this.fx.destroy();
-    this.events.off('brawl-parry', this.parry, this); this.events.off('brawl-hit', this.hit, this);
+    this.events.off('brawl-swing', this.swing, this); this.events.off('brawl-parry', this.parry, this); this.events.off('brawl-hit', this.hit, this);
     this.events.off(Phaser.Scenes.Events.RESUME, this.resumeMatch, this); this.scale.off(Phaser.Scale.Events.RESIZE, this.resizeArena, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.appPause); this.game.events.off(Phaser.Core.Events.HIDDEN, this.appPause); window.removeEventListener('pagehide', this.appPause);
   }

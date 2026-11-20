@@ -19,6 +19,10 @@ const adb = (...args: string[]) => {
 };
 const results: { check: string; details?: unknown }[] = [];
 const errors: string[] = [];
+const unfolded = option('unfolded', 'false') === 'true';
+const recordMatch = option('video', 'false') === 'true';
+const deviceState = () => command('shell', 'dumpsys', 'device_state').toString().split('\n')
+  .find(line => line.includes('mBaseState='))?.match(/name='([^']+)'/)?.[1];
 const sampleSeconds = Number(option('sample-seconds', '0'));
 if (!Number.isFinite(sampleSeconds) || sampleSeconds < 0) throw new Error('Use a non-negative sample duration.');
 let page: Page;
@@ -98,8 +102,41 @@ async function diskCopies(filename: string, expected: unknown): Promise<boolean>
   }, xml.toString('utf8'));
   return copies.every(copy => isDeepStrictEqual(copy, expected));
 }
+async function checkControls(label: string) {
+  const bounds = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('#joystick, #touch-controls button, #audio-toggle')]
+    .filter(o => o.offsetWidth > 0 && o.offsetHeight > 0).map(o => {
+      const b = o.getBoundingClientRect();
+      return { name: o.dataset.action || o.id, left: b.left, right: b.right, top: b.top, bottom: b.bottom,
+        inside: b.left >= 0 && b.right <= innerWidth + 1 && b.top >= 0 && b.bottom <= innerHeight + 1 };
+    }));
+  const collisions = bounds.flatMap((a, i) => bounds.slice(i + 1).filter(b =>
+    a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top).map(b => [a.name, b.name]));
+  check(bounds.length > 2 && bounds.every(o => o.inside) && !collisions.length, label, { bounds, collisions });
+}
+
+async function unfoldedFlight() {
+  // Load the authored flight trial at its normal spawn on the test device.
+  // Use Android gestures for every movement, channel entry and flap.
+  await page.evaluate(() => (window as any).__game.scene.getScene('Game').scene.restart({ levelId: 10 }));
+  await page.waitForFunction(() => {
+    const s = (window as any).__game.scene.getScene('Game'); return s.level.id === 10 && s.player.grounded;
+  });
+  const stick = await page.locator('#joystick').boundingBox();
+  if (!stick) throw new Error('Flight test cannot find the joystick.');
+  const dpr = await page.evaluate(() => devicePixelRatio);
+  const x = String(Math.round((stick.x + stick.width * 0.83) * dpr)), y = String(Math.round((stick.y + stick.height / 2) * dpr));
+  adb('shell', 'input', 'swipe', x, y, x, y, '2300');
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').player.mode === 'flight');
+  await page.evaluate(() => { const s = (window as any).__game.scene.getScene('Game'); s.events.once('player-flap', () => { s.registry.set('observedFlightFlap', s.player.body.velocity.y); }); });
+  await tapDom('[data-action="jump"]');
+  const rise = await page.waitForFunction(() => (window as any).__game.registry.get('observedFlightFlap') < 0);
+  check(await rise.jsonValue(), 'Inner-display joystick enters the flight channel and FLAP produces upward velocity');
+  await checkControls('Flight controls fit the inner display without overlap');
+  await screenshot('unfolded-flight');
+}
 async function flush() { await page.evaluate(async () => { await (window as any).__game.registry.get('saves').flush(); }); }
 try {
+  if (unfolded) check(deviceState() === 'OPENED', 'Fold7 begins physically unfolded', deviceState());
   adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
   original = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
@@ -159,11 +196,19 @@ try {
   check(muted.setting !== original.settings.muted && muted.manager === muted.setting, 'Native master mute updates saved settings and the sound manager', muted);
   await tapDom('#audio-toggle'); await flush();
   adb('shell', 'input', 'keyevent', '4'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
-  const beforeHome = await state(); adb('shell', 'input', 'keyevent', '3'); await delay(1200);
+  await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game');
+    scene.events.once('pause', () => scene.registry.set('homePauseSnapshot',
+      { now: scene.player.now, elapsedMs: scene.elapsedMs, lives: scene.lives, score: scene.score }));
+  });
+  adb('shell', 'input', 'keyevent', '3'); await delay(1200);
   adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
   const afterHome = await state();
-  check(afterHome.now - beforeHome.now < 250 && afterHome.lives === beforeHome.lives && afterHome.score === beforeHome.score, 'Background and foreground retain a paused session without consuming its clock', { beforeHome, afterHome });
+  const pausedAtHome = await page.evaluate(() => (window as any).__game.registry.get('homePauseSnapshot'));
+  check(pausedAtHome && afterHome.now === pausedAtHome.now && afterHome.elapsedMs === pausedAtHome.elapsedMs &&
+    afterHome.lives === pausedAtHome.lives && afterHome.score === pausedAtHome.score,
+    'Background and foreground retain a paused session without consuming its clock', { pausedAtHome, afterHome });
   await flush();
   const durable = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
   await writeFile(`${directory}/save-before-force-stop.json`, JSON.stringify(durable, null, 2));
@@ -178,7 +223,11 @@ try {
   check(checkpoint.level === durable.run.levelId && checkpoint.lives === durable.run.lives && Math.abs(checkpoint.x - durable.run.checkpoint.x) < 2, 'Continue after force-stop restores the actual checkpoint', checkpoint);
   await screenshot('force-stop-recovery');
   const cover = await page.evaluate(() => matchMedia('(pointer: coarse) and (orientation: portrait)').matches);
-  if (cover) {
+  if (unfolded) {
+    await checkControls('Campaign controls fit the inner display without overlap');
+    await unfoldedFlight();
+  }
+  if (cover && !unfolded) {
     await page.evaluate(() => (window as any).__game.registry.get('saves').patchSettings({ oneHanded: true }));
     await page.waitForSelector('#touch-controls.one-handed');
     const stick = (await page.locator('#joystick').boundingBox())!;
@@ -205,24 +254,48 @@ try {
     await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
     await tapText('Pause', 'RETURN TO TITLE');
     await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+    const screen = unfolded ? 'unfolded' : cover ? 'cover' : 'device';
     await tapText('Title', 'BARREL BRAWL'); await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlSetup'));
     for (const [side, fighter] of [['player', 'clover'], ['cpu', 'mallow']]) {
       await tapCard('BrawlSetup', 'side', side);
       await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlRoster'));
       await tapCard('BrawlRoster', 'fighter', fighter);
-      if (side === 'player') await screenshot('cover-roster');
+      if (side === 'player') await screenshot(screen + '-roster');
       await tapText('BrawlRoster', 'PICK ' + fighter.toUpperCase());
       await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlSetup'));
     }
-    if (await page.evaluate(() => (window as any).__game.scene.getScene('BrawlSetup').rules !== 'timed')) await tapText('BrawlSetup', 'RULES');
-    await screenshot('cover-brawl-setup');
+    const rules = unfolded ? 'stock' : 'timed';
+    if (await page.evaluate(rules => (window as any).__game.scene.getScene('BrawlSetup').rules !== rules, rules)) await tapText('BrawlSetup', 'RULES');
+    if (unfolded) {
+      for (const [field, value, label] of [['arena', 'forest', 'ARENA'], ['difficulty', 'hard', 'CPU LEVEL']]) {
+        for (let i = 0; i < 2 && await page.evaluate(([k,v]) => (window as any).__game.scene.getScene('BrawlSetup')[k] !== v, [field,value]); i++) await tapText('BrawlSetup', label);
+      }
+    }
+    await screenshot(screen + '-brawl-setup');
     await tapText('BrawlSetup', original.brawlRun ? 'NEW MATCH' : 'START MATCH');
     await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').elapsedMs > 0);
     // Keep listener setup and observation separate so a WebView error reaches
     // the outer restoration handler immediately.
-    await page.evaluate(() => {
+    await page.evaluate(record => {
       const scene = (window as any).__game.scene.getScene('Brawl');
-      const meter = { started: performance.now(), last: 0, intervals: [] as number[],
+      if (record) {
+        const stream: MediaStream = scene.game.canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 800000 });
+        const parts: Blob[] = [];
+        recorder.ondataavailable = event => { if (event.data.size) parts.push(event.data); };
+        const video = new Promise<string>((resolve, reject) => {
+          recorder.onstop = () => {
+            stream.getTracks().forEach(track => track.stop());
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(',')[1]);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(new Blob(parts, { type: 'video/webm' }));
+          };
+        });
+        scene.registry.set('deviceRecording', { recorder, video });
+        recorder.start(1000);
+      }
+      const meter = { started: performance.now(), last: 0, intervals: [] as number[], swings: [0, 0], hits: [0, 0],
         collect() {
           if (!scene.scene.isActive() || scene.ended) return;
           const now = performance.now();
@@ -231,15 +304,42 @@ try {
       meter.last = meter.started;
       scene.registry.set('deviceFrameSample', meter);
       scene.game.events.on('poststep', meter.collect);
-    });
+      const swing = (f: any) => { meter.swings[Number(f.isCpu)]++; };
+      const hit = (f: any) => { meter.hits[Number(!f.isCpu)]++; };
+      scene.events.on('brawl-swing', swing); scene.events.on('brawl-hit', hit);
+      scene.events.once('shutdown', () => { scene.events.off('brawl-swing', swing); scene.events.off('brawl-hit', hit); });
+    }, recordMatch);
     const picked = await page.evaluate(() => {
-      const s = (window as any).__game.scene.getScene('Brawl'); return [s.human.id, s.cpu.id, s.options.rules];
+      const s = (window as any).__game.scene.getScene('Brawl'); return [s.human.id, s.cpu.id, s.options.rules, s.options.arena, s.options.difficulty];
     });
-    check(isDeepStrictEqual(picked, ['clover', 'mallow', 'timed']), 'Physical roster picks reach the live KO Race', picked);
-    await screenshot('cover-brawl-live');
+    check(isDeepStrictEqual(picked.slice(0, 3), ['clover', 'mallow', rules]) && (!unfolded || picked[3] === 'forest' && picked[4] === 'hard'),
+      'Physical roster and rule choices reach the live match', picked);
+    if (unfolded) await checkControls('Brawl controls fit the inner display without overlap');
+    await screenshot(screen + '-brawl-live');
     const deadline = Date.now() + sampleSeconds * 1000;
     while (Date.now() < deadline && await page.locator('[data-action="attack"]').isVisible()) {
-      await tapDom('[data-action="attack"]'); await delay(1800);
+      if (unfolded) {
+        const { dx, dy } = await page.evaluate(() => {
+          const s = (window as any).__game.scene.getScene('Brawl');
+          return { dx: s.cpu.x - s.human.x, dy: s.cpu.y - s.human.y };
+        });
+        const stick = await page.locator('#joystick').boundingBox();
+        if (stick && Math.abs(dx) > 35) {
+          const x = String(Math.round((stick.x + stick.width * (0.5 + Math.sign(dx) * 0.32)) * dpr));
+          const y = String(Math.round((stick.y + stick.height / 2) * dpr));
+          adb('shell', 'input', 'swipe', x, y, x, y, '240');
+        }
+        if (dy < -35 && await page.locator('[data-action="jump"]').isVisible()) await tapDom('[data-action="jump"]');
+      }
+      if (await page.locator('[data-action="attack"]').isVisible()) await tapDom('[data-action="attack"]');
+      await delay(unfolded ? 150 : 1800);
+    }
+    if (recordMatch) {
+      const video = await page.evaluate(async () => {
+        const registry = (window as any).__game.registry, capture = registry.get('deviceRecording');
+        capture.recorder.stop(); registry.remove('deviceRecording'); return await capture.video as string;
+      });
+      await writeFile(`${directory}/canopy-court.webm`, Buffer.from(video, 'base64'));
     }
     const stats = await page.evaluate(() => {
       const scene = (window as any).__game.scene.getScene('Brawl'), meter = scene.registry.get('deviceFrameSample');
@@ -248,10 +348,13 @@ try {
       return { seconds: (meter.last - meter.started) / 1000, frames: values.length,
         p50: values[Math.floor((values.length - 1) * 0.5)], p95: values[Math.floor((values.length - 1) * 0.95)],
         p99: values[Math.floor((values.length - 1) * 0.99)], over50ms: values.filter(t => t > 50).length,
+        swings: meter.swings, hits: meter.hits,
+        result: scene.game.scene.isActive('BrawlResults') ? scene.game.scene.getScene('BrawlResults').result : null,
         activeMatchAtEnd: scene.scene.isActive(), viewport: [innerWidth, innerHeight], dpr: devicePixelRatio };
     });
     await writeFile(`${directory}/frame-intervals.json`, JSON.stringify(stats, null, 2));
-    if (gameInFront()) await screenshot('cover-brawl');
+    if (gameInFront()) await screenshot(screen + '-brawl');
+    if (unfolded) check(deviceState() === 'OPENED', 'Fold7 remains physically unfolded during the run', deviceState());
     check(stats.frames > 0 && stats.seconds > 0, 'Collected physical WebView frame intervals during live Brawl', stats);
   }
   check(errors.length === 0, 'Native smoke test has no JavaScript runtime errors', errors);
