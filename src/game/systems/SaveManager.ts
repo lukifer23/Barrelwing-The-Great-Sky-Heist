@@ -3,7 +3,7 @@ import { emptyMastery, STAMPS, type Mastery } from '../data/mastery';
 import { emptyBrawlRecord, MATCH_LENGTH, type BrawlRecord, type BrawlRun, type BrawlOptions, type BrawlPreset } from '../data/brawl';
 import legacyObjectIds from '../data/legacyObjectIds.json';
 import { characterId, type CharacterId } from '../data/characters';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { emptyUpgrades, UPGRADES, UPGRADE_COSTS, upgradeStats, type UpgradeKind, type Upgrades } from '../data/upgrades';
 
@@ -90,6 +90,7 @@ export function courierLevel(profile: ProfileData) {
 const KEY = 'barrelwing.save.v1';
 const VERSION = 1;
 const BACKUP_KEY = KEY + '.backup';
+const androidJournal = registerPlugin<{ write(options: { snapshot: string }): Promise<void> }>('SaveJournal');
 const finite = (v: unknown, fallback = 0, max = Number.MAX_SAFE_INTEGER): number =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : fallback;
 const ids = (v: unknown): number[] => Array.isArray(v) ? [...new Set(v.filter(n => Number.isInteger(n) && n >= 0 && n <= 0xffffffff))] : [];
@@ -286,6 +287,10 @@ export class SaveManager {
     const serialized = JSON.stringify(this.get());
     if (Capacitor.isNativePlatform()) {
       this.nativeWrite = this.nativeWrite.catch(() => undefined).then(async () => {
+        if (Capacitor.getPlatform() === 'android') {
+          await androidJournal.write({ snapshot: serialized });
+          return;
+        }
         await Preferences.set({ key: KEY, value: serialized });
         await Preferences.set({ key: BACKUP_KEY, value: serialized });
       });

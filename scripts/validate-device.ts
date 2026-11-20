@@ -88,6 +88,16 @@ async function state() {
       coins: scene.coinsCollected, score: scene.score, gems: [...scene.gemsCollected], checkpoint: { ...scene.checkpoint } };
   });
 }
+async function diskCopies(filename: string, expected: unknown): Promise<boolean> {
+  const xml = adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml');
+  await writeFile(`${directory}/${filename}.xml`, xml);
+  const copies = await page.evaluate(xml => {
+    const prefs = new DOMParser().parseFromString(xml, 'application/xml');
+    return ['barrelwing.save.v1', 'barrelwing.save.v1.backup'].map(key =>
+      JSON.parse(prefs.querySelector(`string[name="${key}"]`)?.textContent ?? 'null'));
+  }, xml.toString('utf8'));
+  return copies.every(copy => isDeepStrictEqual(copy, expected));
+}
 async function flush() { await page.evaluate(async () => { await (window as any).__game.registry.get('saves').flush(); }); }
 try {
   adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
@@ -157,7 +167,7 @@ try {
   await flush();
   const durable = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
   await writeFile(`${directory}/save-before-force-stop.json`, JSON.stringify(durable, null, 2));
-  await writeFile(`${directory}/native-before-force-stop.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
+  check(await diskCopies('native-before-force-stop', durable), 'Both Android save copies are on disk before force-stop');
   adb('shell', 'am', 'force-stop', pkg); await delay(350);
   adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
@@ -265,12 +275,12 @@ try {
       const expected = { ...original, revision: after.revision };
       restored = isDeepStrictEqual(after, expected);
       await writeFile(`${directory}/save-restored.json`, JSON.stringify(after, null, 2));
-      await writeFile(`${directory}/native-restored.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
+      const diskRestored = await diskCopies('native-restored', expected);
       const nativeValue = await page.evaluate(async () => {
         const result = await (window as any).Capacitor.Plugins.Preferences.get({ key: 'barrelwing.save.v1' });
         return JSON.parse(result.value);
       });
-      restored = restored && isDeepStrictEqual(nativeValue, expected);
+      restored = restored && diskRestored && isDeepStrictEqual(nativeValue, expected);
       check(restored, 'Original user progress and settings are restored in memory and native storage');
     } catch (error) { errors.push(`Restoration: ${String(error)}`); }
   }
