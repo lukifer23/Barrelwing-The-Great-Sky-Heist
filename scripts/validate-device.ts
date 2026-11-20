@@ -304,8 +304,11 @@ try {
       meter.last = meter.started;
       scene.registry.set('deviceFrameSample', meter);
       scene.game.events.on('poststep', meter.collect);
-      const swing = (f: any) => { meter.swings[Number(f.isCpu)]++; };
-      const hit = (f: any) => { meter.hits[Number(!f.isCpu)]++; };
+      const observer = {
+        swing(f: any) { meter.swings[Number(f.isCpu)]++; },
+        hit(f: any) { meter.hits[Number(!f.isCpu)]++; },
+      };
+      const { swing, hit } = observer;
       scene.events.on('brawl-swing', swing); scene.events.on('brawl-hit', hit);
       scene.events.once('shutdown', () => { scene.events.off('brawl-swing', swing); scene.events.off('brawl-hit', hit); });
     }, recordMatch);
@@ -314,7 +317,16 @@ try {
     });
     check(isDeepStrictEqual(picked.slice(0, 3), ['clover', 'mallow', rules]) && (!unfolded || picked[3] === 'forest' && picked[4] === 'hard'),
       'Physical roster and rule choices reach the live match', picked);
-    if (unfolded) await checkControls('Brawl controls fit the inner display without overlap');
+    if (unfolded) {
+      await checkControls('Brawl controls fit the inner display without overlap');
+      const gap = await page.evaluate(() => {
+        const g = (window as any).__game, s = g.scene.getScene('Brawl');
+        const canvas = g.canvas.getBoundingClientRect(), pause = document.querySelector('[data-action="pause"]')!.getBoundingClientRect();
+        const bottom = Math.max(s.humanHud.getBounds().bottom, s.cpuHud.getBounds().bottom);
+        return pause.top - (canvas.top + bottom * canvas.height / g.scale.height);
+      });
+      check(gap >= 4, 'Pause clears both fighters’ stock and damage readouts', { gapCssPx: gap });
+    }
     await screenshot(screen + '-brawl-live');
     const deadline = Date.now() + sampleSeconds * 1000;
     while (Date.now() < deadline && await page.locator('[data-action="attack"]').isVisible()) {
@@ -369,6 +381,9 @@ try {
       }
       await page.evaluate(async original => {
         const game = (window as any).__game, saves = game.registry.get('saves');
+        const capture = game.registry.get('deviceRecording');
+        if (capture?.recorder.state === 'recording') capture.recorder.stop();
+        game.registry.remove('deviceRecording');
         for (const scene of game.scene.getScenes(false)) if (scene.scene.isActive() || scene.scene.isPaused()) game.scene.stop(scene.scene.key);
         const revision = saves.get().revision;
         Object.assign(saves.get(), original); saves.get().revision = revision;

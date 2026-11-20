@@ -68,6 +68,9 @@
         #touch-controls.left-handed { transform: scaleX(-1); }
         #touch-controls.left-handed button, #touch-controls.left-handed #joystick { transform: scaleX(-1); }
       }
+      @media (pointer: coarse) and (orientation: landscape) {
+        .brawling [data-action="pause"] { top: max(68px, calc(min(11vw, 20vh) + max(4px, env(safe-area-inset-top)))); }
+      }
       @media (pointer: coarse) and (orientation: portrait) {
         #app {
           align-items: flex-start;

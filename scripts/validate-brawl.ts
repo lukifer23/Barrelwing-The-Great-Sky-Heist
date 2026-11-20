@@ -47,22 +47,27 @@ try {
       const report = { swings: [0, 0], hits: [0, 0], parries: [0, 0], interruptedWindups: [0, 0], punishedMisses: [0, 0], ringOuts: [] as object[] };
       const last = [{ at: -10000, connected: false }, { at: -10000, connected: false }];
       g.registry.set('matchObservation', report);
-      const observeSwing = (f: any) => {
-        const side = Number(f.isCpu);
-        report.swings[side]++; last[side] = { at: f.now, connected: false };
+      const observers = {
+        'brawl-swing'(f: any) {
+          const side = Number(f.isCpu);
+          report.swings[side]++; last[side] = { at: f.now, connected: false };
+        },
+        'brawl-hit'(f: any) {
+          const target = Number(f.isCpu), source = 1 - target, age = f.now - last[target].at;
+          report.hits[source]++; last[source].connected = true;
+          if (!last[target].connected && age < f.attackWindup) report.interruptedWindups[target]++;
+          else if (!last[target].connected && age >= f.attackWindup + f.style.activeMs && age < f.attackCooldown) report.punishedMisses[target]++;
+        },
+        'brawl-parry'(f: any) {
+          const side = Number(f.isCpu); report.parries[side]++; last[1 - side].connected = true;
+        },
+        'brawl-ring-out'(f: any) {
+          report.ringOuts.push({ side: f.isCpu ? 'cpu' : 'player', at: Math.round(scene.elapsedMs),
+            x: Math.round(f.x), yFromFloor: Math.round(f.y - scene.floor), damage: f.damage,
+            boundary: f.x < -110 ? 'left' : f.x > scene.W + 110 ? 'right' : f.y > scene.floor ? 'bottom' : 'top',
+            airJumps: f.airJumps, liftReady: f.canLift && f.dashProgress === 1, stunned: f.stunned });
+        },
       };
-      const observeHit = (f: any) => {
-        const target = Number(f.isCpu), source = 1 - target, age = f.now - last[target].at;
-        report.hits[source]++; last[source].connected = true;
-        if (!last[target].connected && age < f.attackWindup) report.interruptedWindups[target]++;
-        else if (!last[target].connected && age >= f.attackWindup + f.style.activeMs && age < f.attackCooldown) report.punishedMisses[target]++;
-      };
-      const observeParry = (f: any) => { const side = Number(f.isCpu); report.parries[side]++; last[1 - side].connected = true; };
-      const observeRingOut = (f: any) => report.ringOuts.push({ side: f.isCpu ? 'cpu' : 'player',
-        at: Math.round(scene.elapsedMs), x: Math.round(f.x), yFromFloor: Math.round(f.y - scene.floor), damage: f.damage,
-        boundary: f.x < -110 ? 'left' : f.x > scene.W + 110 ? 'right' : f.y > scene.floor ? 'bottom' : 'top',
-        airJumps: f.airJumps, liftReady: f.canLift && f.dashProgress === 1, stunned: f.stunned });
-      const observers = { 'brawl-swing': observeSwing, 'brawl-hit': observeHit, 'brawl-parry': observeParry, 'brawl-ring-out': observeRingOut };
       for (const [event, handler] of Object.entries(observers)) scene.events.on(event, handler);
       scene.events.once('shutdown', () => {
         for (const [event, handler] of Object.entries(observers)) scene.events.off(event, handler);

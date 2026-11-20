@@ -84,11 +84,11 @@ export class Hud {
     }
 
     this.scoreText = scene.add.text(474, 29, '0', {
-      fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060',
+      fontFamily: FONT_SMALL, fontSize: '9px', color: '#ffda88', backgroundColor: '#101528', padding: { x: 3, y: 1 },
     }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(D + 1);
 
     this.timeText = scene.add.text(474, 17, '0:00', {
-      fontFamily: FONT_SMALL, fontSize: '8px', color: '#8a93b2',
+      fontFamily: FONT_SMALL, fontSize: '8px', color: '#dae5ff', backgroundColor: '#101528', padding: { x: 3, y: 1 },
     }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(D + 1);
 
     this.namePlate = scene.add.rectangle(295, 12, 220, 12, 0x101528, 0.8).setScrollFactor(0).setDepth(129);
@@ -131,15 +131,15 @@ export class Hud {
     const compact = this.compact;
     const nameCenter = compact ? center : (170 + width - 55) / 2;
     this.statPlate.setSize(compact ? width - 8 : 164, 26);
-    this.namePlate.setPosition(nameCenter, compact ? 51 : 12).setSize(compact ? width - 8 : Math.max(120, width - 235), compact ? 20 : 12);
-    this.nameText.setPosition(nameCenter, compact ? 43 : 8).setFontSize(compact ? 13 : 7).setScale(1);
+    this.namePlate.setPosition(nameCenter, compact ? 51 : 12).setSize(compact ? width - 8 : Math.max(120, width - 235), compact ? 20 : 16);
+    this.nameText.setPosition(nameCenter, compact ? 43 : 7).setFontSize(compact ? 13 : 9).setScale(1);
     if (this.nameText.width > this.namePlate.width - 8) this.nameText.setScale((this.namePlate.width - 8) / this.nameText.width);
-    this.timeText.setPosition(width - (compact ? 14 : 6), compact ? 14 : 17).setFontSize(compact ? 13 : 8);
-    this.scoreText.setPosition(width - (compact ? 78 : 6), compact ? 14 : 29).setFontSize(compact ? 14 : 9);
+    this.timeText.setPosition(width - (compact ? 14 : 6), compact ? 14 : 11).setFontSize(compact ? 13 : 10);
+    this.scoreText.setPosition(width - (compact ? 78 : 6), compact ? 14 : 26).setFontSize(compact ? 14 : 10);
     this.coinText.setPosition(82, compact ? 8 : 10).setFontSize(compact ? 12 : 8);
     this.livesText.setPosition(compact ? 120 : 108, compact ? 8 : 10).setFontSize(compact ? 12 : 8);
     this.gemIcons.forEach((icon, i) => icon.setX((compact ? 158 : 134) + i * 10));
-    this.deliveryText.setPosition(6, compact ? 64 : 84).setFontFamily(compact ? 'Roboto, Arial, sans-serif' : FONT_SMALL).setFontSize(compact ? 12 : 6);
+    this.deliveryText.setPosition(6, compact ? 64 : 84).setFontFamily('Roboto, Arial, sans-serif').setFontSize(compact ? 12 : 9);
     this.powerText.setPosition(compact ? 102 : 106, compact ? 84 : 44).setFontSize(compact ? 10 : 6);
     this.powerIcons.forEach(icon => icon.setY(compact ? 91 : 50));
     this.powerBars.forEach(bar => bar.setY(compact ? 100 : 58));
