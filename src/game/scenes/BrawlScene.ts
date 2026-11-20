@@ -209,10 +209,16 @@ export class BrawlScene extends Phaser.Scene {
     if (time < this.nextThink) return intent;
     this.nextThink = time + reaction;
     const dx = this.human.x - this.cpu.x, dy = this.human.y - this.cpu.y;
-    const offstage = this.cpu.x < this.W * 0.15 || this.cpu.x > this.W * 0.85 || this.cpu.y > this.floor + 20;
-    const targetX = offstage ? this.W / 2 : this.human.x;
+    const base = this.plates[0].sprite;
+    const left = base.x - base.width / 2, right = base.x + base.width / 2;
+    const offstage = this.cpu.x < left || this.cpu.x > right || this.cpu.y > this.floor + 20;
+    const hard = this.options.difficulty === 'hard';
+    const targetX = offstage ? this.W / 2 : this.options.difficulty === 'easy' ? this.human.x
+      : Phaser.Math.Clamp(this.human.x, left + 18, right - 18);
     intent.move = Math.abs(targetX - this.cpu.x) < 36 ? 0 : Math.sign(targetX - this.cpu.x);
-    if ((offstage || dy < -50 || this.cpu.grounded && Math.abs(dx) > 85 && Math.abs(dx) < 170) && time > this.nextCpuJump) {
+    const recoverJump = offstage && (this.cpu.body.velocity.y > -70 || this.cpu.grounded);
+    const pursuitJump = !offstage && (dy < -50 || this.cpu.grounded && Math.abs(dx) > 85 && Math.abs(dx) < 170);
+    if ((recoverJump || pursuitJump) && time > this.nextCpuJump) {
       intent.jump = true; this.nextCpuJump = time + (offstage ? 340 : 650); this.cpuJumpHeldUntil = time + 300;
     }
     intent.heldJump = offstage || dy < -35 || time < this.cpuJumpHeldUntil;
@@ -221,11 +227,19 @@ export class BrawlScene extends Phaser.Scene {
     intent.attack = time >= this.nextCpuAttack && !this.cpu.stunned && Math.abs(dx) < reach && Math.abs(dy) < 62;
     if (intent.attack) this.nextCpuAttack = time + (this.options.difficulty === 'easy' ? 1200 : this.options.difficulty === 'hard' ? 650 : 950);
     intent.aim = dy < -28 ? -1 : dy > 35 ? 1 : 0;
-    if (!offstage && this.options.difficulty === 'hard' && Math.abs(dx) > 170 && time > this.nextCpuDash) { intent.dash = true; this.nextCpuDash = time + 2600; }
+    intent.dashAim = 0;
+    if (!offstage && hard && Math.abs(targetX - this.cpu.x) > 170 && time > this.nextCpuDash) {
+      intent.dash = true; this.nextCpuDash = time + 2600;
+    }
     if (offstage && this.cpu.y > this.floor && this.cpu.canLift && this.cpu.dashProgress === 1) {
-      intent.aim = -1; intent.dash = true; intent.heldJump = true;
-    } else if (this.options.difficulty === 'hard' && this.human.windingUp && Math.abs(dx) < 65 && Math.abs(dy) < 45 && this.cpu.dashProgress === 1) {
-      intent.aim = 1; intent.dash = true; intent.attack = false;
+      intent.dashAim = -1; intent.dash = true; intent.heldJump = true;
+    } else if (hard && !offstage && (this.human.windingUp || this.human.attacking) && Math.abs(dx) < this.human.style.reach + 32 && Math.abs(dy) < 45) {
+      if (this.cpu.dashProgress === 1) {
+        intent.dashAim = 1; intent.dash = true; intent.attack = false;
+      } else if (!this.cpu.attacking && !this.cpu.windingUp) {
+        const retreatX = Phaser.Math.Clamp(this.cpu.x - Math.sign(dx) * 35, left + 18, right - 18);
+        intent.move = Math.abs(retreatX - this.cpu.x) > 6 ? Math.sign(retreatX - this.cpu.x) : 0;
+      }
     }
     this.cpuIntent = intent; return intent;
   }

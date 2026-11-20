@@ -15,6 +15,7 @@ export class BrawlSetupScene extends Phaser.Scene {
   private cpu: CharacterId = 'fenn';
   private menu!: Menu;
   private values: Phaser.GameObjects.Text[] = [];
+  private summary?: Phaser.GameObjects.Text;
   private width = 0;
   private height = 0;
   constructor() { super('BrawlSetup'); }
@@ -49,7 +50,7 @@ export class BrawlSetupScene extends Phaser.Scene {
     this.scene.launch('BrawlRoster', { side, current: this[side] });
   }
   private draw(): void {
-    this.tweens.killAll(); this.children.removeAll(true); this.values = [];
+    this.tweens.killAll(); this.children.removeAll(true); this.values = []; this.summary = undefined;
     const W = this.width = this.scale.width, H = this.height = this.scale.height, tall = H > W * 1.2;
     this.cameras.main.setSize(W, H).setScroll(0, 0);
     const area = Math.min(W - 32, 660), left = (W - area) / 2;
@@ -87,6 +88,11 @@ export class BrawlSetupScene extends Phaser.Scene {
     this.menu = new Menu(this, items, { x: left + 16, y, align: 'left', spacing, fontSize: tall ? '18px' : '9px', showHints: false });
     for (let i = 0; i < 3; i++) this.values.push(this.add.text(left + area - 6, y + (i + (saved ? 2 : 1)) * spacing, '',
       { fontFamily: FONT_SMALL, fontSize: tall ? '16px' : '9px', color: '#9ff5ff' }).setOrigin(1, 0.5));
+    const summaryY = y + (items.length - 0.20) * spacing;
+    if (tall && H - summaryY > 210) {
+      this.summary = this.add.text(left + 16, summaryY, '', { fontFamily: 'Roboto, Arial, sans-serif', fontSize: '19px',
+        color: '#cfdae5', lineSpacing: 5, wordWrap: { width: area - 32 } });
+    }
     this.add.text(W / 2, tall ? H - 60 : H - 9, window.matchMedia('(pointer: coarse)').matches ? 'TAP A FIGHTER TO CHANGE COURIER' : 'LEFT: YOUR FIGHTER   /   RIGHT: CPU FIGHTER',
       { fontFamily: FONT_SMALL, fontSize: tall ? '14px' : '7px', color: '#c4d0de' }).setOrigin(0.5);
     this.refresh();
@@ -94,5 +100,10 @@ export class BrawlSetupScene extends Phaser.Scene {
   private refresh(): void {
     const values = [this.rules === 'stock' ? '3 STOCKS' : '90s KO RACE', ARENA_NAMES[this.arena], this.difficulty.toUpperCase()];
     this.values.forEach((text, i) => text.setText(values[i]));
+    if (this.summary) {
+      const rule = this.rules === 'stock' ? 'Knock your opponent out three times.' : 'Score the most ring-outs in 90 seconds.';
+      const terrain = { forest: 'Use the high center platform for aerial attacks.', factory: 'The conveyor shifts direction during the match.', storm: 'Gusts push airborne fighters across staggered ledges.' };
+      this.summary.setText(rule + '\n' + terrain[this.arena]);
+    }
   }
 }

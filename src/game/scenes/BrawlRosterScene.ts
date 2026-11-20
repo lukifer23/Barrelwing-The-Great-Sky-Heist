@@ -96,7 +96,7 @@ export class BrawlRosterScene extends Phaser.Scene {
     this.add.text(W / 2, detail + (tall ? 60 : 24), style.description, { fontFamily: 'Roboto, Arial, sans-serif', fontSize: tall ? '19px' : '12px', color: '#f0e7dc', align: 'center', wordWrap: { width: width - 24 } }).setOrigin(0.5, 0);
     this.add.text(W / 2, detail + (tall ? 122 : 48), `${style.damage}% PER HIT   /   ${(style.cooldown / 1000).toFixed(2)}s BETWEEN ATTACKS`,
       { fontFamily: FONT_SMALL, fontSize: tall ? '14px' : '8px', color: '#adc8d9' }).setOrigin(0.5);
-    const controlY = H - (tall ? 100 : 23);
+    const controlY = H - (tall ? Math.min(100, H * 0.09) : 23);
     this.add.text(left + width * 0.20, controlY, 'BACK', { fontFamily: FONT_SMALL, fontSize: tall ? '18px' : '10px', color: '#c3cfdf', padding: { x: 16, y: 12 } })
       .setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.close());
     this.add.text(left + width * 0.64, controlY, `PICK ${CHARACTERS[this.selected].name}`,

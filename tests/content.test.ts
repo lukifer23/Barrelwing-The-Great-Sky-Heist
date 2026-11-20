@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import sharp from 'sharp';
 import { LEVELS } from '../src/game/data/levels/index';
 import { IMAGES, SHEETS, BOSS_SHEETS, MUSIC, SFX, ANIMS } from '../src/game/data/assets';
+import { FIGHT_STYLES } from '../src/game/data/brawl';
+import { COURIERS } from '../src/game/data/characters';
 import { evaluateMastery } from '../src/game/data/mastery';
 import type { LevelDef, LevelObject } from '../src/game/data/levels/types';
 import { FLIGHT, PHYSICS } from '../src/game/config';
@@ -102,6 +104,8 @@ test('every runtime asset exists and each animation fits its sheet', async () =>
     const meta = await sharp('public/' + sheet.path).metadata();
     const count = Math.floor(meta.width! / sheet.frameWidth) * Math.floor(meta.height! / sheet.frameHeight);
     assert.ok(count >= sheet.frames, sheet.key);
+    const courier = COURIERS.find(id => id === sheet.key);
+    if (courier) for (const frame of FIGHT_STYLES[courier].frames) assert.ok(frame >= 0 && frame < sheet.frames, courier);
     for (const anim of ANIMS.filter(a => a.sheet === sheet.key)) assert.ok(anim.start >= 0 && anim.end < count, anim.key);
   }
 });

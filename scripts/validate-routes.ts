@@ -107,6 +107,7 @@ try {
     const exitX = (exit.x + 0.5) * level.tile;
     const ladders = level.objects.filter(o => o.t === 'ladder').sort((a, b) => b.y - a.y);
     const completedLadders = new Set<number>();
+    const bypassedFlags = new Set<number>();
     const held = new Set<string>();
     const key = async (name: string, down: boolean) => {
       if (down === held.has(name)) return;
@@ -129,7 +130,7 @@ try {
       if (!state.active) break;
       if (state.dead || wasDead) {
         for (const name of [...held]) await key(name, false);
-        completedLadders.clear(); jumpUntil = 0; dashUntil = 0;
+        completedLadders.clear(); bypassedFlags.clear(); jumpUntil = 0; dashUntil = 0;
         farthest = state.x; highest = state.y; lastProgress = Date.now();
       }
       wasDead = state.dead;
@@ -153,7 +154,10 @@ try {
       });
       const ladder = vertical ? ladders.find((_, index) => !completedLadders.has(index)) : undefined;
       let targetX = ladder ? (ladder.x + 0.5) * level.tile : exitX;
-      const flag = !vertical && state.mode !== 'flight' ? state.checkpointAhead : null;
+      const ahead = state.checkpointAhead;
+      // A flag below a solid ledge cannot be touched by waiting above it.
+      if (ahead && state.grounded && state.y < ahead.y - 26 && Math.abs(state.x - ahead.x) < 30) bypassedFlags.add(ahead.x);
+      const flag = !vertical && state.mode !== 'flight' && ahead && !bypassedFlags.has(ahead.x) ? ahead : null;
       if (flag) targetX = flag.x;
       const lever = !vertical && state.mode !== 'flight' ? state.nextSwitch : null;
       if (lever) targetX = lever.x;

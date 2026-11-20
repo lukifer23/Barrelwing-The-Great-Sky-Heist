@@ -38,7 +38,7 @@ export const FIGHT_STYLES = {
   fenn: { role: 'RUSH FIGHTER', move: 'EXPRESS LUNGE', description: 'Spring forward with a quick, narrow strike.', color: 0xff956b,
     damage: 8, weight: 0.92, cooldown: 360, reach: 31, radius: 42, activeMs: 95, frames: [21, 9, 12, 13] },
   mallow: { role: 'HEAVYWEIGHT', move: 'PARCEL SLAM', description: 'A heavy blow with strong launch and a long recovery.', color: 0x9fb7ff,
-    damage: 13, weight: 1.18, cooldown: 570, reach: 32, radius: 52, activeMs: 145, frames: [20, 14, 17, 21] },
+    damage: 13, weight: 1.18, cooldown: 570, reach: 32, radius: 52, activeMs: 145, frames: [22, 23, 24, 25] },
   clover: { role: 'AERIAL SCOUT', move: 'VAULT KICK', description: 'Land a downward aerial kick to bounce back into the air.', color: 0xa8e6a5,
     damage: 9, weight: 0.96, cooldown: 420, reach: 36, radius: 45, activeMs: 115, frames: [21, 14, 15, 17] },
 } as const satisfies Record<CharacterId, { role: string; move: string; description: string; color: number;

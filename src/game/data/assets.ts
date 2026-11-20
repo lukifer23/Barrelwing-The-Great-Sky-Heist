@@ -155,6 +155,6 @@ export const ANIMS: AnimDef[] = [
 ];
 
 for (const sheet of ['fenn', 'mallow', 'clover']) {
-  SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: 22 });
+  SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: sheet === 'mallow' ? 26 : 22 });
   for (const anim of ANIMS.filter(a => a.sheet === 'pip')) ANIMS.push({ ...anim, key: anim.key.replace('pip-', `${sheet}-`), sheet });
 }

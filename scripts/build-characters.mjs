@@ -44,7 +44,22 @@ for (const [i, [x, y]] of packPoses.entries()) {
   const angle = i >= 14 && i <= 17 ? (i - 14) * 90 : 0;
   packs.push({ input: await sharp(packSprite).rotate(angle).png().toBuffer(), left: i * 57 + x, top: y });
 }
-await sharp(mallow.data, { raw: mallow.info }).composite(packs).png().toFile('public/assets/sprites/mallow.png');
+const baseMallow = await sharp(mallow.data, { raw: mallow.info }).composite(packs).png().toBuffer();
+// Draw the parcel in the fighter's hands during the slam. The airborne roll
+// and normal run keep their own backpack frames for the campaign.
+const slamPoses = [
+  { body: 20, x: 29, y: 6, angle: 0 }, { body: 8, x: 32, y: 3, angle: 0 },
+  { body: 11, x: 41, y: 25, angle: 90 }, { body: 21, x: 36, y: 25, angle: 0 },
+];
+const slamFrames = [];
+for (const [i, pose] of slamPoses.entries()) {
+  const box = await sharp(packSprite).resize(14, 11, { kernel: 'nearest' }).rotate(pose.angle).png().toBuffer();
+  const body = await sharp(mallow.data, { raw: mallow.info }).extract({ left: pose.body * 57, top: 0, width: 57, height: 45 })
+    .composite([{ input: box, left: pose.x, top: pose.y }]).png().toBuffer();
+  slamFrames.push({ input: body, left: (22 + i) * 57, top: 0 });
+}
+await sharp({ create: { width: 57 * 26, height: 45, channels: 4, background: '#00000000' } })
+  .composite([{ input: baseMallow, left: 0, top: 0 }, ...slamFrames]).png().toFile('public/assets/sprites/mallow.png');
 const nova = '<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0 10 5 15 2 12 7 16 8 11 10 14 15 9 12 8 16 6 11 1 14 4 9 0 8 5 6 2 1 7 4Z" fill="#ffe178"/><path d="M8 4 12 8 8 12 4 8Z" fill="#fff6d5"/></svg>';
 await sharp(Buffer.from(nova)).png().toFile('public/assets/ui/power_nova.png');
 const bunny = '_assets_src/sideview_fantasy/Sideview Fantasy Patreon Collection/Sprites/sunny-bunny/PNG';
