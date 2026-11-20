@@ -331,17 +331,24 @@ try {
     const deadline = Date.now() + sampleSeconds * 1000;
     while (Date.now() < deadline && await page.locator('[data-action="attack"]').isVisible()) {
       if (unfolded) {
-        const { dx, dy } = await page.evaluate(() => {
+        const { move, holdMs, jump } = await page.evaluate(() => {
           const s = (window as any).__game.scene.getScene('Brawl');
-          return { dx: s.cpu.x - s.human.x, dy: s.cpu.y - s.human.y };
+          const p = s.human, c = s.cpu, base = s.plates[0].sprite;
+          const left = base.x - base.width / 2, right = base.x + base.width / 2;
+          const recovering = p.x < left + 15 || p.x > right - 15 || p.y > s.floor + 5;
+          const target = recovering ? base.x : Math.min(right - 20, Math.max(left + 20, c.x));
+          const dx = target - p.x, turn = Math.sign(c.x - p.x) !== p.facing;
+          return { move: Math.abs(dx) > 36 || turn ? Math.sign(dx) : 0,
+            holdMs: Math.round(Math.min(300, Math.max(65, (Math.abs(dx) - 26) * 5))),
+            jump: recovering && p.body.velocity.y > -70 || p.grounded && c.y < p.y - 38 };
         });
         const stick = await page.locator('#joystick').boundingBox();
-        if (stick && Math.abs(dx) > 35) {
-          const x = String(Math.round((stick.x + stick.width * (0.5 + Math.sign(dx) * 0.32)) * dpr));
+        if (stick && move) {
+          const x = String(Math.round((stick.x + stick.width * (0.5 + move * 0.32)) * dpr));
           const y = String(Math.round((stick.y + stick.height / 2) * dpr));
-          adb('shell', 'input', 'swipe', x, y, x, y, '240');
+          adb('shell', 'input', 'swipe', x, y, x, y, String(holdMs));
         }
-        if (dy < -35 && await page.locator('[data-action="jump"]').isVisible()) await tapDom('[data-action="jump"]');
+        if (jump && await page.locator('[data-action="jump"]').isVisible()) await tapDom('[data-action="jump"]');
       }
       if (await page.locator('[data-action="attack"]').isVisible()) await tapDom('[data-action="attack"]');
       await delay(unfolded ? 150 : 1800);
