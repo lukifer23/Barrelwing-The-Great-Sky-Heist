@@ -102,7 +102,8 @@ async function main() {
   const grassY = 207;
   await sharp(forestDemo).extract({ left: 0, top: grassY, width: 64, height: 32 })
     .png().toFile(write('terrain/forest_top.png'));
-  await sharp(forestDemo).extract({ left: 0, top: 330, width: 64, height: 64 })
+  // Interior roots and stones remain visible below the portrait playfield.
+  await sharp(forestDemo).extract({ left: 672, top: 32, width: 128, height: 128 })
     .png().toFile(write('terrain/forest_fill.png'));
 
   // Wooden treehouse platforms (real branch art)

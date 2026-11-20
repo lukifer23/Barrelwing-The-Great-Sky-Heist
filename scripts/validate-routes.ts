@@ -24,7 +24,10 @@ async function read(page: Page) {
     const zone = scene.flightZones.find((z: any) => z.active);
     const gate = zone?.gates.find((g: any) => g.rectTop.right + 6 > p.body.left);
     const enemies = scene.enemies.getChildren().filter((e: any) => e.active && !e.defeated && Math.abs(e.y - p.y) < 42 && Math.abs(e.x - p.x) < 70);
+    const checkpoint = scene.checkpoints.getChildren().find((c: any) => !c.getData('active') && c.x >= p.x - 25 && c.x < p.x + 100 && Math.abs(c.getData('y') - p.y) < 150);
     return {
+      checkpointAhead: checkpoint ? { x: checkpoint.x, y: checkpoint.getData('y') } : null,
+      blockedSide: p.body.blocked.right || p.body.blocked.left,
       active: game.scene.isActive('Game'), over: game.scene.isActive('GameOver'), done: scene.levelDone,
       x: p.x, y: p.y, vy: p.body.velocity.y, mode: p.mode, grounded: p.grounded, dead: p.dead,
       flaps: p.flapCharges, dashReady: p.dashReady, time: p.now, elapsedMs: scene.elapsedMs,
@@ -118,6 +121,7 @@ try {
       if (state.dead || wasDead) {
         for (const name of [...held]) await key(name, false);
         completedLadders.clear(); jumpUntil = 0; dashUntil = 0;
+        farthest = state.x; highest = state.y; lastProgress = Date.now();
       }
       wasDead = state.dead;
       if (state.dead) { await delay(80); continue; }
@@ -140,6 +144,8 @@ try {
       });
       const ladder = vertical ? ladders.find((_, index) => !completedLadders.has(index)) : undefined;
       let targetX = ladder ? (ladder.x + 0.5) * level.tile : exitX;
+      const flag = !vertical && state.mode !== 'flight' ? state.checkpointAhead : null;
+      if (flag) targetX = flag.x;
       const fighting = state.boss && (state.boss.engaged || Math.abs(state.boss.x - state.x) < 230);
       if (fighting && state.boss) targetX = state.boss.state === 'vulnerable' ? state.boss.x : state.boss.x + (state.x < state.boss.x ? -90 : 90);
       const close = Math.abs(targetX - state.x) < (ladder ? 15 : 10);
@@ -159,12 +165,14 @@ try {
         targetY = Math.max(state.zone.top + 28, Math.min(state.zone.bottom - 12, targetY));
         if (state.time - jumpAt > FLIGHT.minFlapGapMs && flightTap(state, targetY)) { jumpAt = state.time; jumpUntil = state.time + 50; }
       } else if (state.mode !== 'climb') {
-        const nearExit = !ladder && !fighting && Math.abs(exitX - state.x) < 110;
+        const nearExit = !ladder && !fighting && Math.abs(exitX - state.x) < 48 && Math.abs(state.y - exit.y * level.tile) < 24;
         const wantsJump = state.grounded || state.flaps > 0 && state.vy > -60;
         const dir = Math.sign(targetX - state.x);
         const support = level.terrain.find(t => !t.decor && state.x >= t.x * level.tile - 2 && state.x <= (t.x + t.w) * level.tile + 2 && Math.abs(t.y * level.tile - state.y) < 5);
         const edgeDistance = support ? (dir > 0 ? (support.x + support.w) * level.tile - state.x : state.x - support.x * level.tile) : 0;
-        const needsJump = !vertical || !close && (!state.grounded || edgeDistance < 32 || state.nearbyEnemy);
+        const clearFlag = !flag || state.y > flag.y + 12;
+        const needsJump = (clearFlag || !!fighting) && (!close || !!fighting || state.blockedSide)
+          && (!state.grounded || edgeDistance < 44 || state.blockedSide || state.nearbyEnemy || !!fighting);
         if (needsJump && !nearExit && wantsJump && state.time - jumpAt > 360) { jumpAt = state.time; jumpUntil = state.time + 270; }
         if (state.dashReady && (state.nearbyEnemy || fighting && state.boss?.state === 'vulnerable')) dashUntil = state.time + 60;
       }

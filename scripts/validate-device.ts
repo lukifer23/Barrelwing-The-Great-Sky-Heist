@@ -10,7 +10,13 @@ const device = process.env.ANDROID_SERIAL ? devices.find(d => d.serial() === pro
 if (!device) throw new Error('Connect one authorized device, or set ANDROID_SERIAL.');
 const directory = option('out', `artifacts/device/${new Date().toISOString().replaceAll(':', '-')}`);
 await mkdir(directory, { recursive: true });
-const adb = (...args: string[]) => execFileSync('adb', ['-s', device.serial(), ...args], { timeout: 20000, maxBuffer: 25000000 });
+const command = (...args: string[]) => execFileSync('adb', ['-s', device.serial(), ...args], { timeout: 20000, maxBuffer: 25000000 });
+const gameInFront = () => command('shell', 'dumpsys', 'activity', 'activities').toString().split('\n')
+  .some(line => line.includes('topResumedActivity=') && line.includes(pkg + '/'));
+const adb = (...args: string[]) => {
+  if (args[0] === 'shell' && args[1] === 'input' && !gameInFront()) throw new Error('The game lost foreground before the gesture.');
+  return command(...args);
+};
 const results: { check: string; details?: unknown }[] = [];
 const errors: string[] = [];
 const sampleSeconds = Number(option('sample-seconds', '0'));
@@ -32,6 +38,7 @@ async function attach() {
   await page.waitForFunction(() => !!(window as any).__game?.registry.get('saves'));
 }
 async function screenshot(name: string) {
+  if (!gameInFront()) throw new Error('The game lost foreground before the display capture.');
   const displays = adb('shell', 'dumpsys', 'display').toString().split('\n');
   const active = displays.find(line => line.includes('DisplayDeviceInfo{') && line.includes(', state ON,'));
   const id = active?.match(/uniqueId="local:(\d+)"/)?.[1];
@@ -166,6 +173,11 @@ try {
     await tapDom('[data-action="stop"]');
     await page.waitForFunction(() => document.querySelector('.stick-guide')?.textContent === 'MOVE');
     check(await page.locator('#joystick').evaluate(el => !el.classList.contains('held')), 'Physical STOP clears the folded movement latch');
+    const extent = await page.evaluate(() => {
+      const box = (window as any).__game.canvas.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, width: box.width, height: innerHeight };
+    });
+    check(Math.abs(extent.top) <= 1 && Math.abs(extent.bottom - extent.height) <= 1, 'Cover gameplay fills the physical WebView behind the controls', extent);
     await screenshot('cover-campaign');
   }
   if (sampleSeconds > 0) {
@@ -177,30 +189,35 @@ try {
     await screenshot('cover-brawl-setup');
     await tapText('BrawlSetup', original.brawlRun ? 'NEW MATCH' : 'START MATCH');
     await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').elapsedMs > 0);
-    const sample = page.evaluate(seconds => new Promise(resolve => {
+    // Keep listener setup and observation separate so a WebView error reaches
+    // the outer restoration handler immediately.
+    await page.evaluate(() => {
       const scene = (window as any).__game.scene.getScene('Brawl');
-      const start = performance.now(), durations: number[] = [];
-      let previous = start;
-      const collect = () => {
-        const now = performance.now();
-        durations.push(now - previous); previous = now;
-        if (now - start < seconds * 1000) return;
-        durations.sort((a, b) => a - b);
-        const at = (q: number) => durations[Math.floor((durations.length - 1) * q)];
-        scene.game.events.off('poststep', collect);
-        resolve({ seconds: (now - start) / 1000, frames: durations.length, p50: at(0.5), p95: at(0.95), p99: at(0.99),
-          over50ms: durations.filter(t => t > 50).length, activeMatchAtEnd: scene.scene.isActive(), viewport: [innerWidth, innerHeight], dpr: devicePixelRatio });
-      };
-      scene.game.events.on('poststep', collect);
-    }), sampleSeconds);
-    for (let i = 0; i < Math.ceil(sampleSeconds / 2); i++) {
-      if (await page.locator('[data-action="attack"]').isVisible()) await tapDom('[data-action="attack"]');
-      await delay(1800);
+      const meter = { started: performance.now(), last: 0, intervals: [] as number[],
+        collect() {
+          const now = performance.now();
+          meter.intervals.push(now - meter.last); meter.last = now;
+        } };
+      meter.last = meter.started;
+      scene.registry.set('deviceFrameSample', meter);
+      scene.game.events.on('poststep', meter.collect);
+    });
+    const deadline = Date.now() + sampleSeconds * 1000;
+    while (Date.now() < deadline && await page.locator('[data-action="attack"]').isVisible()) {
+      await tapDom('[data-action="attack"]'); await delay(1800);
     }
-    const stats = await sample;
+    const stats = await page.evaluate(() => {
+      const scene = (window as any).__game.scene.getScene('Brawl'), meter = scene.registry.get('deviceFrameSample');
+      scene.game.events.off('poststep', meter.collect); scene.registry.remove('deviceFrameSample');
+      const values: number[] = meter.intervals.sort((a: number, b: number) => a - b);
+      return { seconds: (meter.last - meter.started) / 1000, frames: values.length,
+        p50: values[Math.floor((values.length - 1) * 0.5)], p95: values[Math.floor((values.length - 1) * 0.95)],
+        p99: values[Math.floor((values.length - 1) * 0.99)], over50ms: values.filter(t => t > 50).length,
+        activeMatchAtEnd: scene.scene.isActive(), viewport: [innerWidth, innerHeight], dpr: devicePixelRatio };
+    });
     await writeFile(`${directory}/frame-intervals.json`, JSON.stringify(stats, null, 2));
-    await screenshot('cover-brawl');
-    check(true, 'Collected physical WebView frame intervals during live Brawl', stats);
+    if (gameInFront()) await screenshot('cover-brawl');
+    check(stats.frames > 0 && stats.seconds > 0, 'Collected physical WebView frame intervals during live Brawl', stats);
   }
   check(errors.length === 0, 'Native smoke test has no JavaScript runtime errors', errors);
 } catch (error) {

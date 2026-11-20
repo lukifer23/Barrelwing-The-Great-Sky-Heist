@@ -20,6 +20,7 @@ export class BrawlScene extends Phaser.Scene {
   private plates: { sprite: Phaser.GameObjects.TileSprite; x: number; lift: number; width: number }[] = [];
   private background!: Phaser.GameObjects.TileSprite;
   private barrels!: Phaser.GameObjects.Group;
+  private scenery!: Phaser.GameObjects.TileSprite;
   private humanHud!: Phaser.GameObjects.Text;
   private cpuHud!: Phaser.GameObjects.Text;
   private timerHud!: Phaser.GameObjects.Text;
@@ -46,7 +47,8 @@ export class BrawlScene extends Phaser.Scene {
   private readonly appPause = () => this.pauseForApp();
   private get W(): number { return this.scale.width; }
   private get H(): number { return this.scale.height; }
-  private get floor(): number { return this.H * 0.72; }
+  private floorAt(width: number, height: number): number { return height * (height > width * 1.3 ? 0.60 : 0.72); }
+  private get floor(): number { return this.floorAt(this.W, this.H); }
 
   constructor() { super('Brawl'); }
   init(options: BrawlOptions): void {
@@ -63,6 +65,7 @@ export class BrawlScene extends Phaser.Scene {
     const theme = THEMES[this.options.arena];
     this.cameras.main.setBackgroundColor(theme.sky).setSize(this.W, this.H).setScroll(0, 0);
     this.background = this.add.tileSprite(0, 0, this.W, this.H, theme.far).setOrigin(0).setAlpha(0.75).setDepth(-20);
+    this.scenery = this.add.tileSprite(0, 0, this.W, this.H, theme.mid).setOrigin(0, 1).setAlpha(0.42).setDepth(-19);
     this.platforms = this.physics.add.staticGroup(); this.barrels = this.add.group();
     for (const plate of ARENA_PLATFORMS[this.options.arena]) this.addPlate(...plate);
     this.human = new Fighter(this, this.W * 0.34, this.floor - 30, this.options.player, false);
@@ -109,7 +112,7 @@ export class BrawlScene extends Phaser.Scene {
   }
   private resizeArena(): void {
     if (this.previousWidth > 0 && this.previousHeight > 0) {
-      const oldFloor = this.previousHeight * 0.72;
+      const oldFloor = this.floorAt(this.previousWidth, this.previousHeight);
       for (const fighter of [this.human, this.cpu]) if (fighter) {
         const vx = fighter.body.velocity.x, vy = fighter.body.velocity.y;
         fighter.body.reset(fighter.x / this.previousWidth * this.W, fighter.y - oldFloor + this.floor);
@@ -125,6 +128,8 @@ export class BrawlScene extends Phaser.Scene {
       plate.sprite.setPosition(this.W * plate.x, this.floor - plate.lift).setSize(this.W * plate.width, 16);
       const body = plate.sprite.body as Phaser.Physics.Arcade.StaticBody; body.setSize(this.W * plate.width, 16); body.updateFromGameObject();
     }
+    const middle = this.scenery.texture.getSourceImage() as HTMLImageElement;
+    this.scenery.setPosition(0, this.H).setSize(this.W, this.H).setTileScale(Math.max(1, this.H / middle.height));
     const cover = this.H > this.W * 1.3;
     this.humanHud?.setFontSize(cover ? 17 : 10);
     this.cpuHud?.setX(this.W - 12).setFontSize(cover ? 17 : 10);
@@ -155,7 +160,7 @@ export class BrawlScene extends Phaser.Scene {
     const cpuHit = this.cpu.canStrike(this.human);
     if (humanHit) this.human.landStrike(this.cpu, this.suddenDeath);
     if (cpuHit) this.cpu.landStrike(this.human, this.suddenDeath);
-    const out = [this.human, this.cpu].filter(f => f.x < -110 || f.x > this.W + 110 || f.y > this.H + 120 || f.y < -220);
+    const out = [this.human, this.cpu].filter(f => f.x < -110 || f.x > this.W + 110 || f.y > this.floor + 196 || f.y < this.floor - 414);
     if (out.length) this.resolveRingOuts(out);
     if (this.ended) return;
     if (this.elapsedMs >= this.matchLength && !this.suddenDeath) {

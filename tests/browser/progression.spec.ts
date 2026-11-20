@@ -2,6 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { boot, start } from './helpers';
 
 async function choose(page: Page, sceneKey: string, label: string) {
+  // Scene activation precedes its first visible frame and input-list update.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const point = await page.evaluate(({ sceneKey, label }) => {
     const game = (window as any).__game, scene = game.scene.getScene(sceneKey);
     const text = scene.children.list.find((o: any) => o.type === 'Text' && o.input?.enabled && o.text === label);
@@ -224,7 +226,30 @@ test('cover screen uses readable menus, campaign framing and a three-column stag
   expect(map.textPx).toBeGreaterThanOrEqual(11); expect(map.clipped).toEqual([]);
   await page.keyboard.press('Enter'); await active(page, 'Game');
   await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').hud.compact);
+  const canvas = (await page.locator('canvas').boundingBox())!;
+  expect(Math.abs(canvas.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(canvas.y + canvas.height - 840)).toBeLessThanOrEqual(1);
+  const stick = (await page.locator('#joystick').boundingBox())!;
+  expect(stick.y + stick.height).toBeLessThanOrEqual(canvas.y + canvas.height + 1);
   await page.setViewportSize({ width: 840, height: 360 });
   await page.waitForFunction(() => !(window as any).__game.scene.getScene('Game').hud.compact);
   expect(errors).toEqual([]); await context.close();
+});
+
+test('holding climb ascends the stacked Skyhook ladders and the Return to Pressure conveyor landing', async ({ page }) => {
+  const errors = await boot(page);
+  for (const route of [{ id: 8, col: 12, row: 20, target: 4 }, { id: 14, col: 10, row: 50, target: 40 }]) {
+    await start(page, route.id);
+    await page.evaluate(({ col, row }) => {
+      const scene = (window as any).__game.scene.getScene('Game');
+      scene.player.body.reset((col + 0.5) * scene.level.tile, row * scene.level.tile);
+    }, route);
+    await page.keyboard.down('w');
+    await page.waitForFunction(row => {
+      const s = (window as any).__game.scene.getScene('Game');
+      return s.player.y <= row * s.level.tile + 7;
+    }, route.target, { timeout: 10000 });
+    await page.keyboard.up('w');
+  }
+  expect(errors).toEqual([]);
 });

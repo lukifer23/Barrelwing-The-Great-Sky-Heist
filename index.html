@@ -76,10 +76,11 @@
           --base: max(10px, env(safe-area-inset-bottom));
           --toolbar-y: calc(var(--base) + 2 * var(--unit) + 14px);
         }
-        #game { height: calc(100% - 54px); }
+        #app { padding: 0; }
+        #game canvas { box-shadow: none; }
         body:not(.playing) #audio-toggle { top: auto; bottom: max(4px, env(safe-area-inset-bottom)); }
         #touch-controls button small { font: 9px/1.1 Arial, sans-serif; font-weight: bold; }
-        body.playing #game { height: calc(100% - var(--toolbar-y) - 48px); }
+
         body.playing #audio-toggle { bottom: var(--toolbar-y); min-height: 40px; }
         body.playing #fps-meter { bottom: calc(var(--toolbar-y) + 45px); }
         #touch-controls button[data-action="pause"] { top: auto; right: var(--edge); bottom: var(--toolbar-y); height: 40px; }

@@ -12,6 +12,8 @@ type BaseLayout = { x: number; y: number; w: number; h: number; font?: number; w
 export function installViewport(game: Phaser.Game): void {
   const parent = document.getElementById('game')!;
   let pending = false;
+  const coverMedia = window.matchMedia('(pointer: coarse) and (orientation: portrait)');
+  let campaignView = false;
   const update = () => {
     pending = false;
     const box = parent.getBoundingClientRect();
@@ -19,7 +21,7 @@ export function installViewport(game: Phaser.Game): void {
     const aspect = box.width / box.height;
     // A closer portrait campaign camera makes a courier and the next landing
     // readable on the cover display. Menus and arenas own their own layouts.
-    const cover = window.matchMedia('(pointer: coarse) and (orientation: portrait)').matches;
+    const cover = coverMedia.matches;
     const minWidth = cover && aspect < 0.88 && game.scene.isActive('Game') ? 352 : 480;
     const width = Math.max(minWidth, Math.round(270 * aspect));
     const height = Math.max(270, Math.round(minWidth / aspect));
@@ -68,6 +70,8 @@ export function installViewport(game: Phaser.Game): void {
   const seen = new WeakMap<Phaser.Scene, string>();
   const lastObject = new WeakMap<Phaser.Scene, Phaser.GameObjects.GameObject>();
   const layout = () => {
+    const campaign = game.scene.isActive('Game');
+    if (campaign !== campaignView) { campaignView = campaign; queue(); }
     const { width, height } = game.scale.gameSize;
     layoutHeight = height;
     for (const scene of game.scene.getScenes(true)) {

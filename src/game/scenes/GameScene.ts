@@ -303,7 +303,7 @@ export class GameScene extends Phaser.Scene {
         this.addOneWayPlank(px, py, w);
         continue;
       }
-      this.drawTerrainVisual(r, px, py, w, h, 1);
+      this.drawTerrainVisual(r, px, py, w, h + (r.y + r.h >= this.level.height ? 160 : 0), 1);
       const body = this.add.rectangle(px + w / 2, py + h / 2, w, h, 0x000000, 0);
       this.physics.add.existing(body, true);
       this.solids.add(body);
@@ -691,7 +691,7 @@ export class GameScene extends Phaser.Scene {
   private buildCollisions(): void {
     this.physics.add.collider(this.player, this.solids, undefined, () => this.player.mode !== 'climb');
     for (const m of this.movers) {
-      this.physics.add.collider(this.player, m);
+      this.physics.add.collider(this.player, m, undefined, () => this.player.mode !== 'climb');
       this.physics.add.collider(this.barrels, m);
     }
     this.physics.add.collider(this.player, this.oneWays, undefined, (_p, platform) => {
@@ -705,7 +705,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.oneWays, undefined, e => !(e as Enemy).isFlyer);
     this.physics.add.collider(this.barrels, this.solids);
     this.physics.add.collider(this.barrels, this.oneWays);
-    for (const c of this.conveyors) this.physics.add.collider(this.player, c.sprite);
+    for (const c of this.conveyors) this.physics.add.collider(this.player, c.sprite, undefined, () => this.player.mode !== 'climb');
 
     this.physics.add.overlap(this.player, this.enemies, (_p, e) => this.enemyContact(e as unknown as Enemy));
     this.physics.add.overlap(this.player, this.barrels, (_p, b) => this.barrelContact(b as unknown as Barrel));
@@ -991,7 +991,7 @@ export class GameScene extends Phaser.Scene {
       if (!z.active && inside && this.player.x < z.endX - 6) {
         z.active = true;
         this.player.setFlightBounds(z.bounds);
-        this.cameras.main.setFollowOffset(40, 0);
+        this.cameras.main.setFollowOffset(-40, 0);
         this.hud.toast('WINDTAIL — RIDE THE WIND!', '#9ff5ff', 1300);
         AudioManager.sfx('magic', { volume: 0.4, rate: 1.2 });
       } else if (z.active && this.player.x > z.endX - 6) {
@@ -1532,8 +1532,14 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale.gameSize;
     this.cameras.main.setSize(width, height);
     const worldW = this.level.width * this.level.tile, worldH = this.level.height * this.level.tile;
-    const top = Math.min(0, worldH - height);
-    this.cameras.main.setBounds(0, top, worldW, Math.max(worldH, height));
+    // Keep ground-level play above the thumb controls while the backdrop and
+    // terrain continue rendering to the bottom edge of the cover display.
+    const lowestSurface = this.level.terrain.reduce((lowest, tile) => tile.decor ? lowest : Math.max(lowest, tile.y * this.level.tile), 0);
+    const groundDepth = worldH - lowestSurface;
+    const controlDepth = width < 420 ? Math.max(0, Math.min(120, height * 0.16) - groundDepth) : 0;
+    const bottom = worldH + controlDepth;
+    const top = Math.min(0, bottom - height);
+    this.cameras.main.setBounds(0, top, worldW, bottom - top);
     this.hud?.resize(width);
     if (this.introCard?.active) this.introCard.setX(width / 2);
     for (const layer of this.bgLayers) {

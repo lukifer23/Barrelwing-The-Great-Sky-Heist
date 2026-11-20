@@ -300,18 +300,17 @@ test('pausing freezes power, dash, and protection deadlines instead of expiring 
   const before = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { now: p.now, remaining: p.swiftUntil - p.now }; });
   await page.waitForTimeout(1000);
   expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.now)).toBe(before.now);
-  // Observe the first resumed frame inside the simulation. A slow CI runner
-  // can advance several hundred ms between two Playwright round trips.
-  const after = page.evaluate(() => new Promise<{ remaining: number; protected: boolean; dash: boolean; speed: number }>(resolve => {
+  await page.evaluate(() => {
     const s = (window as any).__game.scene.getScene('Game');
-    s.events.once('postupdate', () => {
+    s.events.once('resume', () => {
       const p = s.player;
-      resolve({ remaining: p.swiftUntil - p.now, protected: p.isInvulnerable, dash: p.dashReady, speed: p.speedMultiplier });
+      s.resumeEvidence = { remaining: p.swiftUntil - p.now, protected: p.isInvulnerable, dash: p.dashReady, speed: p.speedMultiplier };
     });
-  }));
+  });
   await page.keyboard.press('Escape');
-  const resumed = await after;
-  expect(resumed.remaining).toBeGreaterThanOrEqual(before.remaining - 49);
+  await page.waitForFunction(() => !!(window as any).__game.scene.getScene('Game').resumeEvidence);
+  const resumed = await page.evaluate(() => (window as any).__game.scene.getScene('Game').resumeEvidence);
+  expect(resumed.remaining).toBe(before.remaining);
   expect(resumed.protected).toBe(true); expect(resumed.dash).toBe(false); expect(resumed.speed).toBeGreaterThan(1);
   expect(errors).toEqual([]);
 });

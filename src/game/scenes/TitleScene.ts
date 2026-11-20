@@ -34,10 +34,11 @@ export class TitleScene extends Phaser.Scene {
     this.buildBackdrop(W, H);
     this.buildLogo(W, H);
     this.buildMenu(W, H);
-    this.add.text(10, H - 8, window.matchMedia('(pointer: coarse)').matches ? 'TAP TO PLAY. ACORNS SOLD SEPARATELY.' : 'ENTER SELECT  ·  ARROWS MOVE  ·  M MUTE  ·  F FULLSCREEN', {
-      fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0',
-    }).setOrigin(0, 1).setDepth(12);
-    this.add.text(W - 8, H - 8, 'v1.2', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0' }).setOrigin(1, 1).setDepth(12);
+    if (!window.matchMedia('(pointer: coarse)').matches) {
+      this.add.text(10, H - 8, 'ENTER SELECT  ·  ARROWS MOVE  ·  M MUTE  ·  F FULLSCREEN', {
+        fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0',
+      }).setOrigin(0, 1).setDepth(12);
+    }
 
     const startMusic = () => {
       if (this.startedMusic) return;
