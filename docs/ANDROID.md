@@ -26,11 +26,11 @@ The activity is resizable, uses hardware acceleration, and handles screen size, 
 
 The renderer explicitly uses WebGL. Its backing resolution follows logical world units, keeping the GPU workload modest while preserving pixel-art rendering. Camera size expands with the available aspect ratio. Physics velocities stay in world units. Menus reflow to fill the viewport, with the title using shared anchors for scenery and interactive content. The analog thumb joystick and action buttons have independent physical hit areas and multi-pointer input.
 
-The game fills the cover display. Touch controls overlay the scene and the campaign camera leaves room below ground-level play for thumbs. Button size, opacity, handedness, haptics and one-thumb portrait movement are configurable. Pause and Sound float above the portrait action buttons. Insets account for system bars and cutouts where exposed by WebView.
+The game fills the cover display. Touch controls overlay the scene and the campaign camera leaves room below ground-level play for thumbs. Button size, opacity, handedness, haptics and one-thumb portrait movement are configurable. Pause and Sound float above the portrait action buttons. In portrait Brawl, the combat camera follows both fighters while scores and time stay anchored to the cover. Reduced Motion uses the fixed arena view. Insets account for system bars and cutouts where exposed by WebView.
 
 ## Lifecycle and persistence
 
-Backgrounding pauses campaign gameplay and saves a checkpoint snapshot. Android Back routes through scene navigation. Native Preferences holds a durable save copy; browser storage acts as a local journal and fallback. Upgrade and record changes are saved immediately, and active runs autosave periodically and at checkpoints, pauses, and page hide.
+Backgrounding pauses campaign gameplay and saves a checkpoint snapshot. Android Back routes through scene navigation. Android writes the primary and backup keys in a single SharedPreferences disk commit on Capacitor’s plugin thread. The existing Preferences reader loads legacy saves from the same file. Browser storage supplies a synchronous local journal and fallback. Upgrade and record changes are saved immediately, and active runs autosave periodically and at checkpoints, pauses, and page hide.
 
 An update signed with the same certificate preserves the app's data. Uninstalling or clearing storage deletes saves. Keep the development signing key if future personal APKs should update this installation in place. Never commit keystores.
 

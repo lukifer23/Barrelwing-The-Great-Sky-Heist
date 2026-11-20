@@ -17,13 +17,13 @@ The implementation and focused regression tests cover these behaviors. They do n
 
 | Priority | Area | Evidence required |
 | --- | --- | --- |
-| High | Complete campaign routes | Play every campaign stage and trial from its spawn and each checkpoint using ordinary movement; verify exits, optional gems, springs, gates, and the boss escape sequence. |
+| High | Complete campaign routes | All 16 exits have ordinary-input clears across the November 20 pass. Verify all optional gems, each checkpoint route and an uninterrupted fresh-profile campaign. |
 | High | Touch onboarding | Teach movement, jumping, flapping, dashing, and climbing in context with device-appropriate instructions; verify the first session without consulting documentation. |
 | High | Combat balance | Play all courier/difficulty combinations, assess CPU recovery and attack readability, and tune damage and knockback from actual matches. |
 | High | Fold transitions | Physically fold and unfold during campaign movement, flight, Brawl, pause, settings, and results; preserve progress and accessible controls. |
 | High | Sustained performance | Record frame intervals during long runs in the busiest stages, with sound and touch enabled, including thermal behavior. Short samples are insufficient. |
 | Medium | Presentation | Review animation transitions, effect readability, sound balance, text sizes, menu density, and overlapping HUD elements on the cover screen. |
-| Medium | Save durability | Verify process termination, force stop, app update, recovery copies, and native write completion on a device while retaining earned progress. |
+| Medium | Save durability | Back, background, update retention and flushed force-stop recovery passed on the Fold7. Exercise a kill during a pending native write and recovery from a damaged primary copy on hardware. |
 | Medium | Session pacing | Review difficulty ramps, checkpoint spacing, upgrade costs, rewards, and level-end feedback through a fresh save. |
 
 Existing automated geometry checks do not replace route playthroughs. Local device captures and profiling output remain outside the public repository.

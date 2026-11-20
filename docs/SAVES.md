@@ -18,7 +18,7 @@ Records also store `mastery`, with boolean `collector`, `express`, and `untouche
 
 Every unique saved gem and rating star earns one Sky Shard. Available shards are calculated from saved achievements minus the costs of purchased tiers. Each upgrade has two tiers costing 3 and 6 shards. Replaying without improving achievements does not create extra currency.
 
-Courier level starts at one and increases for each nine lifetime shards earned by that profile.
+Courier level starts at one and increases for each nine shards earned from the profile’s current campaign records. Spending shards leaves the level intact. Starting a new campaign resets its records and level, and retains the recruited Clover.
 
 Each earned delivery stamp contributes one additional shard. Upgrade sanitation includes stamp income when retaining purchases after reload.
 
@@ -44,7 +44,7 @@ Completing a stage banks the result, rating, aggregate score, unlock and run cle
 
 ## Storage behavior
 
-On Android, initialization reads Capacitor Preferences before gameplay starts. Writes are serialized so an older asynchronous write cannot overwrite a newer one. Local storage holds a synchronous journal. In browsers, progress uses local storage only. A corrupt primary browser save can recover from its companion copy. If storage is unavailable, gameplay remains usable in memory and checkpoint feedback reports the failure.
+On Android, initialization reads Capacitor Preferences before gameplay starts. The SaveJournal plugin commits the primary and backup keys together in the same preferences file on the Capacitor handler thread. Writes are serialized, and a successful native response confirms the disk commit. Local storage holds a synchronous journal. In browsers, progress uses local storage only. A corrupt primary browser save can recover from its companion copy. If storage is unavailable, gameplay remains usable in memory and checkpoint feedback reports the failure.
 
 Each save increments `revision`, including campaign resets. Loading compares valid primary and recovery copies and selects the greatest revision, including the local journal and both native copies on Android. Saves without a revision migrate as revision zero. Revision ordering prevents an older native write from superseding newer journal progress after a process interruption; it does not guarantee that the operating system allows a pending native write to finish before termination.
 
@@ -54,4 +54,4 @@ The game has no account, backend, cloud backup, telemetry, or shared leaderboard
 
 ## Independent modes
 
-Brawl records and active matches are stored separately from the campaign run. Starting a new campaign retains Brawl records, its active match, the Sprint personal best, settings, and the chosen courier. Clover joins the active profile at nine earned shards. The recruit carries over into a new campaign. Campaign stage records and upgrades reset. See [BRAWL.md](BRAWL.md) for match restoration details.
+Each profile stores its Brawl preset (player, CPU, arena, rules and difficulty), records and active match independently from its campaign courier and checkpoint. Legacy suspended matches supply the initial preset. Starting a new campaign retains Brawl records, its active match, the Sprint personal best, settings, and the chosen courier. Clover joins the active profile at nine earned shards. The recruit carries over into a new campaign. Campaign stage records and upgrades reset. See [BRAWL.md](BRAWL.md) for match restoration details.
