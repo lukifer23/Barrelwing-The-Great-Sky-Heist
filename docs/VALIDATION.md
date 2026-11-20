@@ -57,3 +57,10 @@ A desktop production soak completed 45 stage cycles of 20 seconds with zero runt
 Sustained gameplay frame-time measurements, physical folding during active play, extended audio checks, and complete route playthroughs remain separate acceptance checks. Successful builds, smoke tests, and GPU detection do not establish a sustained 60 fps guarantee or prove that every possible route has been playtested.
 
 Local screenshots, diagnostic logs, generated APKs, and device identifiers are excluded from version control.
+
+
+## Build artifact retention
+
+Route, Brawl and soak runs compile a private production copy under their timestamped evidence directory. The harness removes that copy when the run exits through its cleanup handler, including on test failure. The report, screenshots, commit and build fingerprint stay in the directory. After an interrupted run, its `site/` directory can be removed once its preview server has stopped.
+
+The Android build replaces `artifacts/barrelwing-debug.apk`. GitHub Actions retains each uploaded APK for seven days. Device rollback APKs and save backups live separately under `artifacts/device/`.

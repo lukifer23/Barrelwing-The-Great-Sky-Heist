@@ -39,3 +39,4 @@ jobs:
         with:
           name: barrelwing-debug
           path: artifacts/barrelwing-debug.apk
+          retention-days: 7
