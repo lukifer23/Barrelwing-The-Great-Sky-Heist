@@ -1,8 +1,14 @@
 # Development handoff
 
-## 2026-11-20
+## 2026-11-20 unfolded Fold7
 
-This pass added local profiles, campaign scoring, courier skills, the Sorting Office trial, full-height one-thumb cover play, a four-fighter Brawl roster, signature moves and KO Race. Ordinary keyboard routes reached all 16 exits across the pass. Current verification is recorded in [VALIDATION.md](VALIDATION.md). The final installed application is `df53c38`. Its durable Android write passed an immediate force-stop and disk-copy comparison. The November 16 notes below describe the earlier installed milestone.
+The installed application contains the gameplay, layout and HUD changes through `98eb9bc`. The final physical gesture runner is `b7cc4e7`. On the open inner display, 23 device checks passed. The original profile and settings matched their pre-update values in memory and in both on-disk save copies, apart from the revision counter. A full Hard stock match, a flight capture and a frame-interval report are available locally in `artifacts/device/2026-11-20-inner/accepted/`. The current APK and the previous installed APK are retained locally.
+
+One fresh Mallow profile completed the nine-stage campaign through the normal menus. Mallow bought a heart upgrade after Acorn Trail, unlocked Clover after Barrel Bridge, and reached the ending with two deaths on the flagship. Detailed outcomes and acceptance limits are in [VALIDATION.md](VALIDATION.md).
+
+## Earlier 2026-11-20 milestone
+
+This pass added local profiles, campaign scoring, courier skills, the Sorting Office trial, full-height one-thumb cover play, a four-fighter Brawl roster, signature moves and KO Race. Ordinary keyboard routes reached all 16 exits across the pass. Current verification is recorded in [VALIDATION.md](VALIDATION.md). That milestone installed `df53c38`. Its durable Android write passed an immediate force-stop and disk-copy comparison. The November 16 notes below describe the earlier installed milestone.
 
 ## Archived checkpoint — 2026-11-16
 

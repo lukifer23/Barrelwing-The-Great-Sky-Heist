@@ -17,14 +17,14 @@ The implementation and focused regression tests cover these behaviors. They do n
 
 | Priority | Area | Evidence required |
 | --- | --- | --- |
-| High | Complete campaign routes | All 16 exits have ordinary-input clears across the November 20 pass. Verify all optional gems, each checkpoint route and an uninterrupted fresh-profile campaign. |
+| High | Complete campaign routes | All 16 exits have ordinary-input clears across the November 20 pass. One fresh Mallow campaign reached the ending. Verify all optional gems and alternate checkpoint routes. |
 | High | Touch onboarding | Teach movement, jumping, flapping, dashing, and climbing in context with device-appropriate instructions; verify the first session without consulting documentation. |
 | High | Combat balance | Play all courier/difficulty combinations, assess CPU recovery and attack readability, and tune damage and knockback from actual matches. |
 | High | Fold transitions | Physically fold and unfold during campaign movement, flight, Brawl, pause, settings, and results; preserve progress and accessible controls. |
 | High | Sustained performance | Record frame intervals during long runs in the busiest stages, with sound and touch enabled, including thermal behavior. Short samples are insufficient. |
 | Medium | Presentation | Review animation transitions, effect readability, sound balance, text sizes, menu density, and overlapping HUD elements on the cover screen. |
 | Medium | Save durability | Back, background, update retention and flushed force-stop recovery passed on the Fold7. Exercise a kill during a pending native write and recovery from a damaged primary copy on hardware. |
-| Medium | Session pacing | Review difficulty ramps, checkpoint spacing, upgrade costs, rewards, and level-end feedback through a fresh save. |
+| Medium | Session pacing | Compare other couriers and upgrade paths with the recorded fresh Mallow run. |
 
 Existing automated geometry checks do not replace route playthroughs. Local device captures and profiling output remain outside the public repository.
 

@@ -21,7 +21,7 @@ The [project audit](docs/AUDIT.md) records corrected gameplay and performance is
 - Moving platforms, conveyors, springs, switches, gates, steam vents, lightning, updrafts, and falling platforms.
 - Distinct enemies, four barrel variants, and a three-phase boss with attack warnings and vulnerable windows.
 - Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
-- Barrel Brawl: solo-versus-CPU platform fighting with stock matches, a 90-second KO race, independent player and CPU roster picks, four signature attacks, parries, aerial recovery, three distinct arenas, and three CPU difficulties. Each local player keeps their own match settings.
+- Barrel Brawl: solo-versus-CPU platform fighting with stock matches, a 90-second KO race, independent player and CPU roster picks, four signature attacks with visible CPU wind-ups, parry counters, aerial recovery, three distinct arenas, and three CPU difficulties. Each local player keeps their own match settings.
 - Four playable couriers including Clover, the level-two rooftop scout. Starting choices are Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
 - Three delivery stamps per stage: all gems, a deathless par clear, and a clear without damage or deaths. Each new stamp earns a permanent Sky Shard, with live eligibility and saved map/results feedback.
