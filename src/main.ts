@@ -16,6 +16,7 @@ import { GameOverScene } from './game/scenes/GameOverScene';
 import { BrawlScene } from './game/scenes/BrawlScene';
 import { BrawlSetupScene } from './game/scenes/BrawlSetupScene';
 import { BrawlPauseScene, BrawlResultsScene } from './game/scenes/BrawlMenus';
+import { ProfilesScene } from './game/scenes/ProfilesScene';
 import { CharacterScene } from './game/scenes/CharacterScene';
 import { WorkshopScene } from './game/scenes/WorkshopScene';
 import { SaveManager } from './game/systems/SaveManager';
@@ -49,11 +50,13 @@ const config: Phaser.Types.Core.GameConfig = {
       fps: 60,
     },
   },
-  fps: { target: 60, limit: 60, forceSetTimeOut: false },
+  // The 4.2 limiter includes its fractional carry in consecutive simulation deltas.
+  // Use display-paced frames and Arcade’s fixed 60 Hz physics step.
+  fps: { target: 60, smoothStep: false },
   scene: [
     BootScene, PreloadScene, TitleScene, WorldMapScene, GameScene,
     PauseScene, ResultsScene, EndingScene, SettingsScene, ControlsScene,
-    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene, BrawlScene, BrawlSetupScene, BrawlPauseScene, BrawlResultsScene, GameOverScene,
+    CreditsScene, SkySprintScene, WorkshopScene, CharacterScene, ProfilesScene, BrawlScene, BrawlSetupScene, BrawlPauseScene, BrawlResultsScene, GameOverScene,
   ],
 };
 

@@ -4,15 +4,15 @@ Barrelwing uses TypeScript, Phaser 4 Arcade Physics, and Vite. Capacitor provide
 
 ## Scene lifecycle
 
-Boot waits for save initialization and fonts. Preload loads bundled images, sprite sheets, music, and sounds, then registers animation metadata. Title routes to a saved run, a new game, the world map, settings, controls, or credits. Game owns stage entities, collisions, hazards, collectibles, progression, and checkpoint state. Pause is an overlay. Results and Ending lead back to the maps. Sky Sprint has its own endless flight loop. Workshop spends earned shards on persistent upgrades.
+Boot waits for save initialization and fonts. Preload loads bundled images, sprite sheets, music, and sounds, then registers animation metadata. Title routes to a saved run, a new game, the world map, settings, controls, or credits. Profiles switches local players. Brawl Setup selects stock or timed rules, fighters, arena and difficulty. Game owns stage entities, collisions, hazards, collectibles, progression, and checkpoint state. Pause is an overlay. Results and Ending lead back to the maps. Sky Sprint has its own endless flight loop. Workshop spends earned shards on persistent upgrades.
 
 Scenes are reused by Phaser, so transient arrays and flags must reset on each create or init. Custom event subscriptions must be removed on shutdown. Input buffers and held touch states reset at pause, respawn, and scene transitions.
 
-Gameplay deadlines use `playTime(scene)` from `PlayClock`, installed before constructing campaign, Sprint, or Brawl entities. It advances on active scene steps with the same delta cap used by that scene. Use it for powers, invulnerability, attacks, AI deadlines, and despawn times. Phaser's `scene.time.now` represents the frame timestamp and includes time spent outside the active scene; it is suitable for menu input guards but not gameplay deadlines that must freeze during pause. Phaser delayed calls and tweens retain their own scene-managed pause behavior.
+Rendering follows the display refresh rate. Arcade uses a fixed 60 Hz physics step. Gameplay deadlines use `playTime(scene)` from `PlayClock`, installed before constructing campaign, Sprint, or Brawl entities. It advances on active scene steps with the same delta cap used by that scene. Use it for powers, invulnerability, attacks, AI deadlines, and despawn times. Phaser's `scene.time.now` represents the frame timestamp and includes time spent outside the active scene; it is suitable for menu input guards but not gameplay deadlines that must freeze during pause. Phaser delayed calls and tweens retain their own scene-managed pause behavior.
 
 ## Authored content
 
-`src/game/data/levels` contains nine campaign levels and six trials. Coordinates use a per-stage tile size. Runtime construction converts these definitions into world positions. Each collectible and enemy has a stable object identifier for save restoration; each gem also has its own slot from zero through two.
+`src/game/data/levels` contains nine campaign levels and seven trials. Coordinates use a per-stage tile size. Runtime construction converts these definitions into world positions. Each collectible and enemy has a stable object identifier for save restoration; each gem also has its own slot from zero through two.
 
 Plain Phaser groups organize entities that already have configured Arcade bodies. Physics groups apply defaults when adding objects and can overwrite gravity, velocity, and body flags. Use a physics group only when that behavior is intended.
 

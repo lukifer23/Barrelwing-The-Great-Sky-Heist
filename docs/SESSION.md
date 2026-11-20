@@ -1,6 +1,12 @@
-# Session checkpoint — 2026-11-16
+# Development handoff
 
-Work stopped at the user's request. All implementation is committed on `main`; no feature work should continue until requested. The latest application-code milestone is `8e4ee11` (prompt Android lifecycle pause and native acceptance tooling). The final documentation commit records this stopping point.
+## 2026-11-20
+
+Work resumed on local profiles, campaign scoring, courier skills, the Sorting Office trial, one-thumb controls and Brawl rules. Current verification is recorded in [VALIDATION.md](VALIDATION.md). The November 16 notes below describe the earlier installed milestone.
+
+## Archived checkpoint — 2026-11-16
+
+Work stopped at the user's request. Implementation at that checkpoint was committed on `main`. The latest application-code milestone is `8e4ee11` (prompt Android lifecycle pause and native acceptance tooling). The final documentation commit records this stopping point.
 
 ## Preserved work
 

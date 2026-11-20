@@ -1,7 +1,7 @@
 {
   "name": "barrelwing",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "An offline squirrel-courier action platformer for Android and WebGL browsers, with barrel dodging, windtail flight, upgrades, and saved progress.",
   "scripts": {

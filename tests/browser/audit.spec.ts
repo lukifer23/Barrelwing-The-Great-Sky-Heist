@@ -19,7 +19,7 @@ test('delivery stamps pay once, fund upgrades, and survive replay and reload', a
     return ['vitality', 'reserves', 'dash'].map(kind => saves.buyUpgrade(kind));
   })).toEqual([true, true, true]);
   await page.reload(); await page.waitForFunction(() => (window as any).__game?.scene.isActive('Title'));
-  expect(await page.evaluate(() => (window as any).__game.registry.get('saves').get().upgrades)).toEqual({ vitality: 1, reserves: 1, dash: 1, duration: 0 });
+  expect(await page.evaluate(() => (window as any).__game.registry.get('saves').get().upgrades)).toEqual({ vitality: 1, reserves: 1, dash: 1, duration: 0, rhythm: 0 });
   await start(page); await clear();
   await page.waitForFunction(() => (window as any).__game.scene.isActive('Results'));
   expect(await page.evaluate(() => (window as any).__game.scene.getScene('Results').result)).toMatchObject({ newStamps: [], shardsEarned: 0 });

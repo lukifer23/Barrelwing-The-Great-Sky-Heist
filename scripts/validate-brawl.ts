@@ -1,15 +1,18 @@
 import { writeFile } from 'node:fs/promises';
 import { delay, option, prepareBrowserRun } from './browser-harness';
-import type { CharacterId } from '../src/game/data/characters';
+import { COURIERS, type CharacterId } from '../src/game/data/characters';
 import type { BrawlDifficulty } from '../src/game/data/brawl';
 import type { ThemeId } from '../src/game/data/levels/types';
 
 const seconds = Number(option('seconds', '220'));
 if (!Number.isFinite(seconds) || seconds < 10) throw new Error('Use --seconds=220 for a full match.');
-const characters: CharacterId[] = ['pip', 'fenn', 'mallow'];
+const characters = option('players', COURIERS.join(',')).split(',') as CharacterId[];
+if (!characters.every(id => COURIERS.includes(id))) throw new Error('Unknown courier.');
+const rules = option('rules', 'stock');
+if (rules !== 'stock' && rules !== 'timed') throw new Error('Use --rules=stock or --rules=timed.');
 const difficulties: BrawlDifficulty[] = ['easy', 'normal', 'hard'];
 const arenas: ThemeId[] = ['forest', 'factory', 'storm'];
-const cases = characters.flatMap((player, i) => difficulties.map((difficulty, j) => ({ player, cpu: characters[(i + j + 1) % 3], difficulty, arena: arenas[(i + j) % 3] })));
+const cases = characters.flatMap((player, i) => difficulties.map((difficulty, j) => ({ player, rules, cpu: COURIERS[(COURIERS.indexOf(player) + j + 1) % COURIERS.length], difficulty, arena: arenas[(i + j) % 3] })));
 const harness = await prepareBrowserRun('brawl', Number(option('port', '5177')), { seconds, cases, purpose: 'Ordinary keyboard matches; controller outcomes are not human balance scores.' });
 const { browser, directory, url } = harness;
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

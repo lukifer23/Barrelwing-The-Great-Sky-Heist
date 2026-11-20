@@ -15,13 +15,18 @@ export class TitleScene extends Phaser.Scene {
   private pipX = 0;
   private gemY = 0;
   private startedMusic = false;
-  private readonly resize = () => { if (this.scene.isActive()) this.scene.restart(); };
+  private layoutWidth = 0;
+  private layoutHeight = 0;
+  private readonly resize = () => {
+    if (this.scene.isActive() && (this.scale.width !== this.layoutWidth || this.scale.height !== this.layoutHeight)) this.scene.restart();
+  };
 
   constructor() { super('Title'); }
 
   create(): void {
     this.clouds = []; this.barrels = []; this.modal = null; this.startedMusic = false;
     const { width: W, height: H } = this.scale.gameSize;
+    this.layoutWidth = W; this.layoutHeight = H;
     this.cameras.main.setSize(W, H).setScroll(0, 0).setBackgroundColor('#87c6e8');
     this.floorY = H - Math.max(30, H * 0.15);
     this.pipX = Math.min(92, W * 0.18);
@@ -32,7 +37,7 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(10, H - 8, window.matchMedia('(pointer: coarse)').matches ? 'TAP TO PLAY. ACORNS SOLD SEPARATELY.' : 'ENTER SELECT  ·  ARROWS MOVE  ·  M MUTE  ·  F FULLSCREEN', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0',
     }).setOrigin(0, 1).setDepth(12);
-    this.add.text(W - 8, H - 8, 'v1.1', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0' }).setOrigin(1, 1).setDepth(12);
+    this.add.text(W - 8, H - 8, 'v1.2', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#e8dcc0' }).setOrigin(1, 1).setDepth(12);
 
     const startMusic = () => {
       if (this.startedMusic) return;
@@ -44,8 +49,10 @@ export class TitleScene extends Phaser.Scene {
     const onKey = (e: KeyboardEvent) => { if (!this.modal) this.menu.handleKey(e); };
     this.input.keyboard?.on('keydown', onKey);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resize);
+    this.events.on(Phaser.Scenes.Events.RESUME, this.resize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.resize);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.resize);
       this.input.keyboard?.off('keydown', onKey);
       this.input.keyboard?.off('keydown', startMusic);
       this.input.removeAllListeners();
@@ -83,10 +90,10 @@ export class TitleScene extends Phaser.Scene {
   private buildLogo(W: number, H: number): void {
     const y = Math.max(42, Math.min(90, H * 0.17));
     this.add.text(W / 2, y, 'BARRELWING', {
-      fontFamily: '"Press Start 2P"', fontSize: '23px', color: '#f8ecc9', stroke: '#4b2f1a', strokeThickness: 2,
+      fontFamily: '"Press Start 2P"', fontSize: H > W * 1.2 ? '32px' : '23px', color: '#f8ecc9', stroke: '#4b2f1a', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(11).setShadow(3, 3, '#1a1020', 0, true, true);
     this.add.rectangle(W / 2, y + 24, Math.min(W - 60, 300), 2, 0x6b4a2a).setDepth(10);
-    this.add.text(W / 2, y + 37, 'THE GREAT SKY HEIST', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060' }).setOrigin(0.5).setDepth(11).setShadow(1, 1, '#1a1020', 0, true, true);
+    this.add.text(W / 2, y + 37, 'THE GREAT SKY HEIST', { fontFamily: FONT_SMALL, fontSize: H > W * 1.2 ? '16px' : '9px', color: '#f0c060' }).setOrigin(0.5).setDepth(11).setShadow(1, 1, '#1a1020', 0, true, true);
     for (const x of [W / 2 - 194, W / 2 + 194]) this.add.sprite(x, y + 7, 'acorn', 0).play('acorn-spin').setDepth(10);
   }
 
@@ -103,16 +110,17 @@ export class TitleScene extends Phaser.Scene {
       { label: 'COURIERS', action: () => this.openOverlay('Characters') },
       { label: 'CONTROLS', action: () => this.openOverlay('Controls') },
       { label: 'SETTINGS', action: () => this.openOverlay('Settings') },
+      { label: `PLAYER ${save.slot} / PROFILES`, action: () => this.scene.start('Profiles') },
       { label: 'CREDITS', action: () => this.openOverlay('Credits') },
     ];
     const tall = H / W > 1.2;
     const top = tall ? H * 0.30 : Math.max(102, Math.min(160, H * 0.37));
-    const spacing = tall ? Math.max(30, Math.min(52, (H - top - 80) / items.length)) : Math.max(14, Math.min(30, (H - top - 36) / items.length));
+    const spacing = tall ? Math.max(30, Math.min(52, (H - top - 80) / items.length)) : Math.max(12, Math.min(30, (H - top - 36) / items.length));
     const x = tall ? W / 2 : W * 0.61;
     const panelW = tall ? W * 0.76 : Math.min(200, W - x - 10);
     const panelH = spacing * items.length + 8;
     this.add.rectangle(tall ? x - panelW / 2 - 10 : x - 14, top - spacing / 2 - 4, panelW + 20, panelH, 0x101528, 0.9).setOrigin(0).setStrokeStyle(1, 0x6b5a3a).setDepth(9);
-    this.menu = new Menu(this, items, { x, y: top, spacing, align: tall ? 'center' : 'left', fontSize: tall ? '16px' : '9px', showHints: false, depth: 12 });
+    this.menu = new Menu(this, items, { x, y: top, spacing, align: tall ? 'center' : 'left', fontSize: tall ? '20px' : '9px', showHints: false, depth: 12 });
   }
 
   private continueGame(): void {
@@ -129,7 +137,7 @@ export class TitleScene extends Phaser.Scene {
     const dim = this.add.rectangle(0, 0, W, H, 0x05070d, 0.8).setOrigin(0).setInteractive();
     const panel = addPanel(this, W / 2, H / 2, 340, 116, 0x141a2e, 1, 0xc98a52);
     const title = this.add.text(W / 2, H / 2 - 34, 'START OVER?', { fontFamily: '"Press Start 2P"', fontSize: '12px', color: '#f0c060' }).setOrigin(0.5);
-    const body = this.add.text(W / 2, H / 2 - 10, 'Progress, gems and upgrades will be erased.', { fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0' }).setOrigin(0.5);
+    const body = this.add.text(W / 2, H / 2 - 10, 'This player’s campaign, gems and upgrades will be erased.', { fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0' }).setOrigin(0.5);
     const yes = this.add.text(W / 2 - 76, H / 2 + 28, 'START OVER', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#9fb0d0', padding: { x: 12, y: 10 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     const no = this.add.text(W / 2 + 76, H / 2 + 28, 'CANCEL', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060', padding: { x: 12, y: 10 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     c.add([dim, panel, title, body, yes, no]);

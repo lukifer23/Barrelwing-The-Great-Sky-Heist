@@ -74,6 +74,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawners: BarrelSpawner[] = [];
   private movers: MovingPlatform[] = [];
+  private introCard?: Phaser.GameObjects.Container;
   private ladderRects: Phaser.Geom.Rectangle[] = [];
   private conveyors: { sprite: Phaser.GameObjects.TileSprite; dir: number; speed: number; x: number; y: number; w: number }[] = [];
   private gates: GateRuntime[] = [];
@@ -89,6 +90,7 @@ export class GameScene extends Phaser.Scene {
 
   private lives = 3;
   private coinsCollected = 0;
+  private comboWindowMs = 1500;
   private coinCombo = 0;
   private lastCoinAt = 0;
   private score = 0;
@@ -131,6 +133,7 @@ export class GameScene extends Phaser.Scene {
     this.resumeRun = data.resume && SaveManager.get().run?.levelId === level.id ? SaveManager.get().run : null;
     this.collected = new Set(this.resumeRun?.collected ?? []);
     this.defeated = new Set(this.resumeRun?.defeated ?? []);
+    this.comboWindowMs = SaveManager.stats.comboWindowMs;
     this.coinCombo = 0;
     this.lastCoinAt = 0;
     this.autosaveAt = 0;
@@ -591,7 +594,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectPowerup(img: Phaser.GameObjects.Image): void {
-    if (!img.active) return;
+    if (!img.active || !this.canInteract) return;
     this.collected.add(img.getData('objectId'));
     const kind = img.getData('kind') as PowerKind;
     const meta = POWER_META[kind];
@@ -599,7 +602,8 @@ export class GameScene extends Phaser.Scene {
     (img.getData('label') as Phaser.GameObjects.Text | undefined)?.destroy();
     img.destroy();
     this.powerups = this.powerups.filter(p => p !== img);
-    if (kind === 'shield') this.player.activateShield();
+    if (kind === 'priority') this.player.priorityUntil = this.player.now + meta.durationMs * this.player.powerDuration;
+    else if (kind === 'shield') this.player.activateShield();
     else if (kind === 'swift') this.player.grantSwift();
     else if (kind === 'magnet') this.player.grantMagnet();
     else if (kind === 'triple') this.player.grantTriple();
@@ -608,7 +612,7 @@ export class GameScene extends Phaser.Scene {
       const blast = this.add.sprite(this.player.x, this.player.y - 20, 'energy_smack').setDepth(25).setScale(1.8).play('energy-burst');
       blast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => blast.destroy());
       for (const enemy of this.enemies.getChildren() as Enemy[]) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
-      for (const barrel of this.barrels.getChildren() as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
+      for (const barrel of [...this.barrels.getChildren()] as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
       this.fx.shake(0.004, 180); AudioManager.sfx('magic', { volume: 0.5, rate: 0.8 });
     }
     else if (kind === 'heart') {
@@ -692,6 +696,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.physics.add.collider(this.player, this.oneWays, undefined, (_p, platform) => {
       const body = (platform as Phaser.GameObjects.GameObject & { body: Phaser.Physics.Arcade.StaticBody }).body;
+      if (this.inputMgr.down && this.player.body.bottom >= body.top - 2 && this.player.body.prev.y + this.player.body.height <= body.top + 6) {
+        this.player.dropThroughUntil = playTime(this) + 240;
+      }
       return this.player.mode !== 'climb' && playTime(this) > this.player.dropThroughUntil && this.player.body.velocity.y >= 0 && this.player.body.prev.y + this.player.body.height <= body.top + 6;
     });
     this.physics.add.collider(this.enemies, this.solids, undefined, e => !(e as Enemy).isFlyer);
@@ -725,15 +732,16 @@ export class GameScene extends Phaser.Scene {
     this.player.invulnUntil = playTime(this) + 2600;
     const th = THEMES[this.level.theme];
     const card = this.add.container(this.scale.width / 2, Math.min(this.scale.height / 2, 150)).setScrollFactor(0).setDepth(210);
-    const bg = this.add.rectangle(0, 0, 300, 62, 0x101528, 0.94).setStrokeStyle(2, th.accent, 1);
-    const w = this.add.text(0, -18, `WORLD ${this.level.world}`, {
+    this.introCard = card;
+    const bg = this.add.rectangle(0, 0, 328, 76, 0x101528, 0.94).setStrokeStyle(2, th.accent, 1);
+    const w = this.add.text(0, -23, `WORLD ${this.level.world}`, {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f0c060',
     }).setOrigin(0.5);
     const t = this.add.text(0, 2, this.level.name.toUpperCase(), {
       fontFamily: '"Press Start 2P"', fontSize: '13px', color: '#f4e6c8',
     }).setOrigin(0.5);
-    const s = this.add.text(0, 20, this.level.subtitle, {
-      fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
+    const s = this.add.text(0, 21, this.level.subtitle, {
+      fontFamily: 'Roboto, Arial, sans-serif', fontSize: '12px', align: 'center', wordWrap: { width: 310 }, color: '#c3cee0',
     }).setOrigin(0.5);
     card.add([bg, w, t, s]);
     card.setAlpha(0).setScale(0.94);
@@ -823,7 +831,10 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.update(dt);
 
     if (this.inputMgr.pressedPause) { this.inputMgr.clearFrameFlags(); this.openPause(); return; }
-    if (this.inputMgr.pressedRestart && this.lives > 0) { this.restartFromCheckpoint(); return; }
+    if (this.inputMgr.pressedRestart) {
+      this.inputMgr.clearFrameFlags();
+      if (this.canInteract) this.restartFromCheckpoint();
+    }
 
     if (time >= this.autosaveAt) { this.autosaveAt = time + 2500; this.persistRun(); }
     if (this.respawning) {
@@ -1049,6 +1060,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updatePickups(dt: number): void {
+    if (!this.canInteract) return;
     const px = this.player.x, py = this.player.y - 12;
     for (const c of this.coins.getChildren() as Phaser.GameObjects.Sprite[]) {
       if (c.active && Math.abs(c.x - px) < 14 && Math.abs(c.y - py) < 16) this.collectCoin(c);
@@ -1114,9 +1126,10 @@ export class GameScene extends Phaser.Scene {
       bossName: 'THE STORM BARON',
       powers: (() => { const now = playTime(this); const out: { kind: PowerKind; ratio: number }[] = [];
         if (this.player.shield) out.push({ kind: 'shield', ratio: 1 });
-        if (this.player.swiftUntil > now) out.push({ kind: 'swift', ratio: (this.player.swiftUntil - now) / (12000 * this.player.powerDuration) });
-        if (this.player.magnetUntil > now) out.push({ kind: 'magnet', ratio: (this.player.magnetUntil - now) / (12000 * this.player.powerDuration) });
-        if (this.player.tripleUntil > now) out.push({ kind: 'triple', ratio: (this.player.tripleUntil - now) / (15000 * this.player.powerDuration) });
+        for (const kind of ['swift', 'magnet', 'triple', 'priority'] as const) {
+          const until = this.player[`${kind}Until`];
+          if (until > now) out.push({ kind, ratio: (until - now) / (POWER_META[kind].durationMs * this.player.powerDuration) });
+        }
         return out; })(),
       bossPhase: this.boss?.phase ?? 1,
       delivery: { deaths: this.deaths, damageTaken: this.damageTaken, parTime: this.level.parTime },
@@ -1134,9 +1147,9 @@ export class GameScene extends Phaser.Scene {
     c.destroy();
     this.coinsCollected++;
     const now = playTime(this);
-    this.coinCombo = now - this.lastCoinAt < 1500 ? Math.min(9, this.coinCombo + 1) : 1;
+    this.coinCombo = now - this.lastCoinAt < this.comboWindowMs ? Math.min(9, this.coinCombo + 1) : 1;
     this.lastCoinAt = now;
-    const points = 20 + (this.coinCombo - 1) * 5;
+    const points = (20 + (this.coinCombo - 1) * 5) * (now < this.player.priorityUntil ? 2 : 1);
     this.addScore(points);
     this.floatText(c.x, c.y - 10, `+${points}`, this.coinCombo >= 4 ? '#f0c060' : '#f4e6c8');
     this.fx.pickup(c.x, c.y, 0xffd76a);
@@ -1180,11 +1193,11 @@ export class GameScene extends Phaser.Scene {
     const stomping = this.player.body.velocity.y > -20 && this.player.body.bottom <= e.body.top + 8;
     if (stomping && e.stompable) {
       if (e.damage(1, this.player.x)) {
-        this.player.bounce(-285);
+        this.player.bounce(this.player.characterId === 'pip' && this.inputMgr.jumpHeld ? -365 : -285);
         this.fx.shake(0.0025, 80);
       }
     } else if (this.player.dashActive) {
-      e.damage(1, this.player.x);
+      e.damage(this.player.characterId === 'mallow' ? 2 : 1, this.player.x);
       this.player.bounce(-120);
     } else {
       this.hurtPlayer(e.x);
@@ -1201,6 +1214,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.player.dashActive && !b.indestructible) {
+      if (this.player.characterId === 'fenn') this.player.refundDash();
       b.smash();
       return;
     }
@@ -1325,18 +1339,19 @@ export class GameScene extends Phaser.Scene {
 
   private clearTransient(): void {
     for (const mover of this.movers) mover.reset();
-    for (const b of this.barrels.getChildren() as Barrel[]) b.destroy();
+    this.barrels.clear(true, true);
     for (const p of this.bossBolts) p.sprite.destroy();
     this.bossBolts = [];
     this.bossFlameRect = null;
     this.bossFlameUntil = 0;
     this.inputMgr.reset();
+    this.coinCombo = 0;
     for (const z of this.flightZones) z.active = false;
     this.cameras.main.setFollowOffset(0, -10);
     for (const f of this.fallingPlats) {
       this.tweens.killTweensOf(f.sprite);
       f.sprite.setPosition(f.sprite.getData('homeX'), f.sprite.getData('homeY')).setAlpha(1).setVisible(true);
-      f.body.updateFromGameObject(); f.body.enable = true; f.used = false;
+      f.sprite.setAngle(0); f.body.updateFromGameObject(); f.body.enable = true; f.used = false;
     }
     if (this.boss?.bossActive) this.boss.resetEncounter();
     for (const e of this.enemies.getChildren() as unknown as Enemy[]) {
@@ -1427,7 +1442,6 @@ export class GameScene extends Phaser.Scene {
   private completeLevel(): void {
     if (this.levelDone) return;
     this.levelDone = true;
-    SaveManager.saveRun(null);
     this.player.victory = true;
     this.player.controlLocked = true;
     this.player.body.velocity.set(0, 0);
@@ -1446,6 +1460,7 @@ export class GameScene extends Phaser.Scene {
     const prevBest = SaveManager.get().levels[this.level.id]?.bestScore ?? 0;
     const previousMastery = SaveManager.get().levels[this.level.id].mastery;
     const shardsBefore = SaveManager.shards;
+    const hadClover = SaveManager.get().cloverUnlocked;
     const mastery = evaluateMastery({ gems: this.gemsCollected, timeMs: this.elapsedMs, deaths: this.deaths, damageTaken: this.damageTaken }, this.level.parTime);
     const newStamps = STAMPS.filter(key => mastery[key] && !previousMastery[key]);
     const bonus = 1000 + this.player.hearts * 200 + Math.max(0, Math.floor((this.level.parTime - this.elapsedMs / 1000) * 10));
@@ -1458,14 +1473,10 @@ export class GameScene extends Phaser.Scene {
         timeMs: this.elapsedMs,
         gems: [...this.gemsCollected] as [boolean, boolean, boolean],
         completed: true,
-        mastery,
+        mastery, rating,
       });
-    SaveManager.setRating(this.level.id, rating);
-    SaveManager.addTotalScore(this.score);
     this.time.delayedCall(1950, () => {
       if (this.level.id === 9) {
-        SaveManager.get().completedGame = true;
-        SaveManager.save();
         this.scene.start('Ending', { score: this.score, timeMs: this.elapsedMs, gems: this.gemsCollected, character: this.player.characterId });
       } else {
         this.scene.start('Results', {
@@ -1476,7 +1487,7 @@ export class GameScene extends Phaser.Scene {
           rating,
           bonus,
           newBest,
-          newStamps, shardsEarned: SaveManager.shards - shardsBefore,
+          newStamps, unlockedClover: !hadClover && SaveManager.get().cloverUnlocked, shardsEarned: SaveManager.shards - shardsBefore,
         });
       }
     });
@@ -1524,6 +1535,7 @@ export class GameScene extends Phaser.Scene {
     const top = Math.min(0, worldH - height);
     this.cameras.main.setBounds(0, top, worldW, Math.max(worldH, height));
     this.hud?.resize(width);
+    if (this.introCard?.active) this.introCard.setX(width / 2);
     for (const layer of this.bgLayers) {
       const image = layer.sprite.texture.getSourceImage() as HTMLImageElement;
       layer.sprite.setSize(width, height).setTileScale(Math.max(1, height / image.height));

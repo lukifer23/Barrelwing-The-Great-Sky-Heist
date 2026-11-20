@@ -93,3 +93,31 @@ export const TRIAL_15: LevelDef = {
     { t: 'checkpoint', x: 84, y: 22 }, { t: 'checkpoint', x: 164, y: 24 }, { t: 'exit', x: 188, y: 20 },
   ],
 };
+
+export const TRIAL_16: LevelDef = {
+  id: 16, world: 2, name: 'Sorting Office', subtitle: 'Floor mail runs free. Express takes the belt.',
+  theme: 'factory', music: 'factory', tile: 18, width: 94, height: 22,
+  spawn: { x: 3, y: 18 }, parTime: 40, thresholds: { bronze: 1700, silver: 3100, gold: 4600 },
+  intro: 'Punch in. Beat the sorting shift.',
+  terrain: [T(0, 18, 94, 4, 'metal'), T(11, 15, 7, 1, 'wood'), T(20, 12, 10, 1, 'wood'),
+    T(35, 13, 8, 1, 'wood'), T(48, 14, 7, 1, 'wood'), T(58, 11, 12, 1, 'wood'),
+    T(76, 14, 7, 1, 'wood')],
+  objects: [
+    { t: 'tutorial', x: 6, y: 17, text: 'PRIORITY PAY DOUBLES ACORN POINTS. FOLLOW THE OVERHEAD LINE.' },
+    { t: 'powerup', kind: 'priority', x: 8, y: 17 },
+    ...coinLine(10, 17, 8, 2), ...coinLine(12, 14, 5), ...coinLine(21, 11, 8),
+    ...coinArc(31, 12, 5, 2), ...coinLine(36, 12, 6), ...coinLine(47, 17, 7, 2),
+    ...coinLine(59, 10, 10), ...coinArc(71, 12, 5, 2), ...coinLine(82, 17, 5, 2),
+    gem(26, 10), gem(52, 13), gem(67, 9),
+    { t: 'conveyor', x: 25, y: 12, w: 8, dir: 1, speed: 50 },
+    { t: 'spring', x: 56, y: 18, power: 480 },
+    { t: 'ladder', x: 61, y: 11, h: 7 },
+    { t: 'checkpoint', x: 45, y: 18 },
+    { t: 'enemy', kind: 'lookout', x: 37, y: 18 },
+    { t: 'enemy', kind: 'crawler', x: 53, y: 18, patrol: 3 },
+    { t: 'steam', x: 72, y: 18, period: 3600 },
+    { t: 'powerup', kind: 'shield', x: 77, y: 13 },
+    { t: 'enemy', kind: 'lookout', x: 85, y: 18 },
+    { t: 'exit', x: 91, y: 18 },
+  ],
+};

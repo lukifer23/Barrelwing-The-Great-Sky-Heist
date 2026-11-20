@@ -3,7 +3,7 @@ import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { LEVELS } from '../data/levels';
 import { RATING_COLORS, RATING_LABELS } from '../data/levels/types';
 import { AudioManager } from '../systems/AudioManager';
-import { SaveManager } from '../systems/SaveManager';
+import { courierLevel, SaveManager } from '../systems/SaveManager';
 import { STAMPS, STAMP_LABELS, type Stamp } from '../data/mastery';
 import { Menu } from '../ui/Menu';
 
@@ -15,6 +15,7 @@ interface ResultsData {
   rating: 1 | 2 | 3;
   bonus: number;
   newBest?: boolean;
+  unlockedClover?: boolean;
   newStamps?: Stamp[];
   shardsEarned?: number;
 }
@@ -42,8 +43,8 @@ export class ResultsScene extends Phaser.Scene {
     this.add.text(240, 48, 'STAGE CLEAR', {
       fontFamily: '"Press Start 2P"', fontSize: '18px', color: '#f0c060',
     }).setOrigin(0.5).setShadow(3, 3, '#000000', 0, true, true);
-    if (this.result.newBest) {
-      const nb = this.add.text(240, 84, '★ NEW BEST ★', {
+    if (d.unlockedClover || d.newBest) {
+      const nb = this.add.text(240, 83, d.unlockedClover ? 'NEW COURIER  /  CLOVER' : '★ NEW BEST ★', {
         fontFamily: FONT_SMALL, fontSize: '8px', color: '#f0c060',
       }).setOrigin(0.5).setDepth(4);
       this.tweens.add({ targets: nb, alpha: 0.35, duration: 500, yoyo: true, repeat: 3 });
@@ -77,7 +78,8 @@ export class ResultsScene extends Phaser.Scene {
       fontFamily: '"Press Start 2P"', fontSize: '10px', color: RATING_COLORS[d.rating],
     }).setOrigin(0.5);
     const mastery = SaveManager.get().levels[level.id].mastery;
-    this.add.text(240, 28, `+${d.shardsEarned ?? 0} SKY SHARDS  /  ${SaveManager.shards} AVAILABLE`, {
+    const rank = courierLevel(SaveManager.get());
+    this.add.text(240, 28, `LV ${rank.level}   /   +${d.shardsEarned ?? 0} SKY SHARDS  /  ${SaveManager.shards} AVAILABLE`, {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
     }).setOrigin(0.5);
     this.add.text(240, 183, STAMPS.map(key => `${mastery[key] ? '+' : '-'}${STAMP_LABELS[key]}${d.newStamps?.includes(key) ? ' NEW' : ''}`).join(' / '), {

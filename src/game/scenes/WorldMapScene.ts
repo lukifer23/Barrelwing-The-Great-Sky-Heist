@@ -4,7 +4,7 @@ import { MAIN_LEVELS, TRIALS, WORLD_NAMES } from '../data/levels';
 import type { LevelDef } from '../data/levels/types';
 import { RATING_COLORS, RATING_LABELS } from '../data/levels/types';
 import { AudioManager } from '../systems/AudioManager';
-import { SaveManager } from '../systems/SaveManager';
+import { courierLevel, SaveManager } from '../systems/SaveManager';
 import { STAMPS, STAMP_LABELS } from '../data/mastery';
 
 interface NodeView {
@@ -28,6 +28,11 @@ const NODE_POS = [
 export class WorldMapScene extends Phaser.Scene {
   private nodes: NodeView[] = [];
   private selected = 0;
+  private cover = false;
+  private isCover(): boolean { return this.scale.height > this.scale.width * 1.35; }
+  private adapt = () => {
+    if (this.scene.isActive() && this.cover !== this.isCover()) this.scene.restart({ trials: this.trialMode, selected: this.selected });
+  };
   private trialMode = false;
   private list: LevelDef[] = [];
   private infoTitle!: Phaser.GameObjects.Text;
@@ -39,19 +44,20 @@ export class WorldMapScene extends Phaser.Scene {
 
   constructor() { super('WorldMap'); }
 
-  init(data: { trials?: boolean }): void {
+  init(data: { trials?: boolean; selected?: number }): void {
     this.trialMode = !!data?.trials;
     this.nodes = [];
     this.bgClouds = [];
     this.list = this.trialMode ? [...TRIALS] : [...MAIN_LEVELS];
-    this.selected = this.trialMode ? 0 : Math.min(8, SaveManager.get().unlocked - 1);
+    this.selected = data?.selected ?? (this.trialMode ? 0 : Math.min(8, SaveManager.get().unlocked - 1));
   }
 
   create(): void {
     this.cameras.main.fadeIn(240, 0, 0, 0);
+    this.cover = this.isCover();
     this.buildBackdrop();
     this.buildHeader();
-    if (!this.trialMode) this.buildPaths();
+    if (!this.trialMode && !this.cover) this.buildPaths();
     this.buildNodes();
     this.buildInfoPanel();
     this.buildFooter();
@@ -59,7 +65,11 @@ export class WorldMapScene extends Phaser.Scene {
     AudioManager.playMusic('title', { fade: 400 });
     this.keyHandler = (e) => this.handleKey(e);
     this.input.keyboard?.on('keydown', this.keyHandler);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.adapt);
+    this.events.on(Phaser.Scenes.Events.RESUME, this.adapt);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.adapt);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.adapt);
       this.input.keyboard?.off('keydown', this.keyHandler);
     });
     this.refreshSelection();
@@ -81,15 +91,17 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private buildHeader(): void {
-    this.add.text(240, 22, this.trialMode ? 'SKY TRIALS' : 'SKY MAP', {
+    this.add.text(240, this.cover ? 13 : 22, this.trialMode ? 'SKY TRIALS' : 'SKY MAP', {
       fontFamily: '"Press Start 2P"', fontSize: '15px', color: this.trialMode ? '#9ff5ff' : '#f4e6c8',
     }).setOrigin(0.5).setShadow(2, 2, '#000000', 0, true, true);
-    this.add.rectangle(240, 36, 180, 1, 0x6b5a3a, 0.8);
+    this.add.rectangle(240, this.cover ? 21 : 36, 180, 1, 0x6b5a3a, 0.8);
+    const rank = courierLevel(SaveManager.get());
+    this.add.text(this.cover ? 20 : 10, this.cover ? 25 : 12, `COURIER LV ${rank.level}\n${rank.toNext ? `${rank.toNext} SHARDS TO NEXT` : 'MASTER COURIER'}`, { fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff' });
     if (this.trialMode) {
-      this.add.text(240, 46, 'POST-CAMPAIGN REMIXES  ·  THE SKY REMEMBERS', {
+      this.add.text(240, this.cover ? 70 : 46, 'POST-CAMPAIGN REMIXES  ·  THE SKY REMEMBERS', {
         fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
       }).setOrigin(0.5);
-      this.add.text(GAME_WIDTH - 10, 12, `TRIAL GEMS ${SaveManager.trialGems}/${TRIALS.length * 3}`, {
+      this.add.text(GAME_WIDTH - (this.cover ? 20 : 10), this.cover ? 25 : 12, `TRIAL GEMS ${SaveManager.trialGems}/${TRIALS.length * 3}`, {
         fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
       }).setOrigin(1, 0);
       return;
@@ -99,7 +111,7 @@ export class WorldMapScene extends Phaser.Scene {
     worlds.forEach((w, i) => {
       const x = [92, 242, 392][i];
       const unlocked = SaveManager.get().unlocked >= (w - 1) * 3 + 1;
-      this.add.text(x, 52, WORLD_NAMES[w], {
+      this.add.text(this.cover ? 240 : x, this.cover ? 70 + 46 * i : 52, WORLD_NAMES[w], {
         fontFamily: FONT_SMALL, fontSize: '8px',
         color: unlocked ? '#f0c060' : '#5a6480',
       }).setOrigin(0.5);
@@ -108,7 +120,7 @@ export class WorldMapScene extends Phaser.Scene {
     const d = SaveManager.get();
     const total = MAIN_LEVELS.reduce((n, l) => n + (d.levels[l.id]?.completed ? 1 : 0), 0);
     const gems = MAIN_LEVELS.reduce((n, l) => n + (d.levels[l.id]?.gems.filter(Boolean).length ?? 0), 0);
-    this.add.text(GAME_WIDTH - 10, 12, `${total}/9 STAGES   ·   ${gems}/27 GEMS`, {
+    this.add.text(GAME_WIDTH - (this.cover ? 20 : 10), this.cover ? 25 : 12, `${total}/9 STAGES   ·   ${gems}/27 GEMS`, {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
     }).setOrigin(1, 0);
   }
@@ -141,9 +153,10 @@ export class WorldMapScene extends Phaser.Scene {
 
   private buildNodes(): void {
     const save = SaveManager.get();
-    const trialPos = this.list.map((_, i) => ({ x: [92, 242, 392][i % 3], y: this.list.length <= 3 ? 148 : 116 + Math.floor(i / 3) * 64 }));
+    const trialPos = this.list.map((_, i) => ({ x: 70 + i % 4 * 112, y: 116 + Math.floor(i / 4) * 64 }));
     this.list.forEach((level, i) => {
-      const pos = this.trialMode ? trialPos[i] : NODE_POS[level.world - 1][(level.id - 1) % 3];
+      const pos = this.cover ? { x: 80 + (i % 3) * 160, y: 90 + Math.floor(i / 3) * 46 }
+        : this.trialMode ? trialPos[i] : NODE_POS[level.world - 1][(level.id - 1) % 3];
       const unlocked = SaveManager.isLevelAvailable(level.id);
       const rec = save.levels[level.id];
 
@@ -153,20 +166,20 @@ export class WorldMapScene extends Phaser.Scene {
         fontFamily: '"Press Start 2P"', fontSize: '10px',
         color: unlocked ? '#f4e6c8' : '#5a6480',
       }).setOrigin(0.5);
-      const lock = this.add.text(pos.x, pos.y + 20, unlocked ? '' : 'LOCKED', {
+      const lock = this.add.text(pos.x, pos.y + (this.cover ? 9 : 20), unlocked ? '' : 'LOCKED', {
         fontFamily: FONT_SMALL, fontSize: '5px', color: '#5a6480',
       }).setOrigin(0.5);
-      const stars = this.add.text(pos.x, pos.y + 23, unlocked && rec.completed ? RATING_LABELS[rec.rating] : '', {
+      const stars = this.add.text(pos.x, pos.y + (this.cover ? 9 : 23), unlocked && rec.completed ? RATING_LABELS[rec.rating] : '', {
         fontFamily: FONT_SMALL, fontSize: '5px', color: RATING_COLORS[rec.rating],
       }).setOrigin(0.5);
 
       const gems: Phaser.GameObjects.Image[] = [];
       for (let gi = 0; gi < 3; gi++) {
-        gems.push(this.add.image(pos.x - 8 + gi * 8, pos.y - 24, 'ui_gem').setScale(0.45)
+        gems.push(this.add.image(pos.x - 8 + gi * 8, pos.y - (this.cover ? 9 : 24), 'ui_gem').setScale(0.45)
           .setAlpha(rec.gems[gi] ? 1 : 0.2));
       }
 
-      if (this.trialMode) {
+      if (this.trialMode && !this.cover) {
         this.add.text(pos.x, pos.y - 34, `TRIAL ${i + 1}`, {
           fontFamily: FONT_SMALL, fontSize: '7px', color: '#9ff5ff',
         }).setOrigin(0.5);
@@ -187,8 +200,8 @@ export class WorldMapScene extends Phaser.Scene {
     this.infoMeta = this.add.text(24, 228, '', {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
     });
-    this.infoGems = this.add.text(24, 244, '', {
-      fontFamily: FONT_SMALL, fontSize: '7px', color: '#9fb0d0',
+    this.infoGems = this.add.text(24, 241, '', {
+      fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
     });
     this.infoHint = this.add.text(GAME_WIDTH - 20, 244, this.trialMode ? 'ENTER — ENTER TRIAL' : 'ENTER — PLAY', {
       fontFamily: FONT_SMALL, fontSize: '7px', color: '#f0c060',
@@ -199,12 +212,19 @@ export class WorldMapScene extends Phaser.Scene {
   private openWorkshop(): void { this.scene.pause(); this.scene.launch('Workshop'); }
 
   private buildFooter(): void {
-    const button = (x: number, label: string, action: () => void) => this.add.text(x, 68, label, { fontFamily: FONT_SMALL, fontSize: '7px', color: '#f0c060', padding: { x: 4, y: 4 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', action);
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    const button = (x: number, label: string, action: () => void) => this.add.text(
+      this.cover ? ({ 40: 58, 150: 230, 270: 401, 370: 150, 440: 326 }[x] ?? x) : x,
+      this.cover ? x >= 370 ? 58 : 44 : 68, label, { fontFamily: FONT_SMALL, fontSize: '7px', color: '#f0c060', padding: { x: 4, y: 4 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', action);
     button(40, 'BACK', () => this.scene.start(this.trialMode ? 'WorldMap' : 'Title'));
-    button(150, `U · UPGRADES (${SaveManager.shards})`, () => this.openWorkshop());
+    const workshop = button(150, `${touch ? '' : 'U · '}UPGRADES (${SaveManager.shards})`, () => this.openWorkshop());
+    const refreshBalance = () => workshop.setText(`${touch ? '' : 'U · '}UPGRADES (${SaveManager.shards})`);
+    this.events.on(Phaser.Scenes.Events.RESUME, refreshBalance);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.RESUME, refreshBalance));
     button(270, 'COURIERS', () => { this.scene.pause(); this.scene.launch('Characters', { from: 'WorldMap' }); });
     if (SaveManager.get().completedGame) button(370, this.trialMode ? 'CAMPAIGN' : 'TRIALS', () => this.scene.restart({ trials: !this.trialMode }));
     if (SaveManager.get().bonusUnlocked) button(440, 'SPRINT', () => this.scene.start('SkySprint'));
+    if (touch) return;
     this.add.text(12, GAME_HEIGHT - 6, this.trialMode ? 'ARROWS SELECT   ·   ENTER PLAY   ·   ESC SKY MAP' : 'ARROWS SELECT   ·   ENTER PLAY   ·   ESC TITLE', {
       fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0',
     }).setOrigin(0, 1).setAlpha(0.8);
@@ -238,11 +258,11 @@ export class WorldMapScene extends Phaser.Scene {
     }
     const time = rec.bestTimeMs ? this.formatTime(rec.bestTimeMs) : '—';
     const score = rec.bestScore ? rec.bestScore.toLocaleString('en-US') : '—';
-    this.infoMeta.setText(`${level.subtitle}   ·   BEST ${score}   ·   TIME ${time}`);
+    const subtitle = window.matchMedia('(pointer: coarse)').matches ? '' : level.subtitle + '   ·   ';
+    this.infoMeta.setText(`${subtitle}BEST ${score}   ·   TIME ${time}`);
     const gems = rec.gems.filter(Boolean).length;
     this.infoGems.setText(`GEMS ${gems}/3 · ${RATING_LABELS[rec.rating]} · PAR ${this.formatTime(level.parTime * 1000)}\nSTAMPS: ${STAMPS.map(key => `${rec.mastery[key] ? '+' : '-'}${STAMP_LABELS[key]}`).join(' / ')}`);
-    this.infoGems.setFontSize('6px').setY(241);
-    this.infoHint.setText(rec.completed ? 'ENTER — REPLAY' : 'ENTER — PLAY');
+    this.infoHint.setText(window.matchMedia('(pointer: coarse)').matches ? '' : rec.completed ? 'ENTER — REPLAY' : 'ENTER — PLAY');
   }
 
   private formatTime(ms: number): string {
@@ -253,6 +273,11 @@ export class WorldMapScene extends Phaser.Scene {
   private handleKey(e: KeyboardEvent): void {
     if (e.key === 'u' || e.key === 'U') { this.openWorkshop(); return; }
     if (e.repeat) return;
+    if (this.cover && ['ArrowUp', 'w', 'ArrowDown', 's', 'ArrowLeft', 'a', 'ArrowRight', 'd'].includes(e.key)) {
+      const delta = ['ArrowUp', 'w'].includes(e.key) ? -3 : ['ArrowDown', 's'].includes(e.key) ? 3 : ['ArrowLeft', 'a'].includes(e.key) ? -1 : 1;
+      this.selected = Phaser.Math.Clamp(this.selected + delta, 0, this.list.length - 1);
+      AudioManager.sfx('ui_move', { volume: 0.4 }); this.refreshSelection(); return;
+    }
     if (this.trialMode) { this.handleTrialKey(e); return; }
     const idx = this.selected;
     const level = this.list[idx];

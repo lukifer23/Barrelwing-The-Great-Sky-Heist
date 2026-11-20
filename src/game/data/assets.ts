@@ -151,7 +151,7 @@ export const ANIMS: AnimDef[] = [
   { key: 'boss-tail', sheet: 'boss_tail_sheet', start: 0, end: 7, frameRate: 9, repeat: -1 },
 ];
 
-for (const sheet of ['fenn', 'mallow']) {
+for (const sheet of ['fenn', 'mallow', 'clover']) {
   SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: 22 });
   for (const anim of ANIMS.filter(a => a.sheet === 'pip')) ANIMS.push({ ...anim, key: anim.key.replace('pip-', `${sheet}-`), sheet });
 }

@@ -11,7 +11,7 @@ export async function installNativePlatform(game: Phaser.Game): Promise<void> {
       const scene = game.scene.getScene(key) as (Phaser.Scene & { pauseForApp(): void }) | null;
       if (scene?.scene.isActive()) scene.pauseForApp();
     }
-    SaveManager.save();
+    // Gameplay pause handlers snapshot their mode. Menus already save on change.
     await SaveManager.flush().catch(() => undefined);
   };
   // Android emits pause from Activity.onPause; appStateChange waits for onStop,

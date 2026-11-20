@@ -1,7 +1,7 @@
 import { installPlayClock, playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
-import { ARENA_NAMES, type BrawlOptions } from '../data/brawl';
+import { ARENA_NAMES, ARENA_PLATFORMS, MATCH_LENGTH, type BrawlOptions } from '../data/brawl';
 import { THEMES } from '../data/levels/types';
 import { Fighter, neutralFightInput, type FightInput } from '../brawl/Fighter';
 import { Barrel } from '../entities/Barrel';
@@ -40,6 +40,9 @@ export class BrawlScene extends Phaser.Scene {
   private suddenDeath = false;
   private bannerUntil = 0;
   private knockedOut = 0;
+  private cpuKOs = 0;
+  private get timed(): boolean { return this.options.rules === 'timed'; }
+  private get matchLength(): number { return MATCH_LENGTH[this.options.rules ?? 'stock']; }
   private readonly appPause = () => this.pauseForApp();
   private get W(): number { return this.scale.width; }
   private get H(): number { return this.scale.height; }
@@ -47,9 +50,9 @@ export class BrawlScene extends Phaser.Scene {
 
   constructor() { super('Brawl'); }
   init(options: BrawlOptions): void {
-    this.options = { arena: options.arena ?? 'forest', difficulty: options.difficulty ?? 'normal', player: options.player ?? 'pip', cpu: options.cpu ?? 'fenn', resume: options.resume };
+    this.options = { rules: options.rules ?? 'stock', arena: options.arena ?? 'forest', difficulty: options.difficulty ?? 'normal', player: options.player ?? 'pip', cpu: options.cpu ?? 'fenn', resume: options.resume };
     this.previousWidth = 0; this.previousHeight = 0;
-    this.plates = []; this.elapsedMs = 0; this.ended = false; this.suddenDeath = false; this.knockedOut = 0;
+    this.plates = []; this.elapsedMs = 0; this.ended = false; this.suddenDeath = false; this.knockedOut = 0; this.cpuKOs = 0;
     this.nextSave = 0; this.nextThink = 0; this.nextCpuJump = 0; this.nextCpuDash = 0; this.nextHazard = 14000;
     this.cpuIntent = neutralFightInput();
     this.nextCpuAttack = 0; this.cpuJumpHeldUntil = 0;
@@ -61,7 +64,7 @@ export class BrawlScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(theme.sky).setSize(this.W, this.H).setScroll(0, 0);
     this.background = this.add.tileSprite(0, 0, this.W, this.H, theme.far).setOrigin(0).setAlpha(0.75).setDepth(-20);
     this.platforms = this.physics.add.staticGroup(); this.barrels = this.add.group();
-    this.addPlate(0.5, 0, 0.78); this.addPlate(0.28, 72, 0.23); this.addPlate(0.72, 72, 0.23); this.addPlate(0.5, 140, 0.22);
+    for (const plate of ARENA_PLATFORMS[this.options.arena]) this.addPlate(...plate);
     this.human = new Fighter(this, this.W * 0.34, this.floor - 30, this.options.player, false);
     this.cpu = new Fighter(this, this.W * 0.66, this.floor - 30, this.options.cpu, true); this.cpu.facing = -1; this.cpu.setFlipX(true);
     for (const fighter of [this.human, this.cpu]) {
@@ -84,10 +87,10 @@ export class BrawlScene extends Phaser.Scene {
     if (saved) {
       this.human.stocks = saved.playerStocks; this.cpu.stocks = saved.cpuStocks;
       this.human.damage = saved.playerDamage; this.cpu.damage = saved.cpuDamage; this.elapsedMs = saved.elapsedMs;
-      this.knockedOut = 3 - this.cpu.stocks; this.nextHazard = this.elapsedMs + 12000;
+      this.knockedOut = saved.playerKOs; this.cpuKOs = saved.cpuKOs; this.suddenDeath = saved.suddenDeath; this.nextHazard = this.elapsedMs + 12000;
     }
     this.startAt = playTime(this) + 2500; this.human.invulnerableUntil = this.startAt; this.cpu.invulnerableUntil = this.startAt;
-    this.events.on('brawl-swing', this.swing, this); this.events.on('brawl-hit', this.hit, this);
+    this.events.on('brawl-parry', this.parry, this); this.events.on('brawl-hit', this.hit, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.resumeMatch, this);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.resizeArena, this);
     this.game.events.on(Phaser.Core.Events.BLUR, this.appPause); this.game.events.on(Phaser.Core.Events.HIDDEN, this.appPause);
@@ -122,7 +125,11 @@ export class BrawlScene extends Phaser.Scene {
       plate.sprite.setPosition(this.W * plate.x, this.floor - plate.lift).setSize(this.W * plate.width, 16);
       const body = plate.sprite.body as Phaser.Physics.Arcade.StaticBody; body.setSize(this.W * plate.width, 16); body.updateFromGameObject();
     }
-    if (this.cpuHud) this.cpuHud.x = this.W - 12;
+    const cover = this.H > this.W * 1.3;
+    this.humanHud?.setFontSize(cover ? 17 : 10);
+    this.cpuHud?.setX(this.W - 12).setFontSize(cover ? 17 : 10);
+    this.timerHud?.setFontSize(cover ? 16 : 9);
+    this.banner?.setFontSize(cover ? 15 : 10);
     if (this.timerHud) this.timerHud.x = this.W / 2;
     if (this.banner) this.banner.setX(this.W / 2).setWordWrapWidth(this.W - 40);
   }
@@ -138,19 +145,26 @@ export class BrawlScene extends Phaser.Scene {
       this.inputMgr.consumeJump(); this.inputMgr.consumeAttack(); this.inputMgr.consumeDash(); this.inputMgr.clearFrameFlags(); this.updateHud(); return;
     }
     this.elapsedMs += dt;
-    if (this.elapsedMs > 180000 && !this.suddenDeath) {
-      if (this.human.stocks !== this.cpu.stocks || this.human.damage !== this.cpu.damage) {
-        this.finish(this.human.stocks > this.cpu.stocks || this.human.stocks === this.cpu.stocks && this.human.damage < this.cpu.damage); return;
-      }
-      this.suddenDeath = true; this.human.stocks = 1; this.cpu.stocks = 1;
-      this.human.damage = 300; this.cpu.damage = 300; this.showBanner('SUDDEN DELIVERY', 2200);
-    }
+    const pressedAttack = this.inputMgr.consumeAttack();
     const input: FightInput = { move: this.inputMgr.horizontal, jump: this.inputMgr.consumeJump(), heldJump: this.inputMgr.jumpHeld,
-      dash: this.inputMgr.consumeDash(), attack: this.inputMgr.consumeAttack() || this.inputMgr.attackHeld, aim: this.inputMgr.up ? -1 : this.inputMgr.down ? 1 : 0 };
+      dash: this.inputMgr.consumeDash(), dashAim: this.inputMgr.dashAim, attack: pressedAttack || this.inputMgr.attackHeld,
+      attackAim: pressedAttack ? this.inputMgr.attackAim : undefined, aim: this.inputMgr.up ? -1 : this.inputMgr.down ? 1 : 0 };
     this.human.updateFighter(dt, input); this.cpu.updateFighter(dt, this.think(time));
-    this.human.strike(this.cpu, this.suddenDeath); this.cpu.strike(this.human, this.suddenDeath);
+    // Sample both hitboxes before either strike can interrupt the other.
+    const humanHit = this.human.canStrike(this.cpu);
+    const cpuHit = this.cpu.canStrike(this.human);
+    if (humanHit) this.human.landStrike(this.cpu, this.suddenDeath);
+    if (cpuHit) this.cpu.landStrike(this.human, this.suddenDeath);
+    const out = [this.human, this.cpu].filter(f => f.x < -110 || f.x > this.W + 110 || f.y > this.H + 120 || f.y < -220);
+    if (out.length) this.resolveRingOuts(out);
+    if (this.ended) return;
+    if (this.elapsedMs >= this.matchLength && !this.suddenDeath) {
+      const lead = this.timed ? this.knockedOut - this.cpuKOs
+        : this.human.stocks - this.cpu.stocks || this.cpu.damage - this.human.damage;
+      if (lead) { this.finish(lead > 0); return; }
+      this.startOvertime();
+    }
     for (const fighter of [this.human, this.cpu]) {
-      if (fighter.x < -110 || fighter.x > this.W + 110 || fighter.y > this.H + 120 || fighter.y < -220) this.ringOut(fighter);
       if (this.options.arena === 'storm' && Math.floor(this.elapsedMs / 14000) % 2 === 1 && !fighter.grounded) fighter.body.velocity.x += 45 * dt / 1000;
       if (this.options.arena === 'factory' && fighter.grounded) fighter.x += Math.sin(this.elapsedMs / 3500) * 22 * dt / 1000;
     }
@@ -179,26 +193,50 @@ export class BrawlScene extends Phaser.Scene {
     if (intent.attack) this.nextCpuAttack = time + (this.options.difficulty === 'easy' ? 1200 : this.options.difficulty === 'hard' ? 650 : 950);
     intent.aim = dy < -28 ? -1 : dy > 35 ? 1 : 0;
     if (!offstage && this.options.difficulty === 'hard' && Math.abs(dx) > 170 && time > this.nextCpuDash) { intent.dash = true; this.nextCpuDash = time + 2600; }
+    if (offstage && this.cpu.y > this.floor && this.cpu.canLift && this.cpu.dashProgress === 1) {
+      intent.aim = -1; intent.dash = true; intent.heldJump = true;
+    } else if (this.options.difficulty === 'hard' && this.human.windingUp && Math.abs(dx) < 65 && Math.abs(dy) < 45 && this.cpu.dashProgress === 1) {
+      intent.aim = 1; intent.dash = true; intent.attack = false;
+    }
     this.cpuIntent = intent; return intent;
   }
-  private swing(fighter: Fighter): void {
-    const x = fighter.x + (fighter.attackAim === 0 ? fighter.facing * 34 : 0), y = fighter.y - 18 + fighter.attackAim * 24;
-    const ring = this.add.ellipse(x, y, fighter.attackAim === 0 ? 62 : 36, fighter.attackAim === 0 ? 34 : 62, fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.15).setStrokeStyle(2, fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.8).setDepth(22);
-    this.tweens.add({ targets: ring, alpha: 0.65, scale: 1.15, duration: fighter.attackWindup, onComplete: () => {
-      ring.setFillStyle(fighter.isCpu ? 0xff9f89 : 0x9ff5ff, 0.45);
-      this.tweens.add({ targets: ring, alpha: 0, scale: 1.5, duration: 125, onComplete: () => ring.destroy() });
-    } });
+  private parry(fighter: Fighter): void {
+    this.fx.sparkle(fighter.x, fighter.y - 16, 0x9ff5ff);
+    AudioManager.sfx('bump', { volume: 0.45 });
+    this.showBanner('PARRY!', 550);
   }
   private hit(fighter: Fighter): void { this.fx.hit(fighter.x, fighter.y - 16, fighter.isCpu ? 0xff9f89 : 0x9ff5ff); this.fx.shake(0.003, 80); }
-  private ringOut(fighter: Fighter): void {
-    if (this.ended || fighter.stocks <= 0) return;
-    fighter.stocks--; if (fighter.isCpu) this.knockedOut++;
-    this.fx.sparkle(Phaser.Math.Clamp(fighter.x, 30, this.W - 30), Math.min(fighter.y, this.H - 30), 0xffdf78);
-    AudioManager.sfx('defeat', { volume: 0.4 });
-    if (fighter.stocks <= 0) { this.finish(fighter.isCpu); return; }
-    fighter.respawn(this.W * (fighter.isCpu ? 0.66 : 0.34), this.floor - 70);
-    this.showBanner(fighter.isCpu ? 'RETURN TO SENDER!' : 'TAIL WARRANTY CLAIMED.', 1300); this.persistMatch();
+  private startOvertime(): void {
+    this.suddenDeath = true;
+    this.barrels.clear(true, true);
+    for (const fighter of [this.human, this.cpu]) {
+      this.respawn(fighter);
+      fighter.stocks = 1;
+      fighter.damage = 300;
+    }
+    this.showBanner('SUDDEN DELIVERY / NEXT KO WINS', 2200);
+    this.persistMatch();
   }
+
+  private respawn(fighter: Fighter): void {
+    fighter.respawn(this.W * (fighter.isCpu ? 0.66 : 0.34), this.floor - 70);
+  }
+
+  private resolveRingOuts(out: Fighter[]): void {
+    for (const fighter of out) {
+      if (fighter.isCpu) this.knockedOut++;
+      else this.cpuKOs++;
+      if (!this.timed || this.suddenDeath) fighter.stocks--;
+      this.fx.sparkle(Phaser.Math.Clamp(fighter.x, 30, this.W - 30), Phaser.Math.Clamp(fighter.y, 30, this.H - 30), 0xffdf78);
+    }
+    AudioManager.sfx('defeat', { volume: 0.4 });
+    if (!this.human.stocks && !this.cpu.stocks) { this.startOvertime(); return; }
+    if (!this.human.stocks || !this.cpu.stocks) { this.finish(this.cpu.stocks === 0); return; }
+    for (const fighter of out) this.respawn(fighter);
+    this.showBanner(out.length === 2 ? 'DOUBLE RING-OUT' : out[0].isCpu ? 'RETURN TO SENDER!' : 'TAIL WARRANTY CLAIMED.', 1300);
+    this.persistMatch();
+  }
+
   private deliverBarrel(): void {
     this.showBanner('UNSCHEDULED DELIVERY!\nBARREL INCOMING', 1600);
     this.time.delayedCall(1000, () => {
@@ -209,20 +247,21 @@ export class BrawlScene extends Phaser.Scene {
   }
   private showBanner(text: string, duration: number): void { this.banner.setText(text).setVisible(true); this.bannerUntil = playTime(this) + duration; }
   private updateHud(): void {
-    this.humanHud.setText(`${this.human.courier.name}  /  YOU\n${this.human.stocks} STOCKS   ${Math.floor(this.human.damage)}%`);
-    this.cpuHud.setText(`${this.cpu.courier.name}  /  CPU\n${this.cpu.stocks} STOCKS   ${Math.floor(this.cpu.damage)}%`);
-    const remaining = Math.max(0, Math.ceil((180000 - this.elapsedMs) / 1000));
+    const timed = this.timed && !this.suddenDeath;
+    this.humanHud.setText(`${this.human.courier.name}  /  YOU\n${timed ? `${this.knockedOut} KOs` : `${this.human.stocks} STOCKS`}   ${Math.floor(this.human.damage)}%`);
+    this.cpuHud.setText(`${this.cpu.courier.name}  /  CPU\n${timed ? `${this.cpuKOs} KOs` : `${this.cpu.stocks} STOCKS`}   ${Math.floor(this.cpu.damage)}%`);
+    const remaining = Math.max(0, Math.ceil((this.matchLength - this.elapsedMs) / 1000));
     this.timerHud.setText(this.suddenDeath ? 'SUDDEN\nDELIVERY' : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`);
   }
   private finish(won: boolean): void {
     if (this.ended) return; this.ended = true; this.physics.pause();
-    SaveManager.recordBrawl(won, this.knockedOut); SaveManager.saveBrawlRun(null);
+    SaveManager.recordBrawl(won, this.knockedOut);
     AudioManager.sfx(won ? 'life' : 'defeat', { volume: 0.5 });
-    this.time.delayedCall(500, () => this.scene.start('BrawlResults', { won, options: this.options, knockouts: this.knockedOut, elapsedMs: this.elapsedMs }));
+    this.time.delayedCall(500, () => this.scene.start('BrawlResults', { won, options: this.options, knockouts: this.knockedOut, cpuKOs: this.cpuKOs, suddenDeath: this.suddenDeath, elapsedMs: this.elapsedMs }));
   }
   persistMatch(): void {
     if (this.ended || !this.human || !this.cpu) return;
-    SaveManager.saveBrawlRun({ ...this.options, playerStocks: this.human.stocks, cpuStocks: this.cpu.stocks, playerDamage: this.human.damage, cpuDamage: this.cpu.damage, elapsedMs: this.elapsedMs });
+    SaveManager.saveBrawlRun({ ...this.options, playerKOs: this.knockedOut, cpuKOs: this.cpuKOs, suddenDeath: this.suddenDeath, playerStocks: this.human.stocks, cpuStocks: this.cpu.stocks, playerDamage: this.human.damage, cpuDamage: this.cpu.damage, elapsedMs: this.elapsedMs });
   }
   pauseForApp(): void {
     if (this.ended || !this.scene.isActive()) return;
@@ -231,7 +270,7 @@ export class BrawlScene extends Phaser.Scene {
   private resumeMatch(): void { this.inputMgr.reset(); }
   private cleanup(): void {
     this.persistMatch(); this.inputMgr.destroy(); this.fx.destroy();
-    this.events.off('brawl-swing', this.swing, this); this.events.off('brawl-hit', this.hit, this);
+    this.events.off('brawl-parry', this.parry, this); this.events.off('brawl-hit', this.hit, this);
     this.events.off(Phaser.Scenes.Events.RESUME, this.resumeMatch, this); this.scale.off(Phaser.Scale.Events.RESIZE, this.resizeArena, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.appPause); this.game.events.off(Phaser.Core.Events.HIDDEN, this.appPause); window.removeEventListener('pagehide', this.appPause);
   }

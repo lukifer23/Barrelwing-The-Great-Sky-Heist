@@ -26,7 +26,7 @@ The activity is resizable, uses hardware acceleration, and handles screen size, 
 
 The renderer explicitly uses WebGL. Its backing resolution follows logical world units, keeping the GPU workload modest while preserving pixel-art rendering. Camera size expands with the available aspect ratio. Physics velocities stay in world units. Menus reflow to fill the viewport, with the title using shared anchors for scenery and interactive content. The analog thumb joystick and action buttons have independent physical hit areas and multi-pointer input.
 
-Portrait touch layouts reserve space below the canvas. Landscape controls overlay the lower corners. Button size, opacity, handedness, and haptics are configurable. Insets account for system bars and cutouts where exposed by WebView.
+Portrait touch layouts reserve space below the canvas. Landscape controls overlay the lower corners. Button size, opacity, handedness, haptics and one-thumb portrait movement are configurable. Portrait layouts reserve a separate row for Pause and Sound. Insets account for system bars and cutouts where exposed by WebView.
 
 ## Lifecycle and persistence
 

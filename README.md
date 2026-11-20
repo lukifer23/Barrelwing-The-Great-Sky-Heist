@@ -15,17 +15,19 @@ The [project audit](docs/AUDIT.md) records corrected gameplay and performance is
 ## The game
 
 - Nine campaign stages across Verdant Canopy, the Copperworks, and the Storm Above.
-- Six post-campaign Sky Trials, including a tougher Baron rematch.
+- Seven post-campaign Sky Trials, including a tougher Baron rematch and Sorting Office, a two-route score chase through the factory.
 - Sky Sprint: an endless flight mode with a saved personal best, unlocked after Cloudvine Drift.
 - Running, variable-height jumps, air flaps, buffered jumps, coyote time, ladders, drop-through platforms, and a barrel-smashing dash.
 - Moving platforms, conveyors, springs, switches, gates, steam vents, lightning, updrafts, and falling platforms.
 - Distinct enemies, four barrel variants, and a three-phase boss with attack warnings and vulnerable windows.
 - Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
-- Barrel Brawl: solo-versus-CPU platform fighting with directional attacks, rising knockback, three stocks, three arenas, saved matches, and three difficulty levels.
-- Three playable couriers: Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
+- Barrel Brawl: solo-versus-CPU platform fighting with stock matches, a 90-second KO race, directional attacks, parries, aerial recovery, three distinct arenas, and three CPU difficulties.
+- Four playable couriers including Clover, the level-two rooftop scout. Starting choices are Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
 - Three delivery stamps per stage: all gems, a deathless par clear, and a clear without damage or deaths. Each new stamp earns a permanent Sky Shard, with live eligibility and saved map/results feedback.
-- Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, and longer powerups. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
+- Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, longer powerups, and longer acorn combos. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
+- Priority Pay doubles acorn points for a limited time. Hold jump on a stomp with Pip for a high rebound, break a wooden barrel with Fenn’s dash to recharge it, or use Mallow’s two-damage dash against a guard.
+- Three local player profiles keep independent checkpoints, records, upgrades and courier levels. Each nine shards earned raises your level.
 - Checkpoint recovery after closing the app, including collected items, defeated enemies, switches, lives, score, gems, elapsed time, and boss progress.
 
 ## Run in a browser
@@ -89,7 +91,7 @@ The app supports portrait, landscape, and changing foldable display sizes. Gamep
 | Enter | Confirm |
 | U on the map | Windtail Workshop |
 
-On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE buttons. Move the stick gently to walk or fully to run. Push up or down to climb ladders. Hold JUMP for height; tap again in the air to flap. Movement and jumping can be held together. Buttons show remaining air flaps and action recharge; DASH is hidden during flight. In Brawl, hold HIT to repeat attacks as they recharge. The field guide explains touch, keyboard, and powerups. Menus support tapping. Android Back pauses gameplay or returns from a menu.
+On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE buttons. Move the stick gently to walk or fully to run. Push up or down to climb ladders. Hold JUMP for height; tap again in the air to flap. Movement and jumping can be held together. Buttons show remaining air flaps and action recharge; DASH is hidden during flight. In Brawl, hold HIT to repeat attacks as they recharge. The field guide explains touch, keyboard, and powerups. In Settings → Controls, One-Thumb Portrait groups actions on one side. Release the stick to keep moving, tap STOP to brake, and use Left Handed to mirror the controls. Menus support tapping. Android Back pauses gameplay or returns from a menu.
 
 ## Settings and saves
 

@@ -46,19 +46,20 @@ export class Hud {
   private bossPhaseText?: Phaser.GameObjects.Text;
   private toastText: Phaser.GameObjects.Text;
   private toastTween?: Phaser.Tweens.Tween;
-  private scoreShown = 0;
   private lastHearts = -1;
   private flightBadge: Phaser.GameObjects.Text;
   private powerIcons: Phaser.GameObjects.Image[] = [];
   private powerText: Phaser.GameObjects.Text;
   private powerBars: Phaser.GameObjects.Rectangle[] = [];
   private layoutWidth = -1;
+  private compact = false;
+  private statPlate: Phaser.GameObjects.Rectangle;
   private deliveryText: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     const D = 120;
-    scene.add.rectangle(4, 4, 164, 26, 0x101528, 0.78)
+    this.statPlate = scene.add.rectangle(4, 4, 164, 26, 0x101528, 0.78)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(D).setStrokeStyle(1, 0x3a4460, 0.8);
 
     for (let i = 0; i < 6; i++) {
@@ -105,12 +106,12 @@ export class Hud {
     scene.add.rectangle(50, 34, 22, 4, 0x2a3350).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D);
     this.dashBar = scene.add.rectangle(50, 34, 22, 4, 0x67e8f9).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1);
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       this.powerIcons.push(scene.add.image(14 + i * 20, 50, 'power_shield').setScrollFactor(0).setDepth(D + 1).setVisible(false).setScale(0.85));
       this.powerBars.push(scene.add.rectangle(7 + i * 20, 58, 14, 2, 0x9fe0ff).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false));
     }
 
-    this.powerText = scene.add.text(86, 44, '', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#f4e6c8', lineSpacing: 2, backgroundColor: '#101528', padding: { x: 3, y: 2 } }).setScrollFactor(0).setDepth(D + 1).setVisible(false);
+    this.powerText = scene.add.text(106, 44, '', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#f4e6c8', lineSpacing: 2, backgroundColor: '#101528', padding: { x: 3, y: 2 } }).setScrollFactor(0).setDepth(D + 1).setVisible(false);
 
     this.toastText = scene.add.text(240, 76, '', {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#f4e6c8',
@@ -126,14 +127,29 @@ export class Hud {
     this.layoutWidth = width;
     const center = width / 2;
     this.scoreText.x = width - 6; this.timeText.x = width - 6;
-    const nameCenter = (170 + width - 55) / 2;
-    this.namePlate.x = nameCenter; this.nameText.x = nameCenter;
-    this.namePlate.width = Math.max(120, width - 235);
-    this.flightBadge.x = center; this.toastText.x = center;
-    this.toastText.setWordWrapWidth(Math.min(width - 24, 420));
+    this.compact = width < 420;
+    const compact = this.compact;
+    const nameCenter = compact ? center : (170 + width - 55) / 2;
+    this.statPlate.setSize(compact ? width - 8 : 164, 26);
+    this.namePlate.setPosition(nameCenter, compact ? 51 : 12).setSize(compact ? width - 8 : Math.max(120, width - 235), compact ? 20 : 12);
+    this.nameText.setPosition(nameCenter, compact ? 43 : 8).setFontSize(compact ? 13 : 7).setScale(1);
+    if (this.nameText.width > this.namePlate.width - 8) this.nameText.setScale((this.namePlate.width - 8) / this.nameText.width);
+    this.timeText.setPosition(width - (compact ? 14 : 6), compact ? 14 : 17).setFontSize(compact ? 13 : 8);
+    this.scoreText.setPosition(width - (compact ? 78 : 6), compact ? 14 : 29).setFontSize(compact ? 14 : 9);
+    this.coinText.setPosition(82, compact ? 8 : 10).setFontSize(compact ? 12 : 8);
+    this.livesText.setPosition(compact ? 120 : 108, compact ? 8 : 10).setFontSize(compact ? 12 : 8);
+    this.gemIcons.forEach((icon, i) => icon.setX((compact ? 158 : 134) + i * 10));
+    this.deliveryText.setPosition(6, compact ? 64 : 84).setFontFamily(compact ? 'Roboto, Arial, sans-serif' : FONT_SMALL).setFontSize(compact ? 12 : 6);
+    this.powerText.setPosition(compact ? 102 : 106, compact ? 84 : 44).setFontSize(compact ? 10 : 6);
+    this.powerIcons.forEach(icon => icon.setY(compact ? 91 : 50));
+    this.powerBars.forEach(bar => bar.setY(compact ? 100 : 58));
+    this.flightBadge.setPosition(center, compact ? 108 : 40).setFontSize(compact ? 12 : 7);
+    this.toastText.setX(center).setFontSize(compact ? 13 : 8).setWordWrapWidth(Math.min(width - 24, 420));
     if (this.bossBg) {
-      this.bossBg.x = center; this.bossFill!.x = center - 82;
-      this.bossText!.x = center; this.bossPhaseText!.x = center + 120;
+      this.bossBg.setPosition(center, compact ? 132 : 46);
+      this.bossFill!.setPosition(center - 82, compact ? 132 : 46);
+      this.bossText!.setPosition(center, compact ? 140 : 54).setFontSize(compact ? 11 : 7);
+      this.bossPhaseText!.setPosition(compact ? width - 10 : center + 120, compact ? 140 : 54).setFontSize(compact ? 10 : 6);
     }
   }
 
@@ -144,7 +160,8 @@ export class Hud {
 
   update(s: HudState): void {
     const remaining = Math.max(0, Math.ceil(s.delivery.parTime - s.timeMs / 1000));
-    this.deliveryText.setText(`STAMPS: GEMS ${s.gems.filter(Boolean).length}/3 / ${s.delivery.deaths ? 'EXPRESS LOST' : remaining ? `PAR ${remaining}s` : 'PAR EXPIRED'} / ${s.delivery.deaths || s.delivery.damageTaken ? 'CLEAN LOST' : 'NO DAMAGE'}`);
+    const express = s.delivery.deaths ? 'EXPRESS LOST' : remaining ? `PAR ${remaining}s` : 'PAR EXPIRED';
+    this.deliveryText.setText(`${this.compact ? '' : 'STAMPS: '}GEMS ${s.gems.filter(Boolean).length}/3 / ${express} / ${s.delivery.deaths || s.delivery.damageTaken ? 'CLEAN LOST' : 'NO DAMAGE'}`);
     for (let i = 0; i < this.hearts.length; i++) {
       const on = i < s.hearts;
       this.hearts[i].setVisible(on);
@@ -158,9 +175,7 @@ export class Hud {
       this.lastHearts = s.hearts;
     }
     this.coinText.setText(String(s.coins));
-    this.scoreShown = Math.floor(Phaser.Math.Linear(this.scoreShown, s.score, 0.25));
-    if (Math.abs(this.scoreShown - s.score) < 2) this.scoreShown = s.score;
-    this.scoreText.setText(this.scoreShown.toLocaleString('en-US'));
+    this.scoreText.setText(s.score.toLocaleString('en-US'));
     this.livesText.setText(`×${Math.max(0, s.lives)}`);
     for (let i = 0; i < 3; i++) this.gemIcons[i].setAlpha(s.gems[i] ? 1 : 0.22);
     for (let i = 0; i < this.wings.length; i++) {
@@ -231,9 +246,9 @@ export class Hud {
 
   toast(text: string, color = '#f4e6c8', hold = 1200): void {
     this.toastTween?.remove();
-    this.toastText.setText(text).setColor(color).setAlpha(0).setY(104);
+    this.toastText.setText(text).setColor(color).setAlpha(0).setY(this.compact ? 177 : 104);
     this.toastTween = this.scene.tweens.add({
-      targets: this.toastText, alpha: 1, y: 102, duration: 180, hold, yoyo: true,
+      targets: this.toastText, alpha: 1, y: this.compact ? 174 : 102, duration: 180, hold, yoyo: true,
       ease: 'Sine.easeOut',
     });
   }

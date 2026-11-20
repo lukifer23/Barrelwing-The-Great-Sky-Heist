@@ -16,6 +16,7 @@ const PAGES: { label: string; rows: Row[] }[] = [
     { label: 'BUTTON SIZE', key: 'touchScale', min: 0.75, max: 1.5, step: 0.125 },
     { label: 'BUTTON OPACITY', key: 'touchOpacity', min: 0.25, max: 1, step: 0.125 },
     { label: 'LEFT HANDED', key: 'leftHanded' },
+    { label: 'ONE-THUMB PORTRAIT', key: 'oneHanded' },
   ] },
   { label: 'DISPLAY', rows: [
     { label: 'SCREEN SHAKE', key: 'shake', min: 0, max: 1, step: 0.1 },
@@ -72,7 +73,7 @@ export class SettingsScene extends Phaser.Scene {
       const y = 91 + i * 34;
       const container = this.add.container(0, y);
       const bg = this.add.rectangle(240, 0, 404, 30, 0x1d2540).setStrokeStyle(1, 0x3a4460);
-      const label = this.add.text(50, 0, row.label, { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f4e6c8' }).setOrigin(0, 0.5);
+      const label = this.add.text(50, 0, row.label, { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f4e6c8' }).setOrigin(0, 0.5).setData('portraitWidth', 194);
       const value = this.add.text(352, 0, '', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f0c060' }).setOrigin(0.5);
       const minus = this.add.text(290, 0, '−', { fontFamily: FONT_SMALL, fontSize: '16px', color: '#9ff5ff', padding: { x: 14, y: 6 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       const plus = this.add.text(414, 0, '+', { fontFamily: FONT_SMALL, fontSize: '16px', color: '#9ff5ff', padding: { x: 14, y: 6 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });

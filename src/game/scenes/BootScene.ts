@@ -12,6 +12,7 @@ export class BootScene extends Phaser.Scene {
     const ready = async () => {
       try {
         await SaveManager.initialize();
+        this.game.registry.get('audioRefresh')?.();
         await Promise.all([
           document.fonts.load('12px "Press Start 2P"'),
           document.fonts.load('8px Silkscreen'),

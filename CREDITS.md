@@ -9,7 +9,7 @@ All third-party assets used in this game are public-domain / CC0 unless noted be
 | SunnyLand Forest (terrain, backgrounds, player reference, slug/bee/piranha, UI props) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-forest |
 | SunnyLand Woods (squirrel character, enemies, treehouse props, backgrounds) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-woods |
 | SunnyLand Tall Forest (forest layers, reference) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-tall-forest-environment |
-| Sideview Fantasy Patreon Collection (Storm Baron dragon, flying bird, ghost/wisp, weather backgrounds, gem sheet) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sideview-fantasy-patreon-collection |
+| Sideview Fantasy Patreon Collection (Sunny Bunny frames for Clover, Storm Baron dragon, flying bird, ghost/wisp, weather backgrounds, gem sheet) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sideview-fantasy-patreon-collection |
 | Kenney New Platformer Pack (springs, flags, door, spikes, plank, sound effects) | Kenney | CC0 | https://kenney.nl/assets/new-platformer-pack |
 | Kenney Pixel Platformer: Industrial Expansion (industrial tiles, barrels, conveyors) | Kenney | CC0 | https://kenney.nl/assets/pixel-platformer-industrial-expansion |
 | Press Start 2P | CodeMan38 | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Press+Start+2P |

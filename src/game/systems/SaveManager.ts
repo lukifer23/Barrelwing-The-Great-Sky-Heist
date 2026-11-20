@@ -1,6 +1,6 @@
 import { TOTAL_LEVELS, TRIAL_IDS } from '../data/progression';
 import { emptyMastery, STAMPS, type Mastery } from '../data/mastery';
-import { emptyBrawlRecord, type BrawlRecord, type BrawlRun } from '../data/brawl';
+import { emptyBrawlRecord, MATCH_LENGTH, type BrawlRecord, type BrawlRun } from '../data/brawl';
 import legacyObjectIds from '../data/legacyObjectIds.json';
 import { characterId, type CharacterId } from '../data/characters';
 import { Capacitor } from '@capacitor/core';
@@ -25,6 +25,7 @@ export interface Settings {
   touchScale: number;
   touchOpacity: number;
   leftHanded: boolean;
+  oneHanded: boolean;
   haptics: boolean;
   showFps: boolean;
 }
@@ -50,7 +51,10 @@ export interface RunSnapshot {
   damageTaken: number;
 }
 
-export interface SaveData {
+export const PROFILE_SLOTS = [1, 2, 3] as const;
+export type ProfileSlot = typeof PROFILE_SLOTS[number];
+
+export interface ProfileData {
   version: number;
   revision: number;
   levels: Record<number, LevelRecord>;
@@ -62,9 +66,24 @@ export interface SaveData {
   settings: Settings;
   upgrades: Upgrades;
   run: RunSnapshot | null;
+  cloverUnlocked: boolean;
   selectedCharacter: CharacterId;
   brawl: BrawlRecord;
   brawlRun: BrawlRun | null;
+}
+
+export interface SaveData extends ProfileData {
+  slot: ProfileSlot;
+  otherProfiles: Partial<Record<ProfileSlot, ProfileData>>;
+}
+
+function earnedShards(levels: Record<number, LevelRecord>): number {
+  return Object.values(levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);
+}
+
+export function courierLevel(profile: ProfileData) {
+  const marks = earnedShards(profile.levels);
+  return { level: 1 + Math.floor(marks / 9), toNext: marks >= TOTAL_LEVELS * 9 ? 0 : 9 - marks % 9 };
 }
 
 const KEY = 'barrelwing.save.v1';
@@ -79,7 +98,7 @@ function settingsFrom(raw: Partial<Settings> | undefined): Settings {
   return { music: finite(raw?.music, d.music, 1), sfx: finite(raw?.sfx, d.sfx, 1),
     shake: finite(raw?.shake, d.shake, 1), muted: raw?.muted === true, reducedMotion: raw?.reducedMotion === true,
     touchScale: Math.max(0.75, finite(raw?.touchScale, 1, 1.5)), touchOpacity: Math.max(0.25, finite(raw?.touchOpacity, 0.75, 1)),
-    leftHanded: raw?.leftHanded === true, haptics: raw?.haptics !== false, showFps: raw?.showFps === true };
+    oneHanded: raw?.oneHanded === true, leftHanded: raw?.leftHanded === true, haptics: raw?.haptics !== false, showFps: raw?.showFps === true };
 }
 
 
@@ -98,10 +117,10 @@ export const defaultSettings = (): Settings => ({
   muted: false,
   shake: 1,
   reducedMotion: false,
-  touchScale: 1, touchOpacity: 0.75, leftHanded: false, haptics: true, showFps: false,
+  touchScale: 1, touchOpacity: 0.75, leftHanded: false, oneHanded: false, haptics: true, showFps: false,
 });
 
-export function emptySave(): SaveData {
+function emptyProfile(): ProfileData {
   const levels: Record<number, LevelRecord> = {};
   for (let i = 1; i <= TOTAL_LEVELS; i++) levels[i] = emptyLevel();
   return {
@@ -116,8 +135,12 @@ export function emptySave(): SaveData {
     settings: defaultSettings(),
     upgrades: emptyUpgrades(),
     run: null,
-    selectedCharacter: 'pip', brawl: emptyBrawlRecord(), brawlRun: null,
+    cloverUnlocked: false, selectedCharacter: 'pip', brawl: emptyBrawlRecord(), brawlRun: null,
   };
+}
+
+export function emptySave(): SaveData {
+  return { ...emptyProfile(), slot: 1, otherProfiles: {} };
 }
 
 export class SaveManager {
@@ -126,7 +149,7 @@ export class SaveManager {
 
   static async initialize(): Promise<void> {
     if (!Capacitor.isNativePlatform()) { this.get(); return; }
-    let newest = this.get();
+    let newest = this.load();
     for (const key of [KEY, BACKUP_KEY]) {
       try {
         const stored = await Preferences.get({ key });
@@ -134,18 +157,18 @@ export class SaveManager {
         const parsed = JSON.parse(stored.value);
         if (parsed?.version !== VERSION) continue;
         const candidate = this.migrate(parsed);
-        if (candidate.revision >= newest.revision) newest = candidate;
+        if (!newest || candidate.revision > newest.revision || key === KEY && candidate.revision === newest.revision) newest = candidate;
       } catch { /* Try the remaining native and synchronous recovery copies. */ }
     }
-    this.data = newest;
+    this.data = newest ?? emptySave();
   }
 
   static get(): SaveData {
-    if (!this.data) this.data = this.load();
+    if (!this.data) this.data = this.load() ?? emptySave();
     return this.data;
   }
 
-  private static load(): SaveData {
+  private static load(): SaveData | null {
     let newest: SaveData | null = null;
     for (const key of [KEY, BACKUP_KEY]) {
       try {
@@ -157,12 +180,31 @@ export class SaveManager {
         if (!newest || candidate.revision > newest.revision) newest = candidate;
       } catch { /* Try the last durable copy before starting fresh. */ }
     }
-    return newest ?? emptySave();
+    return newest;
   }
 
   private static migrate(raw: Partial<SaveData>): SaveData {
-    if (!raw || typeof raw !== 'object' || raw.version !== VERSION) return emptySave();
-    const base = emptySave();
+    const slot = PROFILE_SLOTS.find(id => id === raw.slot) ?? 1;
+    const otherProfiles: SaveData['otherProfiles'] = {};
+    for (const id of PROFILE_SLOTS) {
+      const other = raw.otherProfiles?.[id];
+      if (id !== slot && other?.version === VERSION) otherProfiles[id] = this.migrateProfile(other);
+    }
+    return { ...this.migrateProfile(raw), slot, otherProfiles };
+  }
+
+  static switchProfile(slot: ProfileSlot): void {
+    const { slot: previous, otherProfiles, ...current } = this.get();
+    if (slot === previous || !PROFILE_SLOTS.includes(slot)) return;
+    const next = otherProfiles[slot] ?? emptyProfile();
+    const others = { ...otherProfiles, [previous]: current };
+    delete others[slot];
+    this.data = { ...next, revision: current.revision, settings: current.settings, slot, otherProfiles: others };
+    this.save();
+  }
+
+  private static migrateProfile(raw: Partial<ProfileData>): ProfileData {
+    const base = emptyProfile();
     const levels = { ...base.levels };
     for (let i = 1; i <= TOTAL_LEVELS; i++) {
       const rec = raw.levels?.[i];
@@ -181,6 +223,7 @@ export class SaveManager {
         };
       }
     }
+    const cloverUnlocked = raw.cloverUnlocked === true || earnedShards(levels) >= 9;
     return {
       version: VERSION,
       revision: Math.floor(finite(raw.revision)),
@@ -193,7 +236,8 @@ export class SaveManager {
       settings: settingsFrom(raw.settings),
       upgrades: this.cleanUpgrades(raw.upgrades, levels),
       run: this.cleanRun(raw.run),
-      selectedCharacter: characterId(raw.selectedCharacter),
+      cloverUnlocked,
+      selectedCharacter: raw.selectedCharacter === 'clover' && !cloverUnlocked ? 'pip' : characterId(raw.selectedCharacter),
       brawl: { wins: Math.floor(finite(raw.brawl?.wins)), losses: Math.floor(finite(raw.brawl?.losses)), streak: Math.floor(finite(raw.brawl?.streak)), bestStreak: Math.floor(finite(raw.brawl?.bestStreak)), knockouts: Math.floor(finite(raw.brawl?.knockouts)) },
       brawlRun: this.cleanBrawlRun(raw.brawlRun),
     };
@@ -201,7 +245,7 @@ export class SaveManager {
 
   private static cleanUpgrades(raw: Partial<Upgrades> | undefined, levels: Record<number, LevelRecord>): Upgrades {
     const out = emptyUpgrades();
-    let budget = Object.values(levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);
+    let budget = earnedShards(levels);
     for (const key of Object.keys(UPGRADES) as UpgradeKind[]) {
       const tier = Math.floor(finite(raw?.[key], 0, UPGRADE_COSTS.length));
       for (let i = 0; i < tier && budget >= UPGRADE_COSTS[i]; i++) {
@@ -267,7 +311,7 @@ export class SaveManager {
 
   static get shards(): number {
     const d = this.get();
-    const earned = Object.values(d.levels).reduce((n, r) => n + r.gems.filter(Boolean).length + r.rating + STAMPS.filter(key => r.mastery[key]).length, 0);
+    const earned = earnedShards(d.levels);
     const spent = Object.values(d.upgrades).reduce((n, tier) => n + UPGRADE_COSTS.slice(0, tier).reduce((sum, cost) => sum + cost, 0), 0);
     return Math.max(0, earned - spent);
   }
@@ -283,9 +327,14 @@ export class SaveManager {
 
   private static cleanBrawlRun(raw: BrawlRun | null | undefined): BrawlRun | null {
     if (!raw || !['forest', 'factory', 'storm'].includes(raw.arena) || !['easy', 'normal', 'hard'].includes(raw.difficulty) || raw.playerStocks < 1 || raw.cpuStocks < 1) return null;
-    return { arena: raw.arena, difficulty: raw.difficulty, player: characterId(raw.player), cpu: characterId(raw.cpu),
-      playerStocks: Math.max(1, Math.floor(finite(raw.playerStocks, 3, 3))), cpuStocks: Math.max(1, Math.floor(finite(raw.cpuStocks, 3, 3))),
-      playerDamage: finite(raw.playerDamage, 0, 999), cpuDamage: finite(raw.cpuDamage, 0, 999), elapsedMs: finite(raw.elapsedMs, 0, 180000) };
+    const rules = raw.rules === 'timed' ? 'timed' : 'stock';
+    const playerStocks = Math.max(1, Math.floor(finite(raw.playerStocks, 3, 3)));
+    const cpuStocks = Math.max(1, Math.floor(finite(raw.cpuStocks, 3, 3)));
+    // Released stock snapshots in overtime stored elapsed time but no explicit flag.
+    const suddenDeath = raw.suddenDeath === true || (raw.suddenDeath === undefined && raw.elapsedMs > MATCH_LENGTH.stock);
+    return { rules, suddenDeath, arena: raw.arena, difficulty: raw.difficulty, player: characterId(raw.player), cpu: characterId(raw.cpu),
+      playerStocks, cpuStocks, playerKOs: Math.floor(finite(raw.playerKOs, 3 - cpuStocks)), cpuKOs: Math.floor(finite(raw.cpuKOs, 3 - playerStocks)),
+      playerDamage: finite(raw.playerDamage, 0, 999), cpuDamage: finite(raw.cpuDamage, 0, 999), elapsedMs: finite(raw.elapsedMs) };
   }
 
   static saveBrawlRun(run: BrawlRun | null): void { this.get().brawlRun = run; this.save(); }
@@ -293,10 +342,13 @@ export class SaveManager {
     const r = this.get().brawl;
     if (won) { r.wins++; r.streak++; r.bestStreak = Math.max(r.bestStreak, r.streak); }
     else { r.losses++; r.streak = 0; }
-    r.knockouts += Math.max(0, Math.floor(knockouts)); this.save();
+    r.knockouts += Math.max(0, Math.floor(knockouts));
+    this.get().brawlRun = null;
+    this.save();
   }
 
   static selectCharacter(id: CharacterId): void {
+    if (id === 'clover' && !this.get().cloverUnlocked) return;
     this.get().selectedCharacter = characterId(id); this.save();
   }
 
@@ -316,19 +368,19 @@ export class SaveManager {
     const revision = this.get().revision;
     const settings = { ...this.get().settings };
     const selectedCharacter = this.get().selectedCharacter;
-    const { brawl, brawlRun, bonusBest } = this.get();
-    this.data = emptySave();
+    const { brawl, brawlRun, bonusBest, cloverUnlocked, slot, otherProfiles } = this.get();
+    this.data = { ...emptyProfile(), slot, otherProfiles };
     // Reset is a newer save too; retain ordering against older recovery copies.
     this.data.revision = revision;
     this.data.settings = settings;
-    this.data.selectedCharacter = selectedCharacter;
+    this.data.selectedCharacter = selectedCharacter; this.data.cloverUnlocked = cloverUnlocked;
     this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
     this.save();
   }
 
   static recordLevel(
     id: number,
-    result: { score: number; timeMs: number; gems: [boolean, boolean, boolean]; completed: boolean; mastery?: Mastery },
+    result: { score: number; timeMs: number; gems: [boolean, boolean, boolean]; completed: boolean; mastery?: Mastery; rating?: 1 | 2 | 3 },
   ): LevelRecord {
     const d = this.get();
     const prev = d.levels[id] ?? emptyLevel();
@@ -342,11 +394,14 @@ export class SaveManager {
         prev.gems[1] || result.gems[1],
         prev.gems[2] || result.gems[2],
       ],
-      rating: prev.rating,
+      rating: Math.max(prev.rating, result.completed ? result.rating ?? 0 : 0) as LevelRecord['rating'],
       mastery: Object.fromEntries(STAMPS.map(key => [key, prev.mastery[key] || result.completed && result.mastery?.[key] === true])) as Mastery,
     };
     d.levels[id] = merged;
+    if (!d.cloverUnlocked && earnedShards(d.levels) >= 9) d.cloverUnlocked = true;
     if (result.completed) {
+      if (d.run?.levelId === id) d.run = null;
+      d.totalScore += Math.max(0, result.score);
       if (id <= 9) d.unlocked = Math.max(d.unlocked, Math.min(9, id + 1));
       if (id === 3) d.bonusUnlocked = true;
       if (id === 9) d.completedGame = true;
@@ -355,23 +410,12 @@ export class SaveManager {
     return merged;
   }
 
-  static setRating(id: number, rating: 1 | 2 | 3): void {
-    const rec = this.get().levels[id];
-    if (rec) rec.rating = Math.max(rec.rating, rating) as 0 | 1 | 2 | 3;
-    this.save();
-  }
-
   static setBonusBest(score: number): void {
     const d = this.get();
     if (score > d.bonusBest) {
       d.bonusBest = score;
       this.save();
     }
-  }
-
-  static addTotalScore(n: number): void {
-    this.get().totalScore += Math.max(0, n);
-    this.save();
   }
 
   static isUnlocked(id: number): boolean {

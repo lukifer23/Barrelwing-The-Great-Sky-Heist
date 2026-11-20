@@ -10,8 +10,8 @@ const GUIDES: Record<Exclude<Guide, 'POWERUPS'>, [string, string][]> = {
     ['JUMP', 'Hold for height. Release and tap again for two air flaps. Land to refill.'],
     ['FLIGHT', 'Tap FLAP to rise; release to fall. Aim for the gaps.'],
     ['DASH', 'Burst forward and break wooden barrels. The bar shows recharge.'],
-    ['DROP THROUGH', 'Pull the joystick down while standing on a thin platform.'],
-    ['BRAWL', 'Hold HIT to repeat attacks. Aim up/down with the stick. Two air jumps recover.'],
+    ['ONE-THUMB', 'Enable in Controls settings. Release to keep moving. Tap STOP to brake and clear aim.'],
+    ['BRAWL', 'Hold HIT to repeat attacks. Aim up/down with the stick. Up + DASH lifts. Down + DASH parries.'],
     ['PAUSE / SOUND', 'Pause safely to adjust settings. SOUND ON mutes everything.'],
   ],
   KEYS: [
@@ -19,7 +19,7 @@ const GUIDES: Record<Exclude<Guide, 'POWERUPS'>, [string, string][]> = {
     ['SPACE', 'Hold to jump higher; release and press again for air flaps.'],
     ['J', 'Dash. Breaks wooden barrels; armored barrels must be dodged.'],
     ['K IN BRAWL', 'Hold to repeat attacks. Aim up/down; damage increases knockback.'],
-    ['DOWN', 'Drop through a thin platform. Air jumps help recover in Brawl.'],
+    ['DOWN', 'Drop through a thin platform. In Brawl, down + J parries and up + J lifts.'],
     ['ESC / P', 'Pause and resume. R restarts the campaign checkpoint for one life.'],
     ['M / F', 'Mute all audio / toggle fullscreen. Enter confirms menu choices.'],
   ],
@@ -67,7 +67,7 @@ export class ControlsScene extends Phaser.Scene {
     rows.forEach(([label, description], i) => {
       const y = start + i * spacing;
       this.add.text(left, y, label, { fontFamily: FONT_SMALL, fontSize: `${(tall ? 11 : 8) * size}px`, color: '#f0c060', wordWrap: { width: tall ? width : width * 0.31 } });
-      this.add.text(tall ? left : left + width * 0.34, tall ? y + 18 * size : y, description, { fontFamily: FONT_SMALL, fontSize: `${(tall ? 9 : 7) * size}px`, color: '#f4e6c8', wordWrap: { width: tall ? width : width * 0.66 }, lineSpacing: 0 });
+      this.add.text(tall ? left : left + width * 0.34, tall ? y + 18 * size : y, description, { fontFamily: tall ? 'Roboto, Arial, sans-serif' : FONT_SMALL, fontSize: `${(tall ? 12 : 7) * size}px`, color: '#f4e6c8', wordWrap: { width: tall ? width : width * 0.66 }, lineSpacing: 0 });
     });
     this.add.text(W / 2, H - 18 * size, 'BACK', { fontFamily: FONT_SMALL, fontSize: `${10 * size}px`, color: '#f0c060' }).setOrigin(0.5).setPadding(28, 10).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.close());
   }

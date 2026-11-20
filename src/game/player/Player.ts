@@ -2,6 +2,7 @@ import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { PHYSICS, FLIGHT } from '../config';
 import { CHARACTERS, type CharacterId } from '../data/characters';
+import { POWER_META } from '../data/powerups';
 import { SaveManager } from '../systems/SaveManager';
 import type { InputManager } from '../systems/InputManager';
 
@@ -19,6 +20,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   dashCooldown = 1;
   flapCharges = PHYSICS.maxFlaps;
   shield = false;
+  priorityUntil = 0;
   swiftUntil = 0;
   magnetUntil = 0;
   tripleUntil = 0;
@@ -55,7 +57,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.maxHearts = SaveManager.stats.maxHearts + this.character.extraHeart;
     this.hearts = this.maxHearts;
     this.powerDuration = SaveManager.stats.powerDuration;
-    this.dashCooldown = SaveManager.stats.dashCooldown;
+    this.dashCooldown = SaveManager.stats.dashCooldown * (id === 'clover' ? 1.15 : 1);
     this.setOrigin(0.5, 35 / 45);
     this.body.setSize(14, 24);
     this.body.setOffset(20, 11);
@@ -184,15 +186,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.body.velocity.y += PHYSICS.jumpCutGravity * dt;
     }
 
-    // drop through one-way platforms
-    if (input.down && this.grounded && !this.controlLocked) {
-      this.dropThroughUntil = now + 240;
-      this.y += 2;
-      this.lastGroundedAt = -9999;
-    }
-
     // --- ladders ----------------------------------------------------------
-    const inLadder = this.findLadder(ladders);
+    const inLadder = (input.up || input.down) && this.findLadder(ladders, input.up);
     if (inLadder && !this.controlLocked && now >= this.climbReadyAt) {
       const wantsUp = input.up;
       const wantsDown = input.down;
@@ -300,7 +295,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.flapCharges = this.maxFlapCharges;
       this.climbReadyAt = this.now + 200;
     }
-    if (this.y >= rect.bottom - 2) {
+    if (input.down && this.y >= rect.bottom - 2) {
       this.y = rect.bottom - 2;
       this.exitClimb();
     }
@@ -325,16 +320,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setFrame(14);
   }
 
-  private findLadder(ladders: Phaser.Geom.Rectangle[]): Phaser.Geom.Rectangle | null {
+  private findLadder(ladders: Phaser.Geom.Rectangle[], rising: boolean): Phaser.Geom.Rectangle | null {
     const px = this.x, py = this.y - 12;
     for (const l of ladders) {
+      // At a shared landing the upper and lower rails overlap. Attach on
+      // the side the courier is moving into, in either direction.
+      if (rising ? this.y <= l.top + 6 : this.y >= l.bottom - 2) continue;
       if (px > l.left - 12 && px < l.right + 12 && py > l.top - 30 && py < l.bottom + 4) return l;
     }
     return null;
   }
 
   jump(): void {
-    this.body.velocity.y = PHYSICS.jumpVelocity;
+    this.body.velocity.y = PHYSICS.jumpVelocity * (this.characterId === 'clover' ? 1.12 : 1);
     this.lastGroundedAt = -9999;
     this.squash(0.86, 1.16);
     this.scene.events.emit('fx-dust', this.x, this.y, 4);
@@ -346,7 +344,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const now = this.now;
     this.flapCharges--;
     this.lastFlapAt = now;
-    this.body.velocity.y = Math.min(this.body.velocity.y, 40);
     this.body.velocity.y = PHYSICS.flapImpulse;
     this.squash(0.9, 1.12);
     this.setFrame(14);
@@ -366,16 +363,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   grantTriple(): void {
-    this.tripleUntil = this.now + 15000 * this.powerDuration;
+    this.tripleUntil = this.now + POWER_META.triple.durationMs * this.powerDuration;
     this.flapCharges = 3;
   }
 
   grantSwift(): void {
-    this.swiftUntil = this.now + 12000 * this.powerDuration;
+    this.swiftUntil = this.now + POWER_META.swift.durationMs * this.powerDuration;
   }
 
   grantMagnet(): void {
-    this.magnetUntil = this.now + 12000 * this.powerDuration;
+    this.magnetUntil = this.now + POWER_META.magnet.durationMs * this.powerDuration;
+  }
+
+  refundDash(): void {
+    this.dashReadyAt = this.now;
   }
 
   bounce(strength = -275): void {
@@ -456,6 +457,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.hearts = this.maxHearts;
     this.invulnUntil = this.now + 1500;
     this.shield = false;
+    this.priorityUntil = 0;
     this.swiftUntil = 0;
     this.magnetUntil = 0;
     this.tripleUntil = 0;
@@ -488,6 +490,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.anims.isPlaying) this.anims.stop();
       this.setFrame(now < this.flapPoseUntil ? 14 : 8);
       this.setRotation(Phaser.Math.Clamp(vy / 1600, -0.16, 0.2));
+      return;
+    } else if (this.dashActive) {
+      this.anims.stop();
+      this.setFrame(20);
+      this.setRotation(this.facing * 0.12);
       return;
     } else if (!this.grounded) {
       const vy = this.body.velocity.y;

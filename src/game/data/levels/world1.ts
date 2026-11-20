@@ -36,6 +36,7 @@ export const LEVEL_1: LevelDef = {
   ],
   objects: [
     { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN' },
+    { t: 'powerup', kind: 'priority', x: 6, y: 15 },
     { t: 'powerup', kind: 'shield', x: 24, y: 15 },
     { t: 'powerup', kind: 'nova', x: 86, y: 11 },
     { t: 'powerup', kind: 'triple', x: 72, y: 8 },

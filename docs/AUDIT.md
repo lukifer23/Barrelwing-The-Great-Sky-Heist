@@ -67,7 +67,7 @@ All 45 soak cycles completed with no runtime errors or duplicated enemy/resume h
 
 ## Next work priorities
 
-Session handoff and local evidence locations are recorded in [SESSION.md](SESSION.md). One-handed portrait controls are requested and remain unimplemented.
+Session handoff and local evidence locations are recorded in [SESSION.md](SESSION.md). The November 20 pass below implements one-thumb portrait controls.
 
 1. Record campaign and trial routes with ordinary controls, starting with the vertical ladder stages and moving flight gates. Treat failed automation as a reproduction to investigate, not automatic proof that a human route is impossible.
 2. Validate the new reward pacing through a fresh campaign. Check whether Express and Untouched encourage useful routes and whether shard income makes upgrades trivial before their intended encounters.
@@ -75,3 +75,11 @@ Session handoff and local evidence locations are recorded in [SESSION.md](SESSIO
 4. Deepen existing encounter and world presentation after route validation. Additional content should provide readable mechanics and distinct route choices rather than increase the number of nominal stages alone.
 
 No new network services, accounts, monetization, fabricated scores, or placeholder content were introduced. Remaining acceptance work is tracked explicitly instead of being represented as completed validation.
+
+## November 20 gameplay and cover-screen pass
+
+The 1.2 pass covers profile isolation, atomic stage settlement, rank-based recruitment, courier-specific movement, an additional trial, an aimed enemy, Brawl rules and simultaneous hits, and touch and keyboard input. Old single-player saves open in slot one. Courier selection, workshop spending, campaign records and Brawl results were exercised through the production game.
+
+The Phaser frame limiter accelerated gameplay deadlines on the browser test host. Movement now uses display-paced frames with fixed-step Arcade physics. A separate regression compares elapsed campaign time to wall time. The ordinary route probe also exposed a shared-landing error on vertically adjoining ladders. Climb direction now determines which segment accepts input at the junction.
+
+The Fold7 cover review found small HUD type, excessive space between map objects and a persistent sound button covering menu space. Portrait campaign framing now shows 352 world units across. The map groups each world on its own row. Supporting text, input targets, match readouts and the field guide use portrait sizing. One-thumb play keeps horizontal movement until the player taps STOP and clears held input on cancellation or pause.

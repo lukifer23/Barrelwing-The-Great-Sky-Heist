@@ -4,15 +4,21 @@ The save key is `barrelwing.save.v1`; the companion browser recovery key adds `.
 
 A save contains stage records, campaign and bonus unlocks, Sprint best score, aggregate score, settings, permanent upgrade tiers, and an optional active run.
 
+## Local players
+
+The title’s Profiles menu selects one of three local players. Each keeps a campaign, workshop, courier, Sprint best, Brawl record and active match. Sound, accessibility and control settings apply across the installation. The active player remains at the top level of the version 1 journal. `slot` identifies that player and `otherProfiles` holds the inactive records. Opening a legacy save assigns it to Player 1. Switching players or starting a new campaign retains the other players.
+
 ## Stage records
 
-Each of fifteen records tracks completion, best score, fastest successful clear, three distinct gem flags, and best rating. A replay merges gems and ratings without discarding earlier achievements. An incomplete attempt does not overwrite a successful best time. Completing stages 1 through 9 advances the campaign. Stage 3 unlocks Sky Sprint; stage 9 unlocks the Sky Trials.
+Each of sixteen records tracks completion, best score, fastest successful clear, three distinct gem flags, and best rating. A replay merges gems and ratings without discarding earlier achievements. An incomplete attempt does not overwrite a successful best time. Completing stages 1 through 9 advances the campaign. Stage 3 unlocks Sky Sprint; stage 9 unlocks the Sky Trials.
 
 Records also store `mastery`, with boolean `collector`, `express`, and `untouched` delivery stamps. Missing fields default to false. Earned stamps merge across clears, each awarding one shard once. Active snapshots store `deaths` and `damageTaken`; legacy runs without that history cannot establish Express or Untouched eligibility. New campaign progress resets stamps along with stage records.
 
 ## Upgrades
 
 Every unique saved gem and rating star earns one Sky Shard. Available shards are calculated from saved achievements minus the costs of purchased tiers. Each upgrade has two tiers costing 3 and 6 shards. Replaying without improving achievements does not create extra currency.
+
+Courier level starts at one and increases for each nine lifetime shards earned by that profile.
 
 Each earned delivery stamp contributes one additional shard. Upgrade sanitation includes stamp income when retaining purchases after reload.
 
@@ -21,6 +27,7 @@ Each earned delivery stamp contributes one additional shard. Upgrade sanitation 
 | More Hearts | One additional maximum heart |
 | More Lives | One additional starting life |
 | Faster Dash | Dash cooldown reduced by 15% of its base duration |
+| Acorn Rhythm | Add 400 ms to the acorn combo window |
 | Longer Powers | Timed powers last 25% longer than base duration |
 
 Upgrades apply when a new stage instance begins. Sky Sprint retains its three-heart score-attack rules.
@@ -33,7 +40,7 @@ Temporary power effects and transient hazards are reset on restoration. Falling 
 
 An object's optional `persistentId` preserves its released hash when a placement is corrected. The flight coin-arc helper retains original IDs for ceiling corrections. Existing legacy maps continue to reference these same IDs.
 
-Completing a stage records results before its celebration finishes. The active run is cleared so reopening the app cannot accidentally resume a finished attempt.
+Completing a stage banks the result, rating, aggregate score, unlock and run clearance in one journal revision before its celebration finishes. The active run is cleared so reopening the app cannot accidentally resume a finished attempt.
 
 ## Storage behavior
 
@@ -47,4 +54,4 @@ The game has no account, backend, cloud backup, telemetry, or shared leaderboard
 
 ## Independent modes
 
-Brawl records and active matches are stored separately from the campaign run. Starting a new campaign retains Brawl records, its active match, the Sprint personal best, settings, and the chosen courier. Campaign stage records and upgrades reset. See [BRAWL.md](BRAWL.md) for match restoration details.
+Brawl records and active matches are stored separately from the campaign run. Starting a new campaign retains Brawl records, its active match, the Sprint personal best, settings, and the chosen courier. Clover joins the active profile at nine earned shards. The recruit carries over into a new campaign. Campaign stage records and upgrades reset. See [BRAWL.md](BRAWL.md) for match restoration details.

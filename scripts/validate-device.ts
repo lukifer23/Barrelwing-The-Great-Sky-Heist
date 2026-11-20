@@ -13,6 +13,8 @@ await mkdir(directory, { recursive: true });
 const adb = (...args: string[]) => execFileSync('adb', ['-s', device.serial(), ...args], { timeout: 20000, maxBuffer: 25000000 });
 const results: { check: string; details?: unknown }[] = [];
 const errors: string[] = [];
+const sampleSeconds = Number(option('sample-seconds', '0'));
+if (!Number.isFinite(sampleSeconds) || sampleSeconds < 0) throw new Error('Use a non-negative sample duration.');
 let page: Page;
 let original: any;
 let restored = false;
@@ -71,17 +73,32 @@ async function state() {
 }
 async function flush() { await page.evaluate(async () => { await (window as any).__game.registry.get('saves').flush(); }); }
 try {
-  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
   original = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
   await writeFile(`${directory}/save-before.json`, JSON.stringify(original, null, 2));
-  check(!!original.run, 'Existing checkpoint is available for an ordinary Continue test', { level: original.run?.levelId });
   await screenshot('title');
+  let run = original.run;
+  if (!run) {
+    // A player between stages has no active run. Open the selected unlocked
+    // stage normally and leave via Pause to exercise its real checkpoint.
+    await tapText('Title', 'LEVEL SELECT');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('WorldMap'));
+    adb('shell', 'input', 'keyevent', '66');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
+    await tapDom('[data-action="pause"]');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+    await tapText('Pause', 'RETURN TO TITLE');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+    await flush();
+    run = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get().run));
+  }
+  check(!!run, 'A campaign checkpoint is available for ordinary Continue', { level: run?.levelId, existing: !!original.run });
   await tapText('Title', 'CONTINUE');
   await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
   const resumed = await state();
-  check(resumed.level === original.run.levelId && resumed.lives === original.run.lives && JSON.stringify(resumed.gems) === JSON.stringify(original.run.gems), 'Continue retains checkpoint, lives, and gems', resumed);
-  check(Math.abs(resumed.x - original.run.checkpoint.x) < 2 && Math.abs(resumed.y - original.run.checkpoint.y) < 3, 'Continue places the courier on the saved checkpoint', resumed);
+  check(resumed.level === run.levelId && resumed.lives === run.lives && JSON.stringify(resumed.gems) === JSON.stringify(run.gems), 'Continue retains checkpoint, lives, and gems', resumed);
+  check(Math.abs(resumed.x - run.checkpoint.x) < 2 && Math.abs(resumed.y - run.checkpoint.y) < 3, 'Continue places the courier on the saved checkpoint', resumed);
   await delay(350);
   const stick = await page.locator('#joystick').boundingBox();
   if (!stick) throw new Error('Native touch joystick is not visible.');
@@ -116,7 +133,7 @@ try {
   await tapDom('#audio-toggle'); await flush();
   adb('shell', 'input', 'keyevent', '4'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
   const beforeHome = await state(); adb('shell', 'input', 'keyevent', '3'); await delay(1200);
-  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
   const afterHome = await state();
   check(afterHome.now - beforeHome.now < 250 && afterHome.lives === beforeHome.lives && afterHome.score === beforeHome.score, 'Background and foreground retain a paused session without consuming its clock', { beforeHome, afterHome });
@@ -125,7 +142,7 @@ try {
   await writeFile(`${directory}/save-before-force-stop.json`, JSON.stringify(durable, null, 2));
   await writeFile(`${directory}/native-before-force-stop.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
   adb('shell', 'am', 'force-stop', pkg); await delay(350);
-  adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`);
+  adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`);
   await attach(); await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
   const recovered = await page.evaluate(() => structuredClone((window as any).__game.registry.get('saves').get()));
   check(isDeepStrictEqual(recovered.run, durable.run), 'Force-stop recovery retains the flushed run snapshot', { revision: recovered.revision, level: recovered.run?.levelId });
@@ -133,6 +150,58 @@ try {
   const checkpoint = await state();
   check(checkpoint.level === durable.run.levelId && checkpoint.lives === durable.run.lives && Math.abs(checkpoint.x - durable.run.checkpoint.x) < 2, 'Continue after force-stop restores the actual checkpoint', checkpoint);
   await screenshot('force-stop-recovery');
+  const cover = await page.evaluate(() => matchMedia('(pointer: coarse) and (orientation: portrait)').matches);
+  if (cover) {
+    await page.evaluate(() => (window as any).__game.registry.get('saves').patchSettings({ oneHanded: true }));
+    await page.waitForSelector('#touch-controls.one-handed');
+    const stick = (await page.locator('#joystick').boundingBox())!;
+    const x = stick.x + stick.width / 2, y = stick.y + stick.height / 2;
+    const px = (v: number) => String(Math.round(v * dpr));
+    adb('shell', 'input', 'swipe', px(x), px(y), px(x + stick.width * 0.31), px(y), '220');
+    const latched = await state();
+    await tapDom('[data-action="jump"]'); await delay(220);
+    const airborne = await state();
+    check(airborne.x > latched.x + 8 && airborne.y < latched.y - 4,
+      'Folded one-thumb movement continues through a physical jump tap', { latched, airborne });
+    await tapDom('[data-action="stop"]');
+    await page.waitForFunction(() => document.querySelector('.stick-guide')?.textContent === 'MOVE');
+    check(await page.locator('#joystick').evaluate(el => !el.classList.contains('held')), 'Physical STOP clears the folded movement latch');
+    await screenshot('cover-campaign');
+  }
+  if (sampleSeconds > 0) {
+    await tapDom('[data-action="pause"]');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Pause'));
+    await tapText('Pause', 'RETURN TO TITLE');
+    await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
+    await tapText('Title', 'BARREL BRAWL'); await page.waitForFunction(() => (window as any).__game.scene.isActive('BrawlSetup'));
+    await screenshot('cover-brawl-setup');
+    await tapText('BrawlSetup', original.brawlRun ? 'NEW MATCH' : 'START MATCH');
+    await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').elapsedMs > 0);
+    const sample = page.evaluate(seconds => new Promise(resolve => {
+      const scene = (window as any).__game.scene.getScene('Brawl');
+      const start = performance.now(), durations: number[] = [];
+      let previous = start;
+      const collect = () => {
+        const now = performance.now();
+        durations.push(now - previous); previous = now;
+        if (now - start < seconds * 1000) return;
+        durations.sort((a, b) => a - b);
+        const at = (q: number) => durations[Math.floor((durations.length - 1) * q)];
+        scene.game.events.off('poststep', collect);
+        resolve({ seconds: (now - start) / 1000, frames: durations.length, p50: at(0.5), p95: at(0.95), p99: at(0.99),
+          over50ms: durations.filter(t => t > 50).length, activeMatchAtEnd: scene.scene.isActive(), viewport: [innerWidth, innerHeight], dpr: devicePixelRatio });
+      };
+      scene.game.events.on('poststep', collect);
+    }), sampleSeconds);
+    for (let i = 0; i < Math.ceil(sampleSeconds / 2); i++) {
+      if (await page.locator('[data-action="attack"]').isVisible()) await tapDom('[data-action="attack"]');
+      await delay(1800);
+    }
+    const stats = await sample;
+    await writeFile(`${directory}/frame-intervals.json`, JSON.stringify(stats, null, 2));
+    await screenshot('cover-brawl');
+    check(true, 'Collected physical WebView frame intervals during live Brawl', stats);
+  }
   check(errors.length === 0, 'Native smoke test has no JavaScript runtime errors', errors);
 } catch (error) {
   errors.push(String(error)); console.error(error);
@@ -140,7 +209,7 @@ try {
   if (original) {
     try {
       if (!page || page.isClosed()) {
-        adb('shell', 'am', 'start', '-n', `${pkg}/.MainActivity`); await attach();
+        adb('shell', 'am', 'start', '-W', '-n', `${pkg}/.MainActivity`); await attach();
         await page.waitForFunction(() => (window as any).__game.scene.isActive('Title'));
       }
       await page.evaluate(async original => {
@@ -155,7 +224,12 @@ try {
       restored = isDeepStrictEqual(after, expected);
       await writeFile(`${directory}/save-restored.json`, JSON.stringify(after, null, 2));
       await writeFile(`${directory}/native-restored.xml`, adb('exec-out', 'run-as', pkg, 'cat', 'shared_prefs/CapacitorStorage.xml'));
-      check(restored, 'Original user progress and settings are restored after validation');
+      const nativeValue = await page.evaluate(async () => {
+        const result = await (window as any).Capacitor.Plugins.Preferences.get({ key: 'barrelwing.save.v1' });
+        return JSON.parse(result.value);
+      });
+      restored = restored && isDeepStrictEqual(nativeValue, expected);
+      check(restored, 'Original user progress and settings are restored in memory and native storage');
     } catch (error) { errors.push(`Restoration: ${String(error)}`); }
   }
   await writeFile(`${directory}/device-smoke.json`, JSON.stringify({ results, errors, restored, completedAt: new Date().toISOString() }, null, 2));

@@ -13,6 +13,7 @@ export interface EnemyConfig {
 }
 
 const STATS: Record<EnemyKind, { hp: number; sheet: string; anim: string; body: [number, number]; stompable: boolean; score: number }> = {
+  lookout: { hp: 2, sheet: 'ant', anim: 'ant-run', body: [26, 18], stompable: true, score: 160 },
   slug: { hp: 1, sheet: 'slug', anim: 'slug-move', body: [18, 12], stompable: true, score: 60 },
   bee: { hp: 1, sheet: 'bee', anim: 'bee-fly', body: [18, 16], stompable: true, score: 80 },
   ant: { hp: 1, sheet: 'ant', anim: 'ant-run', body: [26, 18], stompable: true, score: 90 },
@@ -43,6 +44,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private plantTimer = 0;
   private nextDiveAt = 0;
   private nextShotAt = 0;
+  private shot: { at: number; x: number; y: number } | null = null;
   private aiState: 'patrol' | 'alert' | 'charge' | 'shoot' | 'hurt' = 'patrol';
   private stateUntil = 0;
   private hitUntil = 0;
@@ -84,6 +86,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.body.setAllowGravity(false);
       this.body.setImmovable(true);
     }
+    if (cfg.kind === 'lookout') this.setTint(0x78e0ba);
     if (cfg.kind === 'crawler') this.setTint(0xe8a36b);
     if (cfg.kind === 'stormbee') this.setTint(0xb7b0ff);
     if (cfg.kind === 'diver') this.setTint(0xffb0a0);
@@ -118,6 +121,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const dist = Math.hypot(dx, dy);
 
     switch (this.kind) {
+      case 'lookout':
+        if (this.shot || Math.abs(dx) < 185 && Math.abs(dy) < 70 && time >= this.nextShotAt) {
+          this.body.velocity.x = 0;
+          this.setFlipX(dx < 0);
+          this.anims.pause();
+          this.aimShot(time, player.x, player.y - 12, 600, 2500, 0x78e0ba);
+        } else {
+          this.anims.resume();
+          this.patrol(time, dt, player);
+        }
+        break;
       case 'slug':
       case 'hopper':
       case 'gator':
@@ -165,10 +179,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private patrol(time: number, dt: number, _player: Phaser.Physics.Arcade.Sprite): void {
-    if (this.kind === 'plant') {
-      this.body.velocity.set(0, 0);
-      return;
-    }
     if (this.kind === 'hopper') {
       this.timer += dt;
       if (this.hopAt > 0 && time >= this.hopAt && this.grounded) {
@@ -210,7 +220,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.aiState = 'alert';
         this.stateUntil = time + 340;
         this.setTint(0xffb0a0);
-        this.scene.time.delayedCall(340, () => this.clearTint());
+        this.scene.time.delayedCall(340, () => { if (this.active) this.clearTint(); });
       }
     } else if (this.aiState === 'alert') {
       this.dir = dx > 0 ? 1 : -1;
@@ -220,6 +230,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.scene.events.emit('sfx', 'throw', { volume: 0.16, rate: 1.7 });
     } else if (this.aiState === 'charge') {
       this.aiState = 'hurt';
+      this.body.velocity.x = 0;
       this.stateUntil = time + 500;
     } else if (this.aiState === 'hurt') {
       this.aiState = 'patrol';
@@ -236,15 +247,22 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.body.velocity.x = (targetX - this.x) * 1.6 * speed;
     this.body.velocity.y = (targetY - this.y) * 1.6 * speed;
     this.setFlipX(dx < 0);
-    if (this.kind === 'stormbee' && time > this.nextShotAt && Math.abs(dx) < 220 && Math.abs(dy) < 100) {
-      this.nextShotAt = time + 2800;
-      this.setTint(0x9ff5ff);
-      const targetX = this.x + dx, targetY = this.y + dy;
-      this.scene.time.delayedCall(350, () => {
-        if (!this.active || this.defeated) return;
-        this.setTint(0xb7b0ff);
-        this.scene.events.emit('enemy-projectile', this.x, this.y - 8, targetX, targetY);
-      });
+    if (this.kind === 'stormbee' && (this.shot || Math.abs(dx) < 220 && Math.abs(dy) < 100)) {
+      this.aimShot(time, this.x + dx, this.y + dy, 350, 2800, 0xb7b0ff);
+    }
+  }
+
+  private aimShot(time: number, x: number, y: number, warning: number, interval: number, baseColor: number): void {
+    if (!this.shot) {
+      if (time < this.nextShotAt) return;
+      this.shot = { at: time + warning, x, y };
+      this.nextShotAt = time + interval;
+      this.setTint(0xffcc80);
+      this.scene.events.emit('sfx', 'bump', { volume: 0.12, rate: 1.4 });
+    } else if (time >= this.shot.at) {
+      this.scene.events.emit('enemy-projectile', this.x, this.y - 8, this.shot.x, this.shot.y);
+      this.shot = null;
+      this.setTint(baseColor);
     }
   }
 
@@ -309,18 +327,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.timer += dt;
     this.body.velocity.x = Math.sin(this.timer * 0.7) * 22 + (this.anchorX - this.x) * 0.4;
     this.body.velocity.y = Math.cos(this.timer * 1.1) * 16 + (this.anchorY - this.y) * 0.4;
-    if (time > this.stateUntil) {
-      this.stateUntil = time + 1900;
-      if (dist < 280) {
-        this.scene.events.emit('enemy-projectile', this.x, this.y + 4, player.x, player.y);
-        this.scene.events.emit('sfx', 'magic', { volume: 0.14, rate: 1.5 });
-      }
-    }
+    if (this.shot || dist < 280) this.aimShot(time, player.x, player.y - 12, 420, 1900, 0xffffff);
     this.setAlpha(dist < 200 ? 1 : 0.7);
   }
 
   damage(amount = 1, fromX = this.x): boolean {
     if (this.defeated || playTime(this.scene) < this.hitUntil) return false;
+    this.shot = null;
     this.hp -= amount;
     this.hitUntil = playTime(this.scene) + 180;
     if (this.hp <= 0) {
@@ -328,7 +341,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return true;
     }
     this.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
-    this.scene.time.delayedCall(70, () => { if (this.active) this.clearTint(); });
+    this.scene.time.delayedCall(70, () => { if (this.active) { this.clearTint(); if (this.kind === 'lookout') this.setTint(0x78e0ba); } });
     this.body.velocity.x += (this.x < fromX ? -1 : 1) * 60;
     this.scene.events.emit('sfx', 'bump', { volume: 0.25, rate: 1.4 });
     return true;

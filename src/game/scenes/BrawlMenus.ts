@@ -23,7 +23,7 @@ export class BrawlPauseScene extends Phaser.Scene {
   }
 }
 export class BrawlResultsScene extends Phaser.Scene {
-  private result!: { won: boolean; options: BrawlOptions; knockouts: number; elapsedMs: number };
+  private result!: { won: boolean; options: BrawlOptions; knockouts: number; cpuKOs: number; suddenDeath: boolean; elapsedMs: number };
   constructor() { super('BrawlResults'); }
   init(result: BrawlResultsScene['result']): void { this.result = result; }
   create(): void {
@@ -31,7 +31,8 @@ export class BrawlResultsScene extends Phaser.Scene {
     this.add.text(240, 44, this.result.won ? 'SPECIAL DELIVERY!' : 'RETURN TO SENDER', { fontFamily: '"Press Start 2P"', fontSize: '15px', color: this.result.won ? '#f0c060' : '#ffb0a0' }).setOrigin(0.5);
     this.add.text(240, 76, this.result.won ? 'YOU WON. THE PAPERWORK LOST.' : 'THE TAIL IS FINE. THE PRIDE IS NOT.', { fontFamily: FONT_SMALL, fontSize: '7px', color: '#bed0dc' }).setOrigin(0.5);
     const record = SaveManager.get().brawl;
-    this.add.text(240, 110, `${this.result.knockouts} KNOCKOUTS  /  ${Math.floor(this.result.elapsedMs / 1000)} SECONDS\n${record.wins} WINS  /  BEST STREAK ${record.bestStreak}`, { fontFamily: FONT_SMALL, fontSize: '9px', color: '#9ff5ff', align: 'center', lineSpacing: 7 }).setOrigin(0.5);
+    const rule = this.result.suddenDeath ? 'SUDDEN DELIVERY' : this.result.options.rules === 'timed' ? 'KO RACE' : 'STOCK MATCH';
+    this.add.text(240, 110, `${rule}  /  ${Math.floor(this.result.elapsedMs / 1000)}s\nKOs   YOU ${this.result.knockouts}  /  CPU ${this.result.cpuKOs}\n${record.wins} WINS  /  BEST STREAK ${record.bestStreak}`, { fontFamily: FONT_SMALL, fontSize: '9px', color: '#9ff5ff', align: 'center', lineSpacing: 7 }).setOrigin(0.5);
     const menu = new Menu(this, [
       { label: 'REMATCH', action: () => this.scene.start('Brawl', { ...this.result.options, resume: false }) },
       { label: 'BRAWL SETUP', action: () => this.scene.start('BrawlSetup') },

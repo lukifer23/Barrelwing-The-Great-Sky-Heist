@@ -225,7 +225,6 @@ export class SkySprintScene extends Phaser.Scene {
     this.elapsed += dt;
     this.speed = Math.min(195, 110 + this.elapsed / 900);
     this.distance += this.speed * (dt / 1000);
-    this.score = Math.floor(this.distance / 6) + this.coinScore;
 
     // keep the courier anchored while the world scrolls
     this.player.body.velocity.x = 0;
@@ -243,6 +242,7 @@ export class SkySprintScene extends Phaser.Scene {
 
     this.moveGates(dt);
     this.moveCoins(dt);
+    this.score = Math.floor(this.distance / 6) + this.coinScore;
     this.checkCollisions();
     this.updateHearts();
     this.hudScore.setText(`${this.score.toLocaleString('en-US')}   ·   ${Math.floor(this.distance)}m`);
@@ -264,7 +264,7 @@ export class SkySprintScene extends Phaser.Scene {
     const gapH = Phaser.Math.Between(56, 78);
     const minY = 50 + gapH / 2;
     const maxY = this.viewHeight - 34 - gapH / 2;
-    let gapY = Phaser.Math.Clamp(this.nextGap + Phaser.Math.Between(-36, 36), minY, maxY);
+    const gapY = Phaser.Math.Clamp(this.nextGap + Phaser.Math.Between(-36, 36), minY, maxY);
     this.nextGap = gapY;
 
     const x = this.viewWidth + 30;

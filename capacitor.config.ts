@@ -5,6 +5,6 @@ const config: CapacitorConfig = {
   appName: 'Barrelwing',
   webDir: 'dist',
   backgroundColor: '#070a14',
-  android: { backgroundColor: '#070a14', allowMixedContent: false, webContentsDebuggingEnabled: true },
+  android: { backgroundColor: '#070a14', allowMixedContent: false },
 };
 export default config;

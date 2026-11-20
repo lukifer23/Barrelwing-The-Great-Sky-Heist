@@ -1,10 +1,11 @@
+import { TOTAL_LEVELS } from '../../src/game/data/progression';
 import { test, expect, type Page } from '@playwright/test';
 
 import { boot, start } from './helpers';
 
-test('all fifteen stages load with unique gems and configured physics; restarts do not leak handlers', async ({ page }) => {
+test('all authored stages load with unique gems and configured physics; restarts do not leak handlers', async ({ page }) => {
   const errors = await boot(page);
-  for (let id = 1; id <= 15; id++) {
+  for (let id = 1; id <= TOTAL_LEVELS; id++) {
     await start(page, id);
     const state = await page.evaluate(() => {
       const s = (window as any).__game.scene.getScene('Game');
@@ -70,7 +71,7 @@ test('earned upgrades persist, cannot be bought twice without shards, and change
   const errors = await boot(page);
   const result = await page.evaluate(async () => {
     const S = (window as any).__game.registry.get('saves');
-    S.recordLevel(1, { score: 3000, timeMs: 60000, gems: [true, true, true], completed: true }); S.setRating(1, 3);
+    S.recordLevel(1, { score: 3000, timeMs: 60000, gems: [true, true, true], completed: true, rating: 3 });
     return { earned: S.shards, bought: S.buyUpgrade('vitality'), second: S.buyUpgrade('vitality'), remains: S.shards };
   });
   expect(result).toEqual({ earned: 6, bought: true, second: false, remains: 3 });
@@ -299,10 +300,19 @@ test('pausing freezes power, dash, and protection deadlines instead of expiring 
   const before = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { now: p.now, remaining: p.swiftUntil - p.now }; });
   await page.waitForTimeout(1000);
   expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.now)).toBe(before.now);
-  await page.keyboard.press('Escape'); await page.waitForFunction(() => (window as any).__game.scene.isActive('Game'));
-  await page.waitForTimeout(100);
-  const after = await page.evaluate(() => { const p = (window as any).__game.scene.getScene('Game').player; return { remaining: p.swiftUntil - p.now, protected: p.isInvulnerable, dash: p.dashReady, speed: p.speedMultiplier }; });
-  expect(after.remaining).toBeGreaterThan(before.remaining - 300); expect(after.protected).toBe(true); expect(after.dash).toBe(false); expect(after.speed).toBeGreaterThan(1);
+  // Observe the first resumed frame inside the simulation. A slow CI runner
+  // can advance several hundred ms between two Playwright round trips.
+  const after = page.evaluate(() => new Promise<{ remaining: number; protected: boolean; dash: boolean; speed: number }>(resolve => {
+    const s = (window as any).__game.scene.getScene('Game');
+    s.events.once('postupdate', () => {
+      const p = s.player;
+      resolve({ remaining: p.swiftUntil - p.now, protected: p.isInvulnerable, dash: p.dashReady, speed: p.speedMultiplier });
+    });
+  }));
+  await page.keyboard.press('Escape');
+  const resumed = await after;
+  expect(resumed.remaining).toBeGreaterThanOrEqual(before.remaining - 49);
+  expect(resumed.protected).toBe(true); expect(resumed.dash).toBe(false); expect(resumed.speed).toBeGreaterThan(1);
   expect(errors).toEqual([]);
 });
 
