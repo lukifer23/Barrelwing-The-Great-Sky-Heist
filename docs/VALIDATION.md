@@ -2,6 +2,37 @@
 
 The initial review covered the original application source, authored stages, asset manifests, build scripts, README, credits, runtime assets, and package configuration. Upstream source archives are optional build inputs, not part of the application source maintained here.
 
+## November 23 local acceptance
+
+The final working tree passed all 24 content and asset checks, TypeScript, the production web build and all 59 Chromium regressions. The run log is `artifacts/review/2026-11-23/check.log`. All 29 relative links across the twelve project Markdown files resolved locally.
+
+Unupgraded Pip collected all three gems in both new trials on the packaged game version. Lightning Exchange took 15.1 seconds of active play and Reedbank Crossing took 12.3 seconds. Both beat par with zero deaths and zero Continues. Reed also cleared both exits without a death or Continue on direct routes, collecting one gem on Lightning Exchange and zero on Reedbank Crossing. A separate run restored the previously earned Mallow campaign profile, selected its recruited Clover and completed Reedbank Crossing with all three gems and zero deaths. Clover had the profile’s purchased heart upgrade.
+
+| Run | Local evidence |
+| --- | --- |
+| Pip, both three-gem routes on the final game version | `artifacts/routes/2026-11-23T18-25-55.406Z-oxtxlb/report.json` |
+| Pip, independent probes of all 18 stages | `artifacts/routes/2026-11-23T18-14-21.212Z-rPH7Bk/report.json` |
+| Reed, both direct routes | `artifacts/routes/2026-11-23T18-12-57.131Z-uF64vj/report.json` |
+| Recruited Clover, Reedbank Crossing | `artifacts/routes/2026-11-23T18-20-10.668Z-TXcEtm/report.json` |
+| Reed vs. Mallow, Easy stock at Canopy Court | `artifacts/brawl/2026-11-23T18-22-29.507Z-qcAzGM/report.json` |
+| Pip vs. Reed, Normal stock in the factory | `artifacts/brawl/2026-11-23T18-21-31.000Z-UZXrOo/report.json` |
+| Desktop lifecycle, 54 stage starts | `artifacts/soak/2026-11-23T18-21-41.279Z-pKJiYc/report.json` |
+| Reed vs. Clover, Hard KO Race in the storm arena | `artifacts/brawl/2026-11-23T18-12-57.154Z-GJXQzR/report.json` |
+
+The eighteen-stage sweep reached all eighteen exits with zero runtime errors on an earlier build during this review. It used ordinary keyboard input with unupgraded Pip and collected 12 of 54 gems. It recorded 19 deaths and three Continues. The flagship accounted for seven deaths and two Continues. The Baron rematch accounted for four deaths and one Continue. These independent attempts do not measure a first-time player’s difficulty or a continuous campaign’s upgrade economy.
+
+An intermediate collection run stalled below Lightning Exchange’s high route. The controller had been jumping beneath its target while lower approach platforms were off to one side. It now steers to a reachable shelf when a ground gem is too high for a direct approach. The final three-gem routes above include this correction.
+
+The route controller reads player and stage state and sends normal keyboard input. Each isolated probe begins at the authored spawn. The optional `--profile` reads the two game journal keys from a saved local campaign. The runner checks the active courier before recording the route. Use `npm run test:routes -- --levels=17,18 --character=pip --gems=true --seconds=120` to repeat the collection runs. A previous campaign profile can be supplied as `--profile=artifacts/campaign/<run>/profile.json` for a recruited courier.
+
+All three Brawl matches finished without runtime errors. The controller won the Easy and Normal stock matches. The Hard timed match went to sudden death. Reed landed 56 strikes, Clover landed 24 and parried 11, and Clover won. Browser layout captures at 1280 × 720, 411 × 960, 860 × 880 and 915 × 412 CSS pixels are under `artifacts/review/2026-11-23/`. The roster, Sprint ready screen and trial map kept their text in bounds. An earned campaign profile also opened the trial picker from Title, selected Reed and started both new stages. Gameplay captures show the live storm discharge and Copper Mill’s steam jet.
+
+The desktop lifecycle check visited all eighteen stages three times with three seconds of ordinary-input play per visit. Every load had one enemy-defeat handler and one resume handler. The report recorded zero runtime errors. Post-GC JavaScript heap ranged from 7.93–9.80 MiB on the first circuit, 9.71–10.01 MiB on the second and 9.93–10.14 MiB on the third. The upward drift warrants a longer session. The run preceded the final weather-art pass. A further eighteen-load sweep against the packaged game version recorded zero runtime errors, stable handlers and 7.87–9.69 MiB of post-GC heap. Its report is `artifacts/soak/2026-11-23T18-27-07.999Z-C6WDCW/report.json`.
+
+The full asset pipeline regenerated 124 browser and Android assets in an isolated directory. All audio and visible pixels matched. Thirty-eight PNGs had different encodings with identical dimensions and visible pixels. The new courier and enemy sheets matched byte for byte.
+
+A separate debug APK was built for later physical checks at `artifacts/review/2026-11-23/barrelwing-review-debug.apk`. Its SHA-256 is `e080b2d296a7b29a6ee02f866f8d783c29442f94ed1b9c665d86d27d76e48981`. Android Build Tools verified its v2 signature and the signing certificate matches the retained debug APK. All 116 web distribution files matched the packaged bytes. Device installation, fold gestures, audio mix, sustained frame pacing and native process termination on this revision remain deferred.
+
 ## Reproducing the unfolded and campaign checks
 
 - With the Fold7 open, run `ANDROID_SERIAL="$(adb -d get-serialno)" npm run test:device -- --unfolded=true --sample-seconds=210 --video=true`. The runner reads Android’s physical posture, uses the inner display for touch gestures, checks control bounds, and saves a game-canvas recording plus frame intervals under `artifacts/device`. The flight segment starts the authored trial at spawn. The roster and match selections use the on-screen menus. The runner restores the original profile in memory and on disk.

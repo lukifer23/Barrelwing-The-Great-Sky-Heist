@@ -17,9 +17,9 @@ The implementation and focused regression tests cover these behaviors. They do n
 
 | Priority | Area | Evidence required |
 | --- | --- | --- |
-| High | Complete campaign routes | All 16 exits have ordinary-input clears across the November 20 pass. One fresh Mallow campaign reached the ending. Verify all optional gems and alternate checkpoint routes. |
-| High | Touch onboarding | Teach movement, jumping, flapping, dashing, and climbing in context with device-appropriate instructions; verify the first session without consulting documentation. |
-| High | Combat balance | Play all courier/difficulty combinations, assess CPU recovery and attack readability, and tune damage and knockback from actual matches. |
+| High | Complete campaign routes | Unupgraded Pip cleared all 18 exits. On the final build Pip also collected all three gems without a death in each new trial. Verify the remaining optional routes and recoveries from each checkpoint. Compare the post-campaign par times with human clears. |
+| High | Touch onboarding | Observe a new player moving, flapping, dashing and climbing using the contextual touch hints. Record the first missed cue and whether they recover without opening the guide. |
+| High | Combat balance | Compare Reed’s recovery against each difficulty. Record landed strikes, recovery attempts and ring-out direction across the five-courier roster. Check whether CPU Reed deliberately earns the Skipping Kick refund. |
 | High | Fold transitions | Physically fold and unfold during campaign movement, flight, Brawl, pause, settings, and results; preserve progress and accessible controls. |
 | High | Sustained performance | Record frame intervals during long runs in the busiest stages, with sound and touch enabled, including thermal behavior. Short samples are insufficient. |
 | Medium | Presentation | Review animation transitions, effect readability, sound balance, text sizes, menu density, and overlapping HUD elements on the cover screen. |

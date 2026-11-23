@@ -41,6 +41,8 @@ export const FIGHT_STYLES = {
     damage: 13, weight: 1.18, cooldown: 570, reach: 32, radius: 52, activeMs: 145, frames: [22, 23, 24, 25] },
   clover: { role: 'AERIAL SCOUT', move: 'VAULT KICK', cue: 'KICK', description: 'Land a downward aerial kick to bounce back into the air.', color: 0xa8e6a5,
     damage: 9, weight: 0.96, cooldown: 420, reach: 36, radius: 45, activeMs: 115, frames: [21, 14, 15, 17] },
+  reed: { role: 'AIR KICKER', move: 'SKIPPING KICK', cue: 'KICK', description: 'Connect a sideways kick in the air to regain a spent jump once per landing.', color: 0x9ce69e,
+    damage: 8, weight: 0.98, cooldown: 460, reach: 45, radius: 35, activeMs: 135, frames: [22, 23, 24, 25] },
 } as const satisfies Record<CharacterId, { role: string; move: string; cue: string; description: string; color: number;
   damage: number; weight: number; cooldown: number; reach: number; radius: number; activeMs: number; frames: readonly number[] }>;
 
@@ -50,7 +52,7 @@ export function attackPose(id: CharacterId, progress: number): number {
 }
 
 export function swipeFrame(id: CharacterId, aim: number, progress: number) {
-  const key = aim !== 0 || id === 'clover' ? 'slash-upward' : id === 'fenn' ? 'slash-horizontal' : 'slash-circular';
+  const key = aim !== 0 || id === 'clover' ? 'slash-upward' : id === 'fenn' || id === 'reed' ? 'slash-horizontal' : 'slash-circular';
   const count = key === 'slash-circular' ? 6 : 5;
   return { key, frame: Math.min(count - 1, Math.max(0, Math.floor(progress * count))) };
 }

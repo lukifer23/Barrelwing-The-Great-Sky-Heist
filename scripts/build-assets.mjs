@@ -237,6 +237,9 @@ async function main() {
 
   // Bird (already a 7x32 sheet)
   fs.copyFileSync(path.join(sideSprites, 'flying-bird/sprites/flying-creature-cycle.png'), write('sprites/bird.png'));
+  // Preserve the wing cycle's shared pivot when reducing the nine drake frames.
+  await sharp(path.join(sideSprites, 'sunny-dragon/PNG/spritesheets/sunny-dragon-fly.png'))
+    .resize(432, 44, { kernel: 'nearest' }).png().toFile(write('sprites/drake.png'));
   // Ghost (6x64 sheet)
   await sharp(path.join(sideSprites, 'enemy-ghost/PNG/transparent-no-particles.png'))
     .resize(384, 64).png().toFile(write('sprites/wisp.png'));

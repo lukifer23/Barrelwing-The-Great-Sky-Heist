@@ -54,6 +54,20 @@ interface GateRuntime {
   open: boolean;
 }
 
+const WEATHER = {
+  steam: { warning: 0.18, start: 0.22, end: 0.46, color: 0xffc46a, height: 52 },
+  lightning: { warning: 0.24, start: 0.26, end: 0.36, color: 0x9ff5ff, height: 180 },
+} as const;
+
+interface WeatherHazard {
+  kind: keyof typeof WEATHER;
+  period: number;
+  phase: number;
+  bounds: Phaser.Geom.Rectangle;
+  spray: Phaser.GameObjects.Image;
+  warn: Phaser.GameObjects.Rectangle;
+}
+
 export class GameScene extends Phaser.Scene {
   level!: LevelDef;
   private player!: Player;
@@ -80,8 +94,7 @@ export class GameScene extends Phaser.Scene {
   private conveyors: { sprite: Phaser.GameObjects.TileSprite; dir: number; speed: number; x: number; y: number; w: number }[] = [];
   private gates: GateRuntime[] = [];
   private switches: { sprite: Phaser.GameObjects.Image; id: string; used: boolean }[] = [];
-  private steamVents: { x: number; y: number; period: number; phase: number; spout: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
-  private lightnings: { x: number; y: number; w: number; period: number; phase: number; beam: Phaser.GameObjects.Rectangle; warn: Phaser.GameObjects.Rectangle }[] = [];
+  private weatherHazards: WeatherHazard[] = [];
   private updrafts: { rect: Phaser.Geom.Rectangle; power: number }[] = [];
   private fallingPlats: { sprite: Phaser.GameObjects.TileSprite; body: Phaser.Physics.Arcade.StaticBody; used: boolean }[] = [];
   private flightZones: FlightRuntime[] = [];
@@ -151,8 +164,7 @@ export class GameScene extends Phaser.Scene {
     this.conveyors = [];
     this.gates = [];
     this.switches = [];
-    this.steamVents = [];
-    this.lightnings = [];
+    this.weatherHazards = [];
     this.updrafts = [];
     this.fallingPlats = [];
     this.flightZones = [];
@@ -282,9 +294,6 @@ export class GameScene extends Phaser.Scene {
     const th = THEMES[this.level.theme];
     if (style === 'metal' || this.level.theme === 'factory') {
       return { top: 'factory_top', fill: 'factory_fill', tile: 18 };
-    }
-    if (style === 'cloud') {
-      return { top: th.topTex, fill: th.fillTex, tile: this.level.tile };
     }
     return { top: th.topTex, fill: th.fillTex, tile: this.level.tile };
   }
@@ -436,8 +445,8 @@ export class GameScene extends Phaser.Scene {
         case 'flight': this.addFlight(o); break;
         case 'windCrystal': this.addWindCrystal(cx(o.x), o.y * ts + ts / 2, objectId); break;
         case 'spikes': this.addSpikes(cx(o.x), o.y * ts, o.w * ts); break;
-        case 'steam': this.addSteam(cx(o.x), o.y * ts, o.period, o.phase ?? 0); break;
-        case 'lightning': this.addLightning(o.x * ts, o.y * ts, o.w * ts, o.period, o.phase ?? 0); break;
+        case 'steam': this.addWeather('steam', cx(o.x) - 6, o.y * ts, 12, o.period, o.phase ?? 0); break;
+        case 'lightning': this.addWeather('lightning', o.x * ts, o.y * ts, o.w * ts, o.period, o.phase ?? 0); break;
         case 'updraft': {
           const rect = new Phaser.Geom.Rectangle(o.x * ts, o.y * ts, o.w * ts, o.h * ts);
           this.updrafts.push({ rect, power: o.power ?? 1 });
@@ -446,7 +455,7 @@ export class GameScene extends Phaser.Scene {
         }
         case 'fallingPlatform': this.addFallingPlatform(cx(o.x), o.y * ts, o.w * ts); break;
         case 'exit': this.addExit(cx(o.x), o.y * ts); break;
-        case 'tutorial': this.tutorials.push({ x: cx(o.x), y: o.y * ts, text: o.text, shown: false }); break;
+        case 'tutorial': this.tutorials.push({ x: cx(o.x), y: o.y * ts, text: window.matchMedia('(pointer: coarse)').matches ? o.touchText ?? o.text : o.text, shown: false }); break;
         case 'powerup': this.addPowerup(o.kind, cx(o.x), o.y * ts + ts / 2, objectId); break;
         case 'decor': this.addDecor(o.kind, cx(o.x), o.y * ts, o.scale ?? 1, o.kind === 'tree' ? 2 : 7); break;
         case 'boss':
@@ -603,7 +612,8 @@ export class GameScene extends Phaser.Scene {
     (img.getData('label') as Phaser.GameObjects.Text | undefined)?.destroy();
     img.destroy();
     this.powerups = this.powerups.filter(p => p !== img);
-    if (kind === 'priority') this.player.priorityUntil = this.player.now + meta.durationMs * this.player.powerDuration;
+    if (kind === 'stormcoat') this.player.stormcoatUntil = this.player.now + meta.durationMs * this.player.powerDuration;
+    else if (kind === 'priority') this.player.priorityUntil = this.player.now + meta.durationMs * this.player.powerDuration;
     else if (kind === 'shield') this.player.activateShield();
     else if (kind === 'swift') this.player.grantSwift();
     else if (kind === 'magnet') this.player.grantMagnet();
@@ -612,8 +622,8 @@ export class GameScene extends Phaser.Scene {
     else if (kind === 'nova') {
       const blast = this.add.sprite(this.player.x, this.player.y - 20, 'energy_smack').setDepth(25).setScale(1.8).play('energy-burst');
       blast.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => blast.destroy());
-      for (const enemy of this.enemies.getChildren() as Enemy[]) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
-      for (const barrel of [...this.barrels.getChildren()] as Barrel[]) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
+      for (const enemy of this.enemies.children as Set<Enemy>) if (enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y) < 150) enemy.damage(3, this.player.x);
+      for (const barrel of this.barrels.children as Set<Barrel>) if (barrel.active && !barrel.indestructible && Phaser.Math.Distance.Between(barrel.x, barrel.y, this.player.x, this.player.y) < 150) barrel.smash();
       this.fx.shake(0.004, 180); AudioManager.sfx('magic', { volume: 0.5, rate: 0.8 });
     }
     else if (kind === 'heart') {
@@ -642,16 +652,13 @@ export class GameScene extends Phaser.Scene {
     this.dangers.add(sp);
   }
 
-  private addSteam(x: number, y: number, period: number, phase: number): void {
-    const warn = this.add.rectangle(x, y - 26, 10, 52, 0xffc46a, 0).setDepth(8);
-    const spout = this.add.rectangle(x, y - 26, 8, 52, 0xfff0d0, 0).setDepth(9);
-    this.steamVents.push({ x, y, period, phase, spout, warn });
-  }
-
-  private addLightning(x: number, y: number, w: number, period: number, phase: number): void {
-    const warn = this.add.rectangle(x + w / 2, y - 90, w, 180, 0x9ff5ff, 0).setDepth(8);
-    const beam = this.add.rectangle(x + w / 2, y - 90, w * 0.6, 180, 0xffffff, 0).setDepth(22);
-    this.lightnings.push({ x, y, w, period, phase, beam, warn });
+  private addWeather(kind: WeatherHazard['kind'], left: number, bottom: number, width: number, period: number, phase: number): void {
+    const { color, height } = WEATHER[kind];
+    const bounds = new Phaser.Geom.Rectangle(left, bottom - height, width, height);
+    const warn = this.add.rectangle(bounds.centerX, bounds.centerY, width, height, color, 0).setDepth(8);
+    const spray = this.add.image(bounds.centerX, bounds.centerY, `hazard_${kind}`, 'a')
+      .setDisplaySize(width, height).setDepth(kind === 'steam' ? 9 : 22).setVisible(false);
+    this.weatherHazards.push({ kind, period, phase, bounds, spray, warn });
   }
 
   private addFallingPlatform(x: number, y: number, w: number): void {
@@ -741,10 +748,14 @@ export class GameScene extends Phaser.Scene {
     const t = this.add.text(0, 2, this.level.name.toUpperCase(), {
       fontFamily: '"Press Start 2P"', fontSize: '13px', color: '#f4e6c8',
     }).setOrigin(0.5);
-    const s = this.add.text(0, 21, this.level.subtitle, {
+    const s = this.add.text(0, 21, this.level.intro, {
       fontFamily: 'Roboto, Arial, sans-serif', fontSize: '12px', align: 'center', wordWrap: { width: 310 }, color: '#c3cee0',
     }).setOrigin(0.5);
     card.add([bg, w, t, s]);
+    if (SaveManager.get().settings.reducedMotion) {
+      this.time.delayedCall(1770, () => card.destroy());
+      return;
+    }
     card.setAlpha(0).setScale(0.94);
     this.tweens.add({ targets: card, alpha: 1, scale: 1, duration: 260, ease: 'Back.easeOut' });
     this.tweens.add({
@@ -887,10 +898,10 @@ export class GameScene extends Phaser.Scene {
 
   private updateEntities(time: number, dt: number): void {
     for (const s of this.spawners) s.update(time);
-    for (const b of this.barrels.getChildren() as unknown as Barrel[]) {
+    for (const b of this.barrels.children as Set<Barrel>) {
       if (b.active) b.updateBarrel(time, dt / 1000, this.killY);
     }
-    for (const e of this.enemies.getChildren() as unknown as Enemy[]) {
+    for (const e of this.enemies.children as Set<Enemy>) {
       if (e.active) {
         if (e.y > this.killY) e.destroy();
         else e.updateAI(time, dt / 1000, this.player);
@@ -940,37 +951,26 @@ export class GameScene extends Phaser.Scene {
       }
     }
     // conveyor animation
-    const frame = Math.floor(playTime(this) / 140) % 2;
-    for (const c of this.conveyors) c.sprite.setTexture(frame ? 'conveyor_1' : 'conveyor_0');
+    const texture = Math.floor(playTime(this) / 140) % 2 ? 'conveyor_1' : 'conveyor_0';
+    for (const c of this.conveyors) if (c.sprite.texture.key !== texture) c.sprite.setTexture(texture);
   }
 
   private updateHazards(time: number): void {
-    for (const s of this.steamVents) {
-      const t = ((time + s.phase * 1000) % s.period) / s.period;
-      const warn = t < 0.18;
-      const active = t > 0.22 && t < 0.46;
-      s.warn.setFillStyle(0xffc46a, warn ? 0.18 + Math.sin(time / 40) * 0.1 : 0);
-      s.spout.setFillStyle(0xfff2dd, active ? 0.85 : 0);
-      if (active) {
-        const r = new Phaser.Geom.Rectangle(s.x - 6, s.y - 52, 12, 52);
-        const pb = this.player.body;
-        if (Phaser.Geom.Intersects.RectangleToRectangle(r, new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height))) {
-          this.hurtPlayer(s.x);
-        }
-      }
-    }
-    for (const l of this.lightnings) {
-      const t = ((time + l.phase * 1000) % l.period) / l.period;
-      const warn = t < 0.24;
-      const active = t > 0.26 && t < 0.36;
-      l.warn.setFillStyle(0x9ff5ff, warn ? 0.12 + Math.sin(time / 60) * 0.06 : 0);
-      l.beam.setFillStyle(0xffffff, active ? 0.9 : 0);
-      if (active) {
-        const r = new Phaser.Geom.Rectangle(l.x, l.y - 180, l.w, 180);
-        const pb = this.player.body;
-        if (Phaser.Geom.Intersects.RectangleToRectangle(r, new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height))) {
-          this.hurtPlayer(l.x + l.w / 2);
-        }
+    const body = this.player.body;
+    const protectedFromWeather = time < this.player.stormcoatUntil;
+    const reduced = SaveManager.get().settings.reducedMotion;
+    for (const hazard of this.weatherHazards) {
+      const { warning, start, end, color } = WEATHER[hazard.kind];
+      const localTime = time + hazard.phase * 1000;
+      const t = (localTime % hazard.period) / hazard.period;
+      const active = t > start && t < end;
+      hazard.warn.setFillStyle(color, t < warning ? (reduced ? 0.23 : 0.18 + Math.sin(localTime / 60) * 0.08) : 0);
+      hazard.spray.setVisible(active);
+      if (!active) continue;
+      const frame = !reduced && Math.floor(localTime / 120) % 2 ? 'b' : 'a';
+      if (hazard.spray.frame.name !== frame) hazard.spray.setFrame(frame);
+      if (!protectedFromWeather && Phaser.Geom.Intersects.RectangleToValues(hazard.bounds, body.left, body.right, body.top, body.bottom)) {
+        this.hurtPlayer(hazard.bounds.centerX);
       }
     }
   }
@@ -1064,10 +1064,10 @@ export class GameScene extends Phaser.Scene {
   private updatePickups(dt: number): void {
     if (!this.canInteract) return;
     const px = this.player.x, py = this.player.y - 12;
-    for (const c of this.coins.getChildren() as Phaser.GameObjects.Sprite[]) {
+    for (const c of this.coins.children as Set<Phaser.GameObjects.Sprite>) {
       if (c.active && Math.abs(c.x - px) < 14 && Math.abs(c.y - py) < 16) this.collectCoin(c);
     }
-    for (const g of this.gems.getChildren() as Phaser.GameObjects.Image[]) {
+    for (const g of this.gems.children as Set<Phaser.GameObjects.Image>) {
       if (g.active && Math.abs(g.x - px) < 15 && Math.abs(g.y - py) < 17) this.collectGem(g);
     }
     for (let i = this.powerups.length - 1; i >= 0; i--) {
@@ -1076,13 +1076,13 @@ export class GameScene extends Phaser.Scene {
       if (Math.abs(p.x - px) < 17 && Math.abs(p.y - py) < 19) this.collectPowerup(p);
     }
     if (this.player.magnetActive) {
-      for (const c of this.coins.getChildren() as Phaser.GameObjects.Sprite[]) {
+      const pull = 1 - Math.exp(-10.46 * dt / 1000);
+      for (const c of this.coins.children as Set<Phaser.GameObjects.Sprite>) {
         if (!c.active) continue;
         const dx = px - c.x, dy = py - c.y;
-        const d = Math.hypot(dx, dy);
-        if (d < 96 && d > 0.01) {
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared < 96 * 96 && distanceSquared > 0.0001) {
           if (!c.getData('magnet')) { c.setData('magnet', true); this.tweens.killTweensOf(c); }
-          const pull = 1 - Math.exp(-10.46 * dt / 1000);
           c.x += dx * pull;
           c.y += dy * pull;
         }
@@ -1091,13 +1091,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateTutorials(): void {
-    for (let i = 0; i < this.tutorials.length; i++) {
-      const t = this.tutorials[i];
-      if (t.shown) continue;
-      if (Math.abs(this.player.x - t.x) < 90 && Math.abs(this.player.y - t.y) < 80) {
-        t.shown = true;
-        this.hud.toast(window.matchMedia('(pointer: coarse)').matches ? t.text.replace('A / D  —  RUN', 'JOYSTICK — MOVE').replace('W / S', 'JOYSTICK UP / DOWN').replaceAll('SPACE', 'JUMP').replace('J —', 'DASH —') : t.text, '#f4e6c8', 2600);
-      }
+    if (this.introCard?.active || this.hud.toastActive) return;
+    const hint = this.tutorials.find(t => !t.shown && Math.abs(this.player.x - t.x) < 90 && Math.abs(this.player.y - t.y) < 80);
+    if (hint) {
+      hint.shown = true;
+      this.hud.toast(hint.text, '#f4e6c8', 1600);
     }
   }
 
@@ -1126,11 +1124,11 @@ export class GameScene extends Phaser.Scene {
       bossHp: this.boss?.bossActive && this.boss.engaged ? this.boss.hp : null,
       bossMax: this.boss?.maxHp ?? 6,
       bossName: 'THE STORM BARON',
-      powers: (() => { const now = playTime(this); const out: { kind: PowerKind; ratio: number }[] = [];
-        if (this.player.shield) out.push({ kind: 'shield', ratio: 1 });
-        for (const kind of ['swift', 'magnet', 'triple', 'priority'] as const) {
+      powers: (() => { const now = playTime(this); const out: { kind: PowerKind; ratio: number; remainingMs: number }[] = [];
+        if (this.player.shield) out.push({ kind: 'shield', ratio: 1, remainingMs: 0 });
+        for (const kind of ['swift', 'magnet', 'triple', 'priority', 'stormcoat'] as const) {
           const until = this.player[`${kind}Until`];
-          if (until > now) out.push({ kind, ratio: (until - now) / (POWER_META[kind].durationMs * this.player.powerDuration) });
+          if (until > now) out.push({ kind, remainingMs: until - now, ratio: (until - now) / (POWER_META[kind].durationMs * this.player.powerDuration) });
         }
         return out; })(),
       bossPhase: this.boss?.phase ?? 1,
@@ -1353,10 +1351,10 @@ export class GameScene extends Phaser.Scene {
     for (const f of this.fallingPlats) {
       this.tweens.killTweensOf(f.sprite);
       f.sprite.setPosition(f.sprite.getData('homeX'), f.sprite.getData('homeY')).setAlpha(1).setVisible(true);
-      f.sprite.setAngle(0); f.body.updateFromGameObject(); f.body.enable = true; f.used = false;
+      f.sprite.setAngle(0); f.body.reset(f.sprite.x, f.sprite.y); f.body.enable = true; f.used = false;
     }
     if (this.boss?.bossActive) this.boss.resetEncounter();
-    for (const e of this.enemies.getChildren() as unknown as Enemy[]) {
+    for (const e of this.enemies.children as Set<Enemy>) {
       if (e.active) e.setAlpha(1);
     }
   }

@@ -12,7 +12,7 @@ export const LEVEL_4: LevelDef = {
   height: 22,
   spawn: { x: 3, y: 16 },
   parTime: 150,
-  thresholds: { bronze: 1400, silver: 2300, gold: 3200 },
+  thresholds: { silver: 2300, gold: 3200 },
   music: 'factory',
   intro: 'The Copperworks never sleep.',
   terrain: [
@@ -35,7 +35,7 @@ export const LEVEL_4: LevelDef = {
   objects: [
     { t: 'tutorial', x: 8, y: 14, text: 'CONVEYORS PUSH YOU. WORK WITH THEM.' },
     { t: 'tutorial', x: 68, y: 8, text: 'TOUCH THE LANTERN TO OPEN THE GATE' },
-    { t: 'tutorial', x: 94, y: 14, text: 'J — DASH THE ARMORED GUARD THREE TIMES. OR USE ACORN NOVA.' },
+    { t: 'tutorial', x: 94, y: 14, text: 'J — DASH THE ARMORED GUARD THREE TIMES. OR USE ACORN NOVA.', touchText: 'DASH THE ARMORED GUARD REPEATEDLY, OR USE ACORN NOVA.' },
 
     ...coinLine(5, 14, 6, 2),
     ...coinLine(35, 14, 6, 2),
@@ -80,6 +80,7 @@ export const LEVEL_4: LevelDef = {
     { t: 'powerup', kind: 'heart', x: 30, y: 14 },
     { t: 'powerup', kind: 'nova', x: 97, y: 14 },
     { t: 'checkpoint', x: 63, y: 16 },
+    { t: 'powerup', kind: 'stormcoat', x: 27, y: 15 },
     { t: 'steam', x: 36, y: 16, period: 3200, phase: 0.2 },
     { t: 'steam', x: 96, y: 16, period: 2900, phase: 0.6 },
     { t: 'exit', x: 134, y: 16 },
@@ -97,7 +98,7 @@ export const LEVEL_5: LevelDef = {
   height: 64,
   spawn: { x: 3, y: 60 },
   parTime: 190,
-  thresholds: { bronze: 1500, silver: 2500, gold: 3500 },
+  thresholds: { silver: 2500, gold: 3500 },
   music: 'factory',
   intro: 'Climb before the furnace wakes.',
   terrain: [
@@ -191,7 +192,7 @@ export const LEVEL_6: LevelDef = {
   height: 26,
   spawn: { x: 3, y: 20 },
   parTime: 190,
-  thresholds: { bronze: 1600, silver: 2600, gold: 3700 },
+  thresholds: { silver: 2600, gold: 3700 },
   music: 'factory',
   intro: 'The assembly line is running. Fast.',
   terrain: [

@@ -1,5 +1,9 @@
 # Development handoff
 
+## 2026-11-23 local review
+
+The current working tree adds Reed, lane drakes, Storm Coat, two Sky Trials and Gale Sprint. The [audit](AUDIT.md) records the implementation findings and remaining priorities. The [validation record](VALIDATION.md) identifies the browser routes, Brawl match, lifecycle checks and Android build for this revision. The November 20 entry below identifies the last hardware-tested milestone.
+
 ## 2026-11-20 unfolded Fold7
 
 The installed application contains the gameplay, layout and HUD changes through `98eb9bc`. The final physical gesture runner is `b7cc4e7`. On the open inner display, 23 device checks passed. The original profile and settings matched their pre-update values in memory and in both on-disk save copies, apart from the revision counter. A full Hard stock match, a flight capture and a frame-interval report are available locally in `artifacts/device/2026-11-20-inner/accepted/`. The current APK and the previous installed APK are retained locally.

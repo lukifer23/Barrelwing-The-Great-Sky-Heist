@@ -20,6 +20,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   dashCooldown = 1;
   flapCharges = PHYSICS.maxFlaps;
   shield = false;
+  stormcoatUntil = 0;
   priorityUntil = 0;
   swiftUntil = 0;
   magnetUntil = 0;
@@ -43,6 +44,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private wasGrounded = false;
   private stepTimer = 0;
   private squashTween?: Phaser.Tweens.Tween;
+  private airDashRefunded = false;
   private flapPoseUntil = 0;
   private climbPaws: Phaser.GameObjects.Image[] = [];
   private climbPhase = false;
@@ -123,11 +125,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // --- ground state tracking -------------------------------------------
     if (this.grounded) {
+      this.airDashRefunded = false;
       this.lastGroundedAt = now;
       this.flapCharges = this.maxFlapCharges;
     }
     if (this.now >= this.tripleUntil && this.flapCharges > PHYSICS.maxFlaps) this.flapCharges = PHYSICS.maxFlaps;
-    if (this.shieldAura) this.shieldAura.setPosition(this.x, this.y - 18);
     const coyote = now - this.lastGroundedAt < PHYSICS.coyoteMs;
 
     // --- horizontal movement ---------------------------------------------
@@ -159,6 +161,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // --- dash -------------------------------------------------------------
     if (this.dashReady && !this.controlLocked && input.consumeDash()) {
+      if (this.characterId === 'reed' && !this.grounded && !this.airDashRefunded && this.flapCharges < this.maxFlapCharges) {
+        this.flapCharges++;
+        this.airDashRefunded = true;
+        this.scene.events.emit('fx-gust', this.x, this.y, this.facing, false);
+      }
       this.dashUntil = now + PHYSICS.dashMs;
       this.dashReadyAt = now + PHYSICS.dashCooldownMs * this.dashCooldown;
       this.body.velocity.x = this.facing * PHYSICS.dashSpeed;
@@ -457,6 +464,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.hearts = this.maxHearts;
     this.invulnUntil = this.now + 1500;
     this.shield = false;
+    this.airDashRefunded = false;
+    this.stormcoatUntil = 0;
     this.priorityUntil = 0;
     this.swiftUntil = 0;
     this.magnetUntil = 0;

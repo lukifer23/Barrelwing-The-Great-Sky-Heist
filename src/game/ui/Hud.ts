@@ -1,7 +1,6 @@
 import { playTime } from '../systems/PlayClock';
 import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
-import { SaveManager } from '../systems/SaveManager';
 import { POWER_META } from '../data/powerups';
 import type { PowerKind } from '../data/levels/types';
 
@@ -22,7 +21,7 @@ export interface HudState {
   bossMax: number;
   bossName: string;
   bossPhase: number;
-  powers: { kind: PowerKind; ratio: number }[];
+  powers: { kind: PowerKind; ratio: number; remainingMs: number }[];
   delivery: { deaths: number; damageTaken: number; parTime: number };
 }
 
@@ -106,7 +105,7 @@ export class Hud {
     scene.add.rectangle(50, 34, 22, 4, 0x2a3350).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D);
     this.dashBar = scene.add.rectangle(50, 34, 22, 4, 0x67e8f9).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1);
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       this.powerIcons.push(scene.add.image(14 + i * 20, 50, 'power_shield').setScrollFactor(0).setDepth(D + 1).setVisible(false).setScale(0.85));
       this.powerBars.push(scene.add.rectangle(7 + i * 20, 58, 14, 2, 0x9fe0ff).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false));
     }
@@ -196,15 +195,17 @@ export class Hud {
       const bar = this.powerBars[i];
       if (!p) { icon.setVisible(false); bar.setVisible(false); continue; }
       const meta = POWER_META[p.kind];
-      icon.setTexture(meta.tex).setVisible(true).setAlpha(1);
+      if (icon.texture.key !== meta.tex) icon.setTexture(meta.tex);
+      icon.setVisible(true);
       bar.setVisible(p.ratio < 1).setFillStyle(meta.color);
       bar.width = 14 * Phaser.Math.Clamp(p.ratio, 0, 1);
       bar.x = 7 + i * 20;
     }
 
+    this.powerText.x = Math.max(106, 10 + s.powers.length * 20);
     this.powerText.setVisible(s.powers.length > 0).setText(s.powers.map(p => {
       const meta = POWER_META[p.kind];
-      return p.kind === 'shield' ? 'SHIELD: 1 HIT' : `${meta.label}: ${Math.ceil(p.ratio * meta.durationMs * SaveManager.stats.powerDuration / 1000)}s`;
+      return p.kind === 'shield' ? 'SHIELD: 1 HIT' : `${meta.label}: ${Math.ceil(p.remainingMs / 1000)}s`;
     }).join('\n'));
 
     if (s.bossHp !== null) {
@@ -243,6 +244,8 @@ export class Hud {
     this.bossText!.setText(name);
     this.bossPhaseText!.setVisible(true);
   }
+
+  get toastActive(): boolean { return this.toastTween?.isPlaying() ?? false; }
 
   toast(text: string, color = '#f4e6c8', hold = 1200): void {
     this.toastTween?.remove();

@@ -12,7 +12,7 @@ export const LEVEL_7: LevelDef = {
   height: 26,
   spawn: { x: 3, y: 20 },
   parTime: 200,
-  thresholds: { bronze: 1600, silver: 2700, gold: 3800 },
+  thresholds: { silver: 2700, gold: 3800 },
   music: 'storm',
   intro: 'Ride the storm. Do not become part of it.',
   terrain: [
@@ -144,7 +144,7 @@ export const LEVEL_8: LevelDef = {
   height: 72,
   spawn: { x: 3, y: 68 },
   parTime: 210,
-  thresholds: { bronze: 1700, silver: 2800, gold: 4000 },
+  thresholds: { silver: 2800, gold: 4000 },
   music: 'storm',
   intro: 'The tower sways. Keep moving.',
   terrain: [
@@ -250,7 +250,7 @@ export const LEVEL_9: LevelDef = {
   height: 30,
   spawn: { x: 3, y: 24 },
   parTime: 260,
-  thresholds: { bronze: 2000, silver: 3200, gold: 4600 },
+  thresholds: { silver: 3200, gold: 4600 },
   music: 'storm',
   intro: 'Board the flagship. End the heist.',
   hasBoss: true,

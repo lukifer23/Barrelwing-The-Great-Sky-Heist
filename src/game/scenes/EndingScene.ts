@@ -48,6 +48,7 @@ export class EndingScene extends Phaser.Scene {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.key === 'Escape') {
+        e.stopPropagation();
         if (this.menu) this.scene.start('Title'); else this.skipEnding();
       } else this.menu?.handleKey(e);
     };
@@ -108,7 +109,7 @@ export class EndingScene extends Phaser.Scene {
       `STAGES CLEARED   ${all} / 9`,
       `SKY GEMS         ${gems} / 27`,
       `TOTAL SCORE      ${total.toLocaleString('en-US')}`,
-      `SKY SPRINT BEST  ${d.bonusBest.toLocaleString('en-US')}`,
+      `SPRINT  CLASSIC ${d.bonusBest.toLocaleString('en-US')} / GALE ${d.galeBest.toLocaleString('en-US')}`,
     ].join('\n'), {
       fontFamily: FONT_SMALL, fontSize: '8px', color: '#e8dcc0', align: 'center', lineSpacing: 5,
     }).setOrigin(0.5).setDepth(12);

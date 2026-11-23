@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SprintClass } from '../data/sprint';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { Menu, addPanel } from '../ui/Menu';
@@ -7,12 +8,14 @@ export class PauseScene extends Phaser.Scene {
   private levelId = 1;
   private menu!: Menu;
   private readyAt = 0;
+  private sprintClass: SprintClass = 'classic';
   private target: 'Game' | 'SkySprint' = 'Game';
 
   constructor() { super('Pause'); }
 
-  init(data: { levelId?: number; music?: 'forest' | 'factory' | 'storm'; target?: 'Game' | 'SkySprint' }): void {
+  init(data: { levelId?: number; music?: 'forest' | 'factory' | 'storm'; target?: 'Game' | 'SkySprint'; sprintClass?: SprintClass }): void {
     this.levelId = data.levelId ?? 1;
+    this.sprintClass = data.sprintClass ?? 'classic';
     this.target = data.target ?? 'Game';
   }
 
@@ -30,7 +33,7 @@ export class PauseScene extends Phaser.Scene {
       { label: 'RESUME FLIGHT', action: () => this.resumeGame() },
       { label: 'CONTROLS', action: () => this.openOverlay('Controls') },
       { label: 'SETTINGS', action: () => this.openOverlay('Settings') },
-      { label: 'RESTART SPRINT', action: () => { this.scene.stop(this.target); this.scene.start(this.target); } },
+      { label: 'RESTART SPRINT', action: () => { this.scene.stop(this.target); this.scene.start(this.target, { sprintClass: this.sprintClass }); } },
       { label: 'RETURN TO TITLE', action: () => this.returnTo('Title') },
     ] : [
       { label: 'RESUME', action: () => this.resumeGame() },

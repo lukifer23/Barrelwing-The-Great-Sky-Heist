@@ -167,7 +167,9 @@ export function installTouchControls(game: Phaser.Game): void {
       }
     }
     if (scene === previous) return;
-    previous = scene; root.classList.toggle('brawling', scene === 'Brawl'); root.hidden = !scene; document.body.classList.toggle('playing', !!scene);
+    previous = scene;
+    root.classList.toggle('sprinting', scene === 'SkySprint');
+    root.classList.toggle('brawling', scene === 'Brawl'); root.hidden = !scene; document.body.classList.toggle('playing', !!scene);
     touchInput.reset(); game.scale.refresh();
   };
   game.events.on('poststep', update);

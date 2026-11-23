@@ -26,8 +26,13 @@ Choose a courier from the title or map. The selection applies to a new stage; Co
 | Fenn | 10% faster running. Dashing through a wooden barrel recharges dash. | Express service, questionable brakes |
 | Clover | Recruit at courier level 2. Ground jumps have 12% more takeoff speed and dash recharges 15% slower. | Rooftop scout |
 | Mallow | One extra heart, 8% slower running. Dashes deal two damage to ordinary enemies. | Delivers eventually, survives enthusiastically |
+| Reed | An airborne dash restores one spent flap once per landing. Available from the start. | Marsh runner |
 
-Every courier has two air flaps and access to permanent upgrades. Sky Sprint uses three hearts for everyone and the same flight speed.
+Every courier starts with two air flaps and can use permanent upgrades.
+
+## Sky Sprint
+
+Clear Cloudvine Drift to unlock endless flight. On the ready screen, tap the class name or press Left or Right to choose. Classic starts at 110 world units per second with three hearts. Gale starts at 145 with one heart and narrower gates. Press Space, Enter or FLAP to launch. Each local player has a best score for each class.
 
 ## Pickups
 
@@ -39,6 +44,7 @@ Every courier has two air flaps and access to permanent upgrades. Sky Sprint use
 | Speed Boost | 35% faster running for 12 seconds before upgrades |
 | Magnet | Pulls nearby acorns toward the courier for 12 seconds before upgrades |
 | Extra Flap | Three air flaps instead of two for 15 seconds before upgrades |
+| Storm Coat | Protects against active steam and lightning for six seconds before upgrades. Contact with enemies and barrels can still cause damage. |
 | Heart | Restores one missing heart |
 | Extra Life | Adds one life and restores health |
 | Acorn Nova | Immediately blasts enemies and wooden barrels within 150 world units |
@@ -49,13 +55,13 @@ Timed powers appear in the HUD with names and remaining seconds. Shield remains 
 
 ## Permanent upgrades
 
-Clear stages to bank newly found gems and improved rating stars. Each unique gem and each rating star earns one Sky Shard. The Windtail Workshop spends these on More Hearts, More Lives, Faster Dash, Longer Powers, and Acorn Rhythm. Acorn Rhythm adds 0.4 seconds per tier to the 1.5-second combo window. Each has two tiers, costing 3 and 6 shards. The workshop shows the current and next numerical benefit before purchase.
+A clear earns Bronze. Each stage has its own score requirements for Silver and Gold. Clear stages to bank newly found gems and improved rating stars. Each unique gem and each rating star earns one Sky Shard. The Windtail Workshop spends these on More Hearts, More Lives, Faster Dash, Longer Powers, and Acorn Rhythm. Acorn Rhythm adds 0.4 seconds per tier to the 1.5-second combo window. Each has two tiers, costing 3 and 6 shards. The workshop shows the current and next numerical benefit before purchase.
 
 Replaying a stage without improving its saved gems or rating does not create more shards. Temporary pickups and permanent upgrades are separate systems.
 
 Delivery stamps add three optional goals to every campaign stage and trial. All Gems requires all three gems in the run. Express requires beating par without losing a life, including checkpoint restarts. Untouched requires no health damage or lost lives; shields may absorb hits. Each stamp earns one shard once and remains earned across replays. The HUD tracks current eligibility, while the map and results show saved stamps. Damage and lost-life history survive reload and Continue even when Continue resets the attempt timer.
 
-Each nine shards earned raises your courier level. The map shows distance to the next level. Buying upgrades spends the balance while preserving the level. The Sorting Office trial offers a lower conveyor-yard route and an overhead gem and acorn line.
+Each nine shards earned raises your courier level. The map shows distance to the next level. Buying upgrades spends the balance while preserving the level. Completing the campaign opens nine Sky Trials. Lightning Exchange offers a coated run across the live deck and a high route over the wires. Reedbank Crossing pairs low ferries with falling planks on the high route. The Sorting Office trial offers a lower conveyor-yard route and an overhead gem and acorn line.
 
 ## Checkpoints and lives
 
@@ -65,7 +71,7 @@ Closing the app saves run progress, but restoration starts at the latest checkpo
 
 ## Enemies and fairness
 
-Slugs patrol. Ants warn before rushing. Hoppers wind up and leap. Armored guards need repeated dashes or a Nova. Wisps launch projectiles. Birds pursue, while divers warn before a downward charge. Copper crawlers move in bursts. Storm bees fly faster and flash before firing. Mint-green lookouts stop patrolling, turn amber and aim at your current position. Move after the warning or interrupt the shot with a hit. Wisps also warn before firing. Plants guard their position with snapping movement.
+Slugs patrol. Ants warn before rushing. Hoppers wind up and leap. Armored guards need repeated dashes or a Nova. Wisps launch projectiles. Birds pursue, while divers warn before a downward charge. Copper crawlers move in bursts. Storm bees fly faster and flash before firing. Mint-green lookouts stop patrolling, turn amber and aim at your current position. Move after the warning or interrupt the shot with a hit. Wisps also warn before firing. Lane drakes pause their wings and flash amber for 550 ms before committing to a horizontal charge. Change altitude during the warning, stomp from above or interrupt the charge with a hit. Plants guard their position with snapping movement.
 
 The Baron announces attacks and becomes vulnerable between attack sequences. Stomp or dash during those windows. A regular enemy can be stomped only when its anatomy allows it; a snapping plant or armored guard is not a safe landing pad.
 

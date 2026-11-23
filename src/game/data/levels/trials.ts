@@ -16,7 +16,7 @@ export const TRIAL_10: LevelDef = {
   height: 24,
   spawn: { x: 3, y: 18 },
   parTime: 110,
-  thresholds: { bronze: 1400, silver: 2400, gold: 3400 },
+  thresholds: { silver: 2400, gold: 3400 },
   music: 'forest',
   intro: 'SKY TRIAL I — the long wind.',
   terrain: [
@@ -90,7 +90,7 @@ export const TRIAL_11: LevelDef = {
   height: 22,
   spawn: { x: 3, y: 16 },
   parTime: 100,
-  thresholds: { bronze: 1200, silver: 2100, gold: 3100 },
+  thresholds: { silver: 2100, gold: 3100 },
   music: 'factory',
   intro: 'SKY TRIAL II — the crucible.',
   terrain: [
@@ -157,7 +157,7 @@ export const TRIAL_12: LevelDef = {
   height: 28,
   spawn: { x: 3, y: 22 },
   parTime: 130,
-  thresholds: { bronze: 1800, silver: 2900, gold: 4200 },
+  thresholds: { silver: 2900, gold: 4200 },
   music: 'storm',
   intro: 'SKY TRIAL III — the Baron returns.',
   hasBoss: true,

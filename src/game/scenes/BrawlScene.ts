@@ -197,7 +197,7 @@ export class BrawlScene extends Phaser.Scene {
       if (this.options.arena === 'factory' && fighter.grounded) fighter.x += Math.sin(this.elapsedMs / 3500) * 22 * dt / 1000;
     }
     if (this.elapsedMs >= this.nextHazard) { this.nextHazard += this.options.difficulty === 'hard' ? 11000 : 16000; this.deliverBarrel(); }
-    for (const barrel of this.barrels.getChildren() as Barrel[]) barrel.updateBarrel(time, dt / 1000, this.H + 100);
+    for (const barrel of this.barrels.children as Set<Barrel>) barrel.updateBarrel(time, dt / 1000, this.H + 100);
     if (time > this.bannerUntil) this.banner.setVisible(false);
     this.background.tilePositionX += dt * 0.004;
     if (time > this.nextSave) { this.nextSave = time + 2500; this.persistMatch(); }

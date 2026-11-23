@@ -55,7 +55,7 @@ export class MovingPlatform extends Phaser.GameObjects.TileSprite {
     this.deltaY = this.y - this.prevY;
     this.prevX = this.x;
     this.prevY = this.y;
-    this.body.updateFromGameObject();
+    if (this.deltaX || this.deltaY) this.body.reset(this.x, this.y);
   }
 
   reset(): void {
@@ -65,6 +65,6 @@ export class MovingPlatform extends Phaser.GameObjects.TileSprite {
     this.prevX = this.startX;
     this.prevY = this.startY;
     this.deltaX = 0; this.deltaY = 0;
-    this.body.updateFromGameObject();
+    this.body.reset(this.x, this.y);
   }
 }

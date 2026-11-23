@@ -4,7 +4,7 @@ import { T, coinLine, coinArc, coinColumn, gem } from './helpers';
 export const TRIAL_13: LevelDef = {
   id: 13, world: 1, name: 'The Last Mile', subtitle: 'The last mile is mostly vertical. Naturally.',
   theme: 'forest', tile: 16, width: 160, height: 30, spawn: { x: 3, y: 22 }, parTime: 150,
-  thresholds: { bronze: 1800, silver: 3000, gold: 4400 }, music: 'forest', intro: 'One final delivery. Allegedly.',
+  thresholds: { silver: 3000, gold: 4400 }, music: 'forest', intro: 'One final delivery. Allegedly.',
   terrain: [T(0, 22, 30, 8), T(62, 22, 20, 8), T(88, 22, 26, 8), T(142, 22, 18, 8),
     T(16, 17, 5, 1, 'wood'), T(23, 13, 4, 1, 'wood'), T(68, 16, 5, 1, 'wood'),
     T(96, 17, 4, 1, 'wood'), T(104, 13, 5, 1, 'wood')],
@@ -32,7 +32,7 @@ export const TRIAL_13: LevelDef = {
 export const TRIAL_14: LevelDef = {
   id: 14, world: 2, name: 'Return to Pressure', subtitle: 'A workplace incident waiting for a courier.',
   theme: 'factory', tile: 18, width: 52, height: 74, spawn: { x: 5, y: 70 }, parTime: 220,
-  thresholds: { bronze: 2000, silver: 3400, gold: 4800 }, music: 'factory', intro: 'The maintenance report is just a scream.',
+  thresholds: { silver: 3400, gold: 4800 }, music: 'factory', intro: 'The maintenance report is just a scream.',
   terrain: [T(0, 70, 52, 4, 'metal'),
     ...[60, 50, 40, 30, 20, 10].flatMap(y => [T(4, y, 16, 2, 'metal'), T(30, y, 18, 2, 'metal')]),
     T(4, 4, 44, 2, 'metal'), T(23, 65, 5, 1, 'wood'), T(23, 45, 5, 1, 'wood'), T(23, 25, 5, 1, 'wood')],
@@ -65,7 +65,7 @@ export const TRIAL_14: LevelDef = {
 export const TRIAL_15: LevelDef = {
   id: 15, world: 3, name: 'Cloud Nine-to-Five', subtitle: 'The commute has become unreasonable.',
   theme: 'storm', tile: 16, width: 192, height: 30, spawn: { x: 3, y: 24 }, parTime: 180,
-  thresholds: { bronze: 1900, silver: 3200, gold: 4600 }, music: 'storm', intro: 'This meeting could have been an acorn.',
+  thresholds: { silver: 3200, gold: 4600 }, music: 'storm', intro: 'This meeting could have been an acorn.',
   terrain: [T(0, 24, 28, 6), T(78, 22, 20, 8), T(98, 25, 12, 5), T(100, 17, 10, 2),
     T(158, 24, 34, 6), T(178, 20, 14, 2), T(14, 19, 5, 1, 'wood'), T(84, 17, 5, 1, 'wood')],
   objects: [
@@ -97,7 +97,7 @@ export const TRIAL_15: LevelDef = {
 export const TRIAL_16: LevelDef = {
   id: 16, world: 2, name: 'Sorting Office', subtitle: 'Floor mail runs free. Express takes the belt.',
   theme: 'factory', music: 'factory', tile: 18, width: 94, height: 22,
-  spawn: { x: 3, y: 18 }, parTime: 40, thresholds: { bronze: 1700, silver: 3100, gold: 4600 },
+  spawn: { x: 3, y: 18 }, parTime: 40, thresholds: { silver: 3100, gold: 4600 },
   intro: 'Punch in. Beat the sorting shift.',
   terrain: [T(0, 18, 94, 4, 'metal'), T(11, 15, 7, 1, 'wood'), T(20, 12, 10, 1, 'wood'),
     T(35, 13, 8, 1, 'wood'), T(48, 14, 7, 1, 'wood'), T(58, 11, 12, 1, 'wood'),
@@ -119,5 +119,71 @@ export const TRIAL_16: LevelDef = {
     { t: 'powerup', kind: 'shield', x: 77, y: 13 },
     { t: 'enemy', kind: 'lookout', x: 85, y: 18 },
     { t: 'exit', x: 91, y: 18 },
+  ],
+};
+
+export const TRIAL_17: LevelDef = {
+  id: 17, world: 3, name: 'Lightning Exchange', subtitle: 'Take the coat across the live deck, or climb above the wires.',
+  theme: 'storm', music: 'storm', tile: 16, width: 110, height: 32,
+  spawn: { x: 3, y: 26 }, parTime: 28, thresholds: { silver: 3200, gold: 4700 },
+  intro: 'One dry parcel for the weather station.',
+  terrain: [
+    T(0, 26, 43, 6), T(47, 26, 35, 6), T(87, 26, 23, 6),
+    T(12, 21, 7, 1, 'wood'), T(19, 16, 6, 1, 'wood'),
+    T(24, 12, 13, 1, 'wood'), T(40, 14, 7, 1, 'wood'), T(50, 19, 7, 1, 'wood'),
+    T(68, 21, 6, 1, 'wood'), T(74, 16, 6, 1, 'wood'), T(81, 12, 10, 1, 'wood'),
+    T(94, 17, 7, 1, 'wood'),
+  ],
+  objects: [
+    { t: 'tutorial', x: 5, y: 25, text: 'STORM COAT BLOCKS THE LIVE WIRES. THE HIGH LINE RUNS ABOVE THEM.' },
+    { t: 'powerup', kind: 'stormcoat', x: 9, y: 25 },
+    { t: 'ladder', x: 15, y: 21, h: 5 }, { t: 'ladder', x: 25, y: 12, h: 4 },
+    ...coinLine(11, 25, 7, 2), ...coinLine(20, 15, 4), ...coinLine(25, 11, 9),
+    ...coinArc(39, 23, 11, 4), ...coinLine(51, 25, 6, 2),
+    gem(31, 11), gem(44, 19), gem(86, 11),
+    { t: 'lightning', x: 24, y: 26, w: 2, period: 3000 },
+    { t: 'lightning', x: 31, y: 26, w: 3, period: 3000, phase: 0.8 },
+    { t: 'lightning', x: 38, y: 26, w: 2, period: 3000, phase: 1.6 },
+    { t: 'updraft', x: 43, y: 17, w: 4, h: 11, power: 1.1 },
+    { t: 'checkpoint', x: 55, y: 26 },
+    { t: 'enemy', kind: 'lookout', x: 64, y: 26, patrol: 2 },
+    { t: 'powerup', kind: 'stormcoat', x: 68, y: 25 },
+    { t: 'spring', x: 71, y: 26, power: 505 },
+    { t: 'lightning', x: 78, y: 26, w: 3, period: 2600, phase: 0.6 },
+    { t: 'updraft', x: 82, y: 15, w: 5, h: 14, power: 1.25 },
+    { t: 'lightning', x: 91, y: 26, w: 2, period: 2600, phase: 1.5 },
+    { t: 'enemy', kind: 'drake', x: 96, y: 18, patrol: 3, amp: 16 },
+    ...coinLine(70, 20, 3), ...coinArc(78, 15, 6, 3), ...coinLine(87, 11, 4),
+    ...coinLine(94, 25, 6, 2), { t: 'exit', x: 106, y: 26 },
+  ],
+};
+
+export const TRIAL_18: LevelDef = {
+  id: 18, world: 1, name: 'Reedbank Crossing', subtitle: 'The ferry takes parcels. The drakes take the high road.',
+  theme: 'forest', music: 'forest', tile: 16, width: 102, height: 26,
+  spawn: { x: 3, y: 20 }, parTime: 29, thresholds: { silver: 3100, gold: 4500 },
+  intro: 'Last crossing before the tide.',
+  terrain: [
+    T(0, 20, 20, 6), T(23, 22, 6, 4), T(42, 20, 17, 6), T(68, 22, 6, 4), T(85, 20, 17, 6),
+    T(9, 17, 5, 1, 'wood'), T(15, 14, 6, 1, 'wood'), T(30, 12, 6, 1, 'wood'),
+    T(48, 15, 7, 1, 'wood'), T(61, 13, 5, 1, 'wood'), T(77, 12, 6, 1, 'wood'),
+  ],
+  objects: [
+    { t: 'tutorial', x: 7, y: 19, text: 'FOLLOW THE LOW ACORNS TO THE FERRY. THE UPPER PLANKS FALL.' },
+    ...coinLine(5, 19, 7, 2), ...coinArc(18, 18, 7, 3), ...coinLine(24, 21, 4),
+    ...coinLine(16, 13, 5), ...coinLine(30, 11, 6), ...coinArc(37, 17, 6, 3),
+    { t: 'mover', x: 31, y: 21, w: 4, axis: 'x', dist: 8, speed: 46 },
+    { t: 'fallingPlatform', x: 25, y: 13, w: 4 }, { t: 'fallingPlatform', x: 40, y: 14, w: 3 },
+    { t: 'enemy', kind: 'drake', x: 31, y: 11, patrol: 3 }, gem(32, 11),
+    { t: 'checkpoint', x: 47, y: 20 }, { t: 'powerup', kind: 'triple', x: 50, y: 19 },
+    { t: 'spring', x: 54, y: 20, power: 455 }, ...coinArc(55, 18, 8, 4),
+    { t: 'fallingPlatform', x: 63, y: 20, w: 4 }, gem(70, 21),
+    { t: 'mover', x: 77, y: 21, w: 4, axis: 'x', dist: 5, speed: 40 },
+    { t: 'fallingPlatform', x: 71, y: 12, w: 3 }, ...coinLine(61, 12, 5),
+    ...coinLine(77, 11, 5), gem(80, 10), { t: 'enemy', kind: 'drake', x: 75, y: 12, patrol: 3 },
+    ...coinArc(82, 18, 6, 3), ...coinLine(88, 19, 6, 2),
+    { t: 'enemy', kind: 'hopper', x: 92, y: 20, patrol: 2 },
+    { t: 'decor', kind: 'tree', x: 6, y: 20 }, { t: 'decor', kind: 'mushroom_brown', x: 45, y: 20 },
+    { t: 'decor', kind: 'tree', x: 97, y: 20 }, { t: 'exit', x: 99, y: 20 },
   ],
 };

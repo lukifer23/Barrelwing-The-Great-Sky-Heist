@@ -65,13 +65,13 @@ export class BrawlRosterScene extends Phaser.Scene {
   private draw(): void {
     this.children.removeAll(true);
     const W = this.scale.width, H = this.scale.height, tall = H > W * 1.2;
-    this.layout = `${W}/${H}`; this.cols = tall ? 2 : 4;
+    this.layout = `${W}/${H}`; this.cols = tall ? 2 : COURIERS.length;
     this.cameras.main.setSize(W, H).setScroll(0, 0);
     this.add.rectangle(0, 0, W, H, 0x101528).setOrigin(0);
     this.add.text(W / 2, tall ? H * 0.065 : H * 0.09, this.side === 'player' ? 'YOUR FIGHTER' : 'CPU FIGHTER',
       { fontFamily: FONT_TITLE, fontSize: tall ? '23px' : '16px', color: this.side === 'player' ? '#9ff5ff' : '#ffaa93' }).setOrigin(0.5);
     const width = Math.min(W - 32, 760), left = (W - width) / 2, gap = 8;
-    const cardW = (width - (this.cols - 1) * gap) / this.cols, cardH = tall ? Math.min(H * 0.21, 200) : H * 0.39;
+    const cardW = (width - (this.cols - 1) * gap) / this.cols, cardH = tall ? Math.min(H * 0.145, 155) : H * 0.39;
     const top = H * 0.155;
     for (const [i, id] of COURIERS.entries()) {
       const x = left + (i % this.cols) * (cardW + gap) + cardW / 2, y = top + Math.floor(i / this.cols) * (cardH + gap);
@@ -88,7 +88,7 @@ export class BrawlRosterScene extends Phaser.Scene {
         this.swipe = this.add.sprite(x, sprite.y, 'slash-circular').setTint(FIGHT_STYLES[id].color).setVisible(false);
       }
       this.add.text(x, y + cardH * 0.72, CHARACTERS[id].name, { fontFamily: FONT_TITLE, fontSize: tall ? '18px' : '10px', color: '#f5ead3' }).setOrigin(0.5);
-      this.add.text(x, y + cardH * 0.89, FIGHT_STYLES[id].role, { fontFamily: FONT_SMALL, fontSize: tall ? '13px' : '7px', color: '#c3cfdf' }).setOrigin(0.5);
+      this.add.text(x, y + cardH * 0.89, FIGHT_STYLES[id].role, { fontFamily: FONT_SMALL, fontSize: tall ? '12px' : '7px', color: '#c3cfdf' }).setOrigin(0.5);
     }
     const detail = top + Math.ceil(COURIERS.length / this.cols) * (cardH + gap);
     const style = FIGHT_STYLES[this.selected];

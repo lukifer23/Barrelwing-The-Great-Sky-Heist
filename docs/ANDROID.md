@@ -6,7 +6,8 @@ The Android app packages the production Vite output in a Capacitor WebView. All 
 
 - Node.js 22.12 or newer, npm, JDK 21.
 - Android SDK Platform 36, Build Tools 36, platform-tools.
-- A USB-debugging-enabled device, or an Android emulator.
+
+Installation and runtime checks additionally require a USB-debugging-enabled device or an Android emulator.
 
 Set `JAVA_HOME` to the JDK's home directory and `ANDROID_HOME` to the Android SDK directory. On macOS, `scripts/android.mjs` locates JDK 21 through `java_home` and uses the standard Android SDK location when these variables are absent. Machine-specific SDK paths stay in ignored `android/local.properties`.
 

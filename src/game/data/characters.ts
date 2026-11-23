@@ -7,6 +7,8 @@ export const CHARACTERS = {
     trait: '+1 heart, 8% slower. Dashes deal 2 enemy damage.', quip: 'The package says fragile. So do I.' },
   clover: { name: 'CLOVER', species: 'ROOFTOP SCOUT', sheet: 'clover', speed: 1, extraHeart: 0,
     trait: '12% stronger ground jump. Dash recharges 15% slower.', quip: 'Stairs are for return trips.' },
+  reed: { name: 'REED', species: 'MARSH RUNNER', sheet: 'reed', speed: 1, extraHeart: 0,
+    trait: 'Air dash to regain a spent flap once per landing.', quip: 'Signed, sealed, amphibious.' },
 } as const;
 export type CharacterId = keyof typeof CHARACTERS;
 export const COURIERS = Object.keys(CHARACTERS) as CharacterId[];

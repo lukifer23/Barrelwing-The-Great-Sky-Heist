@@ -1,3 +1,4 @@
-export const CAMPAIGN_LEVEL_COUNT = 9;
-export const TRIAL_IDS = [10, 11, 12, 13, 14, 15, 16] as const;
-export const TOTAL_LEVELS = CAMPAIGN_LEVEL_COUNT + TRIAL_IDS.length;
+import { LEVELS, TRIALS } from './levels';
+
+export const TRIAL_IDS = TRIALS.map(stage => stage.id);
+export const TOTAL_LEVELS = LEVELS.length;

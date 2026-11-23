@@ -72,6 +72,7 @@ export const SHEETS: SpriteSheetDef[] = [
   { key: 'hopper', path: 'assets/sprites/hopper.png', frameWidth: 34, frameHeight: 34, frames: 6 },
   { key: 'gator', path: 'assets/sprites/gator.png', frameWidth: 44, frameHeight: 48, frames: 4 },
   { key: 'plant', path: 'assets/sprites/plant.png', frameWidth: 30, frameHeight: 40, frames: 5 },
+  { key: 'drake', path: 'assets/sprites/drake.png', frameWidth: 48, frameHeight: 44, frames: 9 },
   { key: 'bird', path: 'assets/sprites/bird.png', frameWidth: 32, frameHeight: 32, frames: 7 },
   { key: 'wisp', path: 'assets/sprites/wisp.png', frameWidth: 64, frameHeight: 64, frames: 6 },
   { key: 'acorn', path: 'assets/objects/acorn.png', frameWidth: 20, frameHeight: 20, frames: 3 },
@@ -143,6 +144,7 @@ export const ANIMS: AnimDef[] = [
   { key: 'hopper-jump', sheet: 'hopper', start: 4, end: 5, frameRate: 8, repeat: 0 },
   { key: 'gator-walk', sheet: 'gator', start: 0, end: 3, frameRate: 6, repeat: -1 },
   { key: 'plant-idle', sheet: 'plant', start: 0, end: 4, frameRate: 7, repeat: -1 },
+  { key: 'drake-fly', sheet: 'drake', start: 0, end: 8, frameRate: 12, repeat: -1 },
   { key: 'bird-fly', sheet: 'bird', start: 0, end: 6, frameRate: 12, repeat: -1 },
   { key: 'wisp-float', sheet: 'wisp', start: 0, end: 5, frameRate: 8, repeat: -1 },
   { key: 'acorn-spin', sheet: 'acorn', start: 0, end: 2, frameRate: 8, repeat: -1 },
@@ -154,7 +156,7 @@ export const ANIMS: AnimDef[] = [
   { key: 'boss-tail', sheet: 'boss_tail_sheet', start: 0, end: 7, frameRate: 9, repeat: -1 },
 ];
 
-for (const sheet of ['fenn', 'mallow', 'clover']) {
-  SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: sheet === 'mallow' ? 26 : 22 });
+for (const sheet of ['fenn', 'mallow', 'clover', 'reed']) {
+  SHEETS.push({ key: sheet, path: `assets/sprites/${sheet}.png`, frameWidth: 57, frameHeight: 45, frames: sheet === 'mallow' || sheet === 'reed' ? 26 : 22 });
   for (const anim of ANIMS.filter(a => a.sheet === 'pip')) ANIMS.push({ ...anim, key: anim.key.replace('pip-', `${sheet}-`), sheet });
 }

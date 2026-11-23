@@ -158,6 +158,7 @@ export class TitleScene extends Phaser.Scene {
   private openOverlay(key: 'Controls' | 'Settings' | 'Credits' | 'Characters'): void { this.scene.pause(); this.scene.launch(key, { from: 'Title' }); }
 
   override update(time: number, delta: number): void {
+    if (SaveManager.get().settings.reducedMotion) return;
     this.clouds.forEach((plate, i) => { plate.tilePositionX += delta * (0.003 + i * 0.004); });
     this.pip.y = this.floorY - 9 + Math.sin(time / 700) * 1.5;
     this.gem.y = this.gemY + Math.sin(time / 750) * 4;

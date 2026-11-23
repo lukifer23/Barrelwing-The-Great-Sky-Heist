@@ -8,9 +8,9 @@ export interface TerrainRect {
   decor?: boolean;
 }
 
-export type PowerKind = 'shield' | 'swift' | 'magnet' | 'triple' | 'heart' | 'nova' | 'life' | 'priority';
+export type PowerKind = 'shield' | 'swift' | 'magnet' | 'triple' | 'heart' | 'nova' | 'life' | 'priority' | 'stormcoat';
 
-export type EnemyKind = 'slug' | 'bee' | 'ant' | 'hopper' | 'gator' | 'wisp' | 'bird' | 'plant' | 'crawler' | 'stormbee' | 'diver' | 'lookout';
+export type EnemyKind = 'slug' | 'bee' | 'ant' | 'hopper' | 'gator' | 'wisp' | 'bird' | 'plant' | 'crawler' | 'stormbee' | 'diver' | 'lookout' | 'drake';
 
 export type LevelObject = (
   | { t: 'coin'; x: number; y: number }
@@ -33,7 +33,7 @@ export type LevelObject = (
   | { t: 'updraft'; x: number; y: number; w: number; h: number; power?: number }
   | { t: 'fallingPlatform'; x: number; y: number; w: number }
   | { t: 'exit'; x: number; y: number }
-  | { t: 'tutorial'; x: number; y: number; text: string }
+  | { t: 'tutorial'; x: number; y: number; text: string; touchText?: string }
   | { t: 'powerup'; kind: PowerKind; x: number; y: number }
   | { t: 'decor'; kind: 'tree' | 'vine' | 'mushroom_red' | 'mushroom_brown' | 'rock' | 'plant' | 'leaves' | 'crate' | 'cloud' | 'pipe'; x: number; y: number; scale?: number }
   | { t: 'boss'; x: number; y: number }
@@ -69,7 +69,7 @@ export interface LevelDef {
   terrain: TerrainRect[];
   objects: LevelObject[];
   parTime: number; // seconds
-  thresholds: { bronze: number; silver: number; gold: number };
+  thresholds: { silver: number; gold: number };
   music: 'forest' | 'factory' | 'storm';
   hasBoss?: boolean;
   /** Optional starting phase for rematch encounters. */
@@ -99,7 +99,7 @@ export const THEMES: Record<ThemeId, {
   },
   storm: {
     sky: 0x141b3d, fog: 0x1b2450,
-    far: 'bg_storm_sky', mid: 'bg_storm_mid', near: 'bg_forest_trees',
+    far: 'bg_storm_sky', mid: 'bg_storm_mid', near: 'bg_storm_trees',
     topTex: 'storm_top', fillTex: 'storm_fill', accent: 0x67e8f9,
   },
 };

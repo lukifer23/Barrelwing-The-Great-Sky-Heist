@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
-import { writeFile } from 'node:fs/promises';
+import type { BrowserContext, Page } from '@playwright/test';
+import { readFile, writeFile } from 'node:fs/promises';
 import { delay, option, prepareBrowserRun } from './browser-harness';
 import { FLIGHT, PHYSICS } from '../src/game/config';
 import { LEVELS } from '../src/game/data/levels/index';
@@ -12,17 +12,20 @@ const campaign = option('campaign', 'false') === 'true';
 const ids = option('levels', '1,2,3,4,5,6,7,8,9').split(',').map(Number);
 const seconds = Number(option('seconds', '120'));
 const character = option('character', 'pip') as CharacterId;
-const collectFlightGems = option('gems', 'false') === 'true';
+const collectGems = option('gems', 'false') === 'true';
 if (!Object.hasOwn(CHARACTERS, character) || !Number.isFinite(seconds) || seconds < 5 || ids.some(id => !LEVELS.some(level => level.id === id))) throw new Error('Use valid --levels=1,2 --seconds=120 --character=pip options.');
 if (campaign && (ids.join(',') !== '1,2,3,4,5,6,7,8,9' || character === 'clover')) throw new Error('A fresh campaign starts at stage 1 with an available courier.');
+const profile = option('profile', '');
+if (campaign && profile) throw new Error('Campaign acceptance starts with an empty profile.');
 const port = Number(option('port', '5175'));
-const harness = await prepareBrowserRun(campaign ? 'campaign' : 'routes', port, { campaign, ids, character, seconds, collectFlightGems });
+const harness = await prepareBrowserRun(campaign ? 'campaign' : 'routes', port, { campaign, ids, character, seconds, collectGems });
 const { browser, directory, url } = harness;
 const results: { cleared: boolean; errors: string[]; [key: string]: unknown }[] = [];
 
 async function read(page: Page) {
   return page.evaluate(() => {
     const game = (window as any).__game, scene = game.scene.getScene('Game'), p = scene.player;
+    const gems = scene.gems.getChildren().filter((g: any) => !g.getData('wind'));
     const zone = scene.flightZones.find((z: any) => z.active);
     const gate = zone?.gates.find((g: any) => g.rectTop.right + 6 > p.body.left);
     const enemies = scene.enemies.getChildren().filter((e: any) => e.active && !e.defeated && Math.abs(e.y - p.y) < 42 && Math.abs(e.x - p.x) < 70);
@@ -38,7 +41,8 @@ async function read(page: Page) {
       lastFlap: p.lastFlapAt,
       lives: scene.lives, hearts: p.hearts, deaths: scene.deaths, gems: [...scene.gemsCollected],
       nearbyEnemy: enemies.length > 0,
-      nextGem: scene.gems.getChildren().filter((g: any) => !g.getData('wind') && g.x >= p.x - 12).sort((a: any, b: any) => a.x - b.x).map((g: any) => ({ x: g.x, y: g.y }))[0] ?? null,
+      groundGem: gems[0]?.getCenter() ?? null,
+      nextGem: gems.filter((g: any) => g.x >= p.x - 12).sort((a: any, b: any) => a.x - b.x).map((g: any) => ({ x: g.x, y: g.y }))[0] ?? null,
       zone: zone ? { top: zone.bounds.top, bottom: zone.bounds.bottom, right: zone.bounds.right } : null,
       gates: zone?.gates.filter((g: any) => g.rectTop.right >= p.body.left && g.rectTop.left < p.x + 220)
         .map((g: any) => ({ x: g.rectTop.centerX, center: g.gap, size: g.size, amplitude: g.amp, speed: g.speed, phase: g.phase })) ?? [],
@@ -106,9 +110,18 @@ async function clickChoice(page: Page, scene: string, label: string) {
 const viewport = { width: 1280, height: 720 };
 const campaignPage = campaign ? await browser.newPage({ viewport }) : undefined;
 try {
+  let storageState: Awaited<ReturnType<BrowserContext['storageState']>> | undefined;
+  if (profile) {
+    const saved: Awaited<ReturnType<BrowserContext['storageState']>> = JSON.parse(await readFile(profile, 'utf8'));
+    const journals = saved.origins.filter(o => /^http:\/\/127\.0\.0\.1:\d+$/.test(o.origin))
+      .map(o => o.localStorage.filter(entry => ['barrelwing.save.v1', 'barrelwing.save.v1.backup'].includes(entry.name)))
+      .filter(entries => entries.length);
+    if (journals.length !== 1) throw new Error('Expected one local Barrelwing campaign journal in --profile.');
+    storageState = { cookies: [], origins: [{ origin: url, localStorage: journals[0] }] };
+  }
   for (const id of ids) {
     const level = LEVELS.find(l => l.id === id)!;
-    const page = campaignPage ?? await browser.newPage({ viewport });
+    const page = campaignPage ?? await browser.newPage({ viewport, storageState });
     const errors: string[] = [], trace: unknown[] = [];
     const onError = (error: Error) => errors.push(error.message);
     page.on('pageerror', onError);
@@ -134,6 +147,8 @@ try {
       const s = (window as any).__game.scene.getScene('Game');
       return s.scene.isActive() && s.level?.id === id && s.player?.active;
     }, id);
+    const actualCharacter = await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.characterId);
+    if (actualCharacter !== character) throw new Error(`Requested ${character}, but ${actualCharacter} started. For a recruited courier, use --profile=path/to/profile.json earned by a completed route run.`);
     const exit = level.objects.find(o => o.t === 'exit')!;
     const exitX = (exit.x + 0.5) * level.tile;
     const ladders = level.objects.filter(o => o.t === 'ladder').sort((a, b) => b.y - a.y);
@@ -145,6 +160,7 @@ try {
       if (down) { await page.keyboard.down(name); held.add(name); }
       else { await page.keyboard.up(name); held.delete(name); }
     };
+    let stepToGem: { x: number; y: number; gemX: number } | undefined;
     let jumpAt = -9999, jumpUntil = 0, dashUntil = 0, continues = 0, wasDead = false;
     let nextLog = 0, lastProgress = Date.now(), farthest = 0, highest = level.spawn.y * level.tile;
     const began = Date.now();
@@ -161,6 +177,7 @@ try {
       if (!state.active) break;
       if (state.dead || wasDead) {
         for (const name of [...held]) await key(name, false);
+        stepToGem = undefined;
         completedLadders.clear(); bypassedFlags.clear(); jumpUntil = 0; dashUntil = 0;
         farthest = state.x; highest = state.y; lastProgress = Date.now();
       }
@@ -192,15 +209,35 @@ try {
       if (flag) targetX = flag.x;
       const lever = !vertical && state.mode !== 'flight' ? state.nextSwitch : null;
       if (lever) targetX = lever.x;
+      // Track the first unbanked gem through overshoots on horizontal routes.
+      const gem = collectGems && !vertical && !lever && state.mode === 'normal' ? state.groundGem : null;
+      if (stepToGem && (!gem || gem.x !== stepToGem.gemX || state.grounded && state.y <= stepToGem.y + 5)) stepToGem = undefined;
+      if (gem && !stepToGem && state.grounded && state.y - gem.y > 110) {
+        // Line up on a reachable shelf before attempting a high collectible.
+        // Some upper routes start well to the side of the gem.
+        const shelves = level.terrain.filter(t => !t.decor).map(t => {
+          const y = t.y * level.tile;
+          const x = Math.max((t.x + 0.5) * level.tile, Math.min((t.x + t.w - 0.5) * level.tile, gem.x));
+          return { x, y, gemX: gem.x };
+        }).filter(t => t.y < state.y - 18 && t.y >= state.y - 98 && t.y >= gem.y
+          && Math.abs(t.x - gem.x) < 320 && Math.abs(t.x - state.x) < 340);
+        shelves.sort((a, b) => (Math.abs(a.x - state.x) + Math.abs(a.x - gem.x) + a.y)
+          - (Math.abs(b.x - state.x) + Math.abs(b.x - gem.x) + b.y));
+        stepToGem = shelves[0];
+      }
+      const aimPoint = stepToGem ?? gem;
+      const aiming = aimPoint && Math.abs(aimPoint.x - state.x) < 125;
+      if (aimPoint) targetX = aimPoint.x;
       const fighting = state.boss && (state.boss.engaged || Math.abs(state.boss.x - state.x) < 230);
       if (fighting && state.boss) targetX = state.boss.state === 'vulnerable' ? state.boss.x : state.boss.x + (state.x < state.boss.x ? -90 : 90);
       const close = Math.abs(targetX - state.x) < (ladder ? 15 : 10);
       await key('a', !close && targetX < state.x);
       await key('d', !close && targetX > state.x);
       await key('w', state.mode === 'climb' || !!ladder && close && state.mode !== 'flight');
+      await key('s', !!aiming && !stepToGem && close && state.grounded && state.y < aimPoint.y - 12);
       if (state.mode === 'flight' && state.zone) {
         let targetY = state.gate ? (state.gate.top + state.gate.bottom) / 2 + 12 : state.zone.top + (state.zone.bottom - state.zone.top) * 0.45;
-        if (collectFlightGems && state.nextGem && state.nextGem.x - state.x < 95) {
+        if (collectGems && state.nextGem && state.nextGem.x - state.x < 95) {
           targetY = state.nextGem.y + 12;
           if (state.gate && state.gate.x - state.x < 38 && state.gate.x <= state.nextGem.x + 18) targetY = Math.max(state.gate.top + 26, Math.min(state.gate.bottom - 3, targetY));
         }
@@ -219,7 +256,8 @@ try {
         const clearFlag = !flag || !!lever || state.y > flag.y + 12;
         const needsJump = (clearFlag || !!fighting) && (!close || !!fighting || !!lever || state.blockedSide)
           && (!vertical || !state.grounded || edgeDistance < 30 || state.blockedSide || state.nearbyEnemy || !!fighting);
-        if (needsJump && !nearExit && wantsJump && state.time - jumpAt > 360) { jumpAt = state.time; jumpUntil = state.time + 270; }
+        const pursue = aiming && !fighting ? state.y > aimPoint.y + (stepToGem ? 4 : 20) || !close && state.y > aimPoint.y - 16 && !state.grounded : needsJump;
+        if (pursue && !nearExit && wantsJump && state.time - jumpAt > 360) { jumpAt = state.time; jumpUntil = state.time + 270; }
         const crossingGap = vertical && !close && !state.grounded && Math.abs(targetX - state.x) > 100 && state.vy > -100
           && !level.terrain.some(t => !t.decor && state.x >= t.x * level.tile && state.x <= (t.x + t.w) * level.tile && t.y * level.tile >= state.y - 4 && t.y * level.tile < state.y + 76);
         if (state.dashReady && (crossingGap || state.nearbyEnemy || fighting && state.boss?.state === 'vulnerable')) dashUntil = state.time + 60;

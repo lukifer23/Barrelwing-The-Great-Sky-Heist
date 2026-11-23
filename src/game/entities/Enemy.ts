@@ -13,6 +13,7 @@ export interface EnemyConfig {
 }
 
 const STATS: Record<EnemyKind, { hp: number; sheet: string; anim: string; body: [number, number]; stompable: boolean; score: number }> = {
+  drake: { hp: 2, sheet: 'drake', anim: 'drake-fly', body: [30, 16], stompable: true, score: 180 },
   lookout: { hp: 2, sheet: 'ant', anim: 'ant-run', body: [26, 18], stompable: true, score: 160 },
   slug: { hp: 1, sheet: 'slug', anim: 'slug-move', body: [18, 12], stompable: true, score: 60 },
   bee: { hp: 1, sheet: 'bee', anim: 'bee-fly', body: [18, 16], stompable: true, score: 80 },
@@ -63,7 +64,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.anchorX = cfg.x;
     this.anchorY = cfg.y;
     this.patrolPx = (cfg.patrol ?? 3) * (cfg.tile ?? 16);
-    this.ampPx = cfg.amp ?? 22;
+    this.ampPx = cfg.amp ?? (cfg.kind === 'drake' ? 9 : 22);
     this.baseSpeed = cfg.speed ?? (cfg.kind === 'ant' ? 48 : 32);
     this.dir = Math.random() < 0.5 ? -1 : 1;
 
@@ -74,6 +75,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.body.setCollideWorldBounds(false);
     this.setDepth(15);
     this.play(st.anim);
+    if (cfg.kind === 'drake') this.body.setOffset(11, 23);
     if (cfg.kind === 'gator') this.setScale(1.1);
 
     if (this.isFlyer) {
@@ -94,12 +96,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   get isFlyer(): boolean {
-    return this.kind === 'bee' || this.kind === 'wisp' || this.kind === 'bird' || this.kind === 'stormbee' || this.kind === 'diver';
+    return this.kind === 'drake' || this.kind === 'bee' || this.kind === 'wisp' || this.kind === 'bird' || this.kind === 'stormbee' || this.kind === 'diver';
   }
 
   updateAI(time: number, dt: number, player: Phaser.Physics.Arcade.Sprite): void {
     if (this.defeated || !this.active) return;
     if (time < this.hitUntil) return;
+    if (this.kind === 'drake') {
+      this.drakeAI(time, player);
+      return;
+    }
     if (!this.isFlyer && this.kind !== 'plant' && this.grounded && time >= this.nextEdgeCheck) {
       this.nextEdgeCheck = time + 100;
       const x = this.body.center.x + this.dir * (this.body.halfWidth + 8);
@@ -160,6 +166,40 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.wispAI(time, dt, player, dist);
         break;
     }
+  }
+
+  private drakeAI(time: number, player: Phaser.Physics.Arcade.Sprite): void {
+    if (this.aiState === 'alert') {
+      if (time < this.stateUntil) return;
+      this.clearTint();
+      this.anims.resume();
+      this.aiState = 'charge';
+      this.stateUntil = time + 620;
+      this.body.setVelocity(this.dir * 216, 0);
+      this.scene.events.emit('sfx', 'throw', { volume: 0.22 });
+      return;
+    }
+    if (this.aiState === 'charge') {
+      if (time < this.stateUntil) return;
+      this.aiState = 'patrol';
+      this.nextDiveAt = time + 2200;
+    }
+    const dx = player.x - this.x;
+    if (Math.abs(dx) < 155 && Math.abs(this.body.center.y - (player.y - 12)) < 34 && time >= this.nextDiveAt) {
+      this.dir = dx < 0 ? -1 : 1;
+      this.setFlipX(this.dir > 0);
+      this.body.setVelocity(0);
+      this.aiState = 'alert';
+      this.stateUntil = time + 550;
+      this.anims.pause(this.anims.currentAnim!.frames[4]);
+      this.setTint(0xffcc80);
+      this.scene.events.emit('sfx', 'bump', { volume: 0.16, rate: 0.8 });
+      return;
+    }
+    const x = this.anchorX + Math.sin(time / 1100) * this.patrolPx;
+    const y = this.anchorY + Math.sin(time / 470) * this.ampPx;
+    this.body.setVelocity(Phaser.Math.Clamp((x - this.x) * 2, -110, 110), (y - this.y) * 2);
+    if (Math.abs(this.body.velocity.x) > 6) this.setFlipX(this.body.velocity.x > 0);
   }
 
   private plantAI(_time: number, dt: number): void {
@@ -334,6 +374,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   damage(amount = 1, fromX = this.x): boolean {
     if (this.defeated || playTime(this.scene) < this.hitUntil) return false;
     this.shot = null;
+    if (this.kind === 'drake') {
+      this.aiState = 'patrol';
+      this.anims.resume();
+      this.nextDiveAt = playTime(this.scene) + 1700;
+      this.body.setVelocity(0);
+    }
     this.hp -= amount;
     this.hitUntil = playTime(this.scene) + 180;
     if (this.hp <= 0) {

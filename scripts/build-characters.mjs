@@ -62,26 +62,42 @@ await sharp({ create: { width: 57 * 26, height: 45, channels: 4, background: '#0
   .composite([{ input: baseMallow, left: 0, top: 0 }, ...slamFrames]).png().toFile('public/assets/sprites/mallow.png');
 const nova = '<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0 10 5 15 2 12 7 16 8 11 10 14 15 9 12 8 16 6 11 1 14 4 9 0 8 5 6 2 1 7 4Z" fill="#ffe178"/><path d="M8 4 12 8 8 12 4 8Z" fill="#fff6d5"/></svg>';
 await sharp(Buffer.from(nova)).png().toFile('public/assets/ui/power_nova.png');
-const bunny = '_assets_src/sideview_fantasy/Sideview Fantasy Patreon Collection/Sprites/sunny-bunny/PNG';
-const poses = {};
-for (const [action, count] of [['idle', 4], ['run', 6], ['jump', 5]]) {
-  const sheet = path.join(bunny, `sunny-bunny-${action}.png`);
+const sideSprites = '_assets_src/sideview_fantasy/Sideview Fantasy Patreon Collection/Sprites';
+async function readPoses(pack, action, count, flip = false) {
+  const sheet = path.join(sideSprites, pack, 'PNG', `${pack}-${action}.png`);
   const { width, height } = await sharp(sheet).metadata();
-  poses[action] = [];
+  const frames = [];
   for (let i = 0; i < count; i++) {
-    const frame = await sharp(sheet).extract({ left: i * width / count, top: 0, width: width / count, height }).png().toBuffer();
-    poses[action].push(await sharp(frame).trim().png().toBuffer({ resolveWithObject: true }));
+    const cell = await sharp(sheet).extract({ left: i * width / count, top: 0, width: width / count, height }).png().toBuffer();
+    frames.push(await sharp(cell).trim().flop(flip).png().toBuffer({ resolveWithObject: true }));
   }
+  return frames;
 }
-const sequence = [...poses.idle.flatMap(pose => [pose, pose]), ...poses.run,
-  ...[0, 1, 2, 4, 2, 3].map(i => poses.jump[i]), ...poses.idle.slice(0, 2)];
-const scale = Math.min(27 / Math.max(...poses.idle.map(p => p.info.height)), ...sequence.map(p => Math.min(45 / p.info.width, 34 / p.info.height)));
-const clover = [];
-for (const [i, pose] of sequence.entries()) {
-  const w = Math.round(pose.info.width * scale), h = Math.round(pose.info.height * scale * (i >= 20 ? 0.68 : 1));
-  let frame = sharp(pose.data).resize(w, h, { fit: 'fill', kernel: 'nearest' });
-  if (i === 18 || i === 19) frame = frame.modulate({ brightness: 1.35, saturation: 0.65 });
-  clover.push({ input: await frame.png().toBuffer(), left: i * 57 + Math.round((57 - w) / 2), top: 35 - h });
+
+async function writeCourier(name, idle, sequence) {
+  const scale = Math.min(27 / Math.max(...idle.map(p => p.info.height)), ...sequence.map(p => Math.min(45 / p.info.width, 34 / p.info.height)));
+  const cells = [];
+  for (const [i, pose] of sequence.entries()) {
+    const w = Math.round(pose.info.width * scale);
+    const h = Math.round(pose.info.height * scale * (i === 20 || i === 21 ? 0.68 : 1));
+    let frame = sharp(pose.data).resize(w, h, { fit: 'fill', kernel: 'nearest' });
+    if (i === 18 || i === 19) frame = frame.modulate({ brightness: 1.35, saturation: 0.65 });
+    cells.push({ input: await frame.png().toBuffer(), left: i * 57 + Math.round((57 - w) / 2), top: 35 - h });
+  }
+  await sharp({ create: { width: 57 * cells.length, height: 45, channels: 4, background: '#00000000' } })
+    .composite(cells).png().toFile(`public/assets/sprites/${name}.png`);
 }
-await sharp({ create: { width: 57 * 22, height: 45, channels: 4, background: '#00000000' } }).composite(clover).png().toFile('public/assets/sprites/clover.png');
-console.log('Built Fenn, Mallow, Clover, and Acorn Nova assets.');
+
+const idle = await readPoses('sunny-bunny', 'idle', 4);
+const run = await readPoses('sunny-bunny', 'run', 6);
+const leap = await readPoses('sunny-bunny', 'jump', 5);
+await writeCourier('clover', idle, [...idle.flatMap(p => [p, p]), ...run,
+  ...[0, 1, 2, 4, 2, 3].map(i => leap[i]), ...idle.slice(0, 2)]);
+
+const walk = await readPoses('sunny-froggy', 'walk', 10, true);
+const hop = await readPoses('sunny-froggy', 'jump', 7);
+const kick = await readPoses('sunny-froggy', 'taunting', 4);
+await writeCourier('reed', walk, [...[0, 0, 0, 1, 2, 2, 1, 0].map(i => walk[i]),
+  ...[0, 2, 3, 5, 7, 8].map(i => walk[i]), ...[2, 3, 4, 5].map(i => hop[i]),
+  kick[1], kick[2], hop[0], hop[1], hop[1], kick[1], hop[4], hop[5]]);
+console.log('Built courier and Acorn Nova assets.');

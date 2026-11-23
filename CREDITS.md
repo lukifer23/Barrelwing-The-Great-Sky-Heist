@@ -9,13 +9,13 @@ All third-party assets used in this game are public-domain / CC0 unless noted be
 | SunnyLand Forest (terrain, backgrounds, player reference, slug/bee/piranha, UI props) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-forest |
 | SunnyLand Woods (squirrel character, enemies, treehouse props, backgrounds) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-woods |
 | SunnyLand Tall Forest (forest layers, reference) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sunnyland-tall-forest-environment |
-| Sideview Fantasy Patreon Collection (Sunny Bunny frames for Clover, Grotto Escape 2 directional swipe effects, Storm Baron dragon, flying bird, ghost/wisp, weather backgrounds, gem sheet) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sideview-fantasy-patreon-collection |
+| Sideview Fantasy Patreon Collection (Sunny Bunny frames for Clover, Sunny Froggy frames for Reed, Sunny Dragon flight frames for the lane drake, Grotto Escape 2 directional swipe effects, Storm Baron dragon, flying bird, ghost/wisp, weather backgrounds, gem sheet) | Ansimuz / Luis Zuno | CC0 | https://opengameart.org/content/sideview-fantasy-patreon-collection |
 | Kenney New Platformer Pack (springs, flags, door, spikes, plank, sound effects) | Kenney | CC0 | https://kenney.nl/assets/new-platformer-pack |
 | Kenney Pixel Platformer: Industrial Expansion (industrial tiles, barrels, conveyors) | Kenney | CC0 | https://kenney.nl/assets/pixel-platformer-industrial-expansion |
 | Press Start 2P | CodeMan38 | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Press+Start+2P |
 | Silkscreen | Jason Kottke | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Silkscreen |
 
-The small wing/heart HUD icons and transient particle textures were authored for this project. Fenn uses the SunnyLand Forest player frames, repacked to the game's shared foot baseline; Mallow uses the SunnyLand Woods squirrel with a custom fur palette and an original delivery pack placed and rotated for each pose. Character names and movement traits are original.
+The Storm Coat icon, lightning and steam animations, small wing/heart HUD icons and transient particle textures were authored for this project. Fenn uses the SunnyLand Forest player frames, repacked to the game's shared foot baseline; Mallow uses the SunnyLand Woods squirrel with a custom fur palette and an original delivery pack placed and rotated for each pose. Character names and movement traits are original.
 
 ## Music
 

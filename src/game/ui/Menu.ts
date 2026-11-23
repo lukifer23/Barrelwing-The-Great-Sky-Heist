@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
+import { SaveManager } from '../systems/SaveManager';
 
 export interface MenuItem {
   label: string;
@@ -84,7 +85,8 @@ export class Menu {
       if (active && this.enabled[i]) {
         m.setVisible(true);
         m.setPosition(t.x - t.displayWidth * t.originX - 12, t.y);
-        this.scene.tweens.add({ targets: m, angle: { from: -8, to: 8 }, duration: 700, yoyo: true, repeat: -1 });
+        m.setAngle(0);
+        if (!SaveManager.get().settings.reducedMotion) this.scene.tweens.add({ targets: m, angle: { from: -8, to: 8 }, duration: 700, yoyo: true, repeat: -1 });
         if (this.hint) this.hint.setText(this.items[i].hint ?? '');
       } else {
         m.setVisible(false);
@@ -99,7 +101,7 @@ export class Menu {
 
   move(dir: number): void {
     if (!this.active) return;
-    if (this.enabled.filter(Boolean).length === 0) return;
+    if (!this.enabled.some(Boolean)) return;
     let next = this.index;
     for (let i = 0; i < this.items.length; i++) {
       next = (next + dir + this.items.length) % this.items.length;
@@ -123,9 +125,9 @@ export class Menu {
   handleKey(e: KeyboardEvent): boolean {
     if (!this.active) return false;
     if (e.repeat) return true;
-    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { this.move(-1); return true; }
-    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { this.move(1); return true; }
-    if (e.key === 'Enter' || e.key === ' ') { this.confirm(); return true; }
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.stopPropagation(); this.move(-1); return true; }
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.stopPropagation(); this.move(1); return true; }
+    if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); this.confirm(); return true; }
     return false;
   }
 

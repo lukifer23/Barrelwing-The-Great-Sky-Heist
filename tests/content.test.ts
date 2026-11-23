@@ -32,11 +32,11 @@ function hasFlightApproach(level: LevelDef, pickup: LevelObject, zone: Extract<L
 }
 
 for (const level of LEVELS) test(`${level.id}: ${level.name} has complete, valid content`, () => {
-  assert.equal(LEVELS.filter(l => l.id === level.id).length, 1);
+  assert.equal(LEVELS[level.id - 1], level, 'save record IDs must remain consecutive');
   assert.equal(level.objects.filter(o => o.t === 'gem').length, 3);
   assert.equal(level.objects.filter(o => o.t === 'exit' || o.t === 'goalZone').length, 1);
   assert.equal(level.objects.filter(o => o.t === 'boss').length, level.hasBoss ? 1 : 0);
-  assert.ok(level.thresholds.gold > level.thresholds.silver && level.thresholds.silver > level.thresholds.bronze);
+  assert.ok(level.thresholds.gold > level.thresholds.silver && level.thresholds.silver > 0);
   const platforms = level.terrain.filter(t => !t.decor);
   const hasFloor = (x: number, y: number) => platforms.some(t => x + 0.5 >= t.x && x + 0.5 <= t.x + t.w && Math.abs(y - t.y) < 0.1);
   assert.ok(hasFloor(level.spawn.x, level.spawn.y), 'spawn has a stable floor');

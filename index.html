@@ -106,6 +106,7 @@
         #touch-controls.one-handed button:is([data-action="attack"], [data-action="dash"]) { bottom: calc(var(--base) + var(--unit) + 7px); }
 
       }
+      #touch-controls.sprinting #joystick, #touch-controls.sprinting button[data-action="stop"] { display: none; }
       @media (prefers-reduced-motion: reduce) { #boot .bar span { animation: none; } }
       #boot {
         position: fixed; inset: 0; display: flex; flex-direction: column;

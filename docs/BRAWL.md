@@ -30,18 +30,19 @@ Release and press JUMP again for each air recovery jump. The campaign's touch co
 
 ## Fighters and arenas
 
-Tap the player or CPU card to open the four-courier roster. Select a courier to inspect the move, damage and recharge, then confirm the pick. On a keyboard use Left for the player roster and Right for the CPU roster. Arrow keys change the highlighted courier, Enter confirms and Escape cancels. Each local profile keeps its exhibition choices separately from the campaign courier and any suspended match.
+Tap the player or CPU card to open the five-courier roster. Select a courier to inspect the move, damage and recharge, then confirm the pick. On a keyboard use Left for the player roster and Right for the CPU roster. Arrow keys change the highlighted courier, Enter confirms and Escape cancels. Each local profile keeps its exhibition choices separately from the campaign courier and any suspended match.
 
 | Courier | Signature | Contact damage |
 | --- | --- | --- |
 | Pip | Tail Sweep covers a broad arc. | 10% |
 | Fenn | Express Lunge steps forward during a neutral strike. | 8% |
 | Mallow | Parcel Slam has the longest recovery and adds launch force. | 13% |
+| Reed | Skipping Kick restores one spent air jump on a connecting sideways aerial strike, once per landing. | 8% |
 | Clover | Vault Kick rebounds on a successful airborne downward strike. | 9% |
 
 The selected roster card demonstrates its signature strike. Reduced Motion keeps the idle preview and a fixed arena view. The portrait combat camera otherwise follows both fighters, closing in during exchanges and widening on launch. Player and CPU markers follow their fighters. A mirror match also gives the CPU a contrasting palette. The anticipation pose shows where a swing will land. During the active frames, the fighter follows through and a directional swipe tracks the strike.
 
-Pip is balanced. Fenn moves faster and attacks more frequently, but is lighter and easier to launch. Mallow moves more slowly and attacks less frequently, with stronger hits and greater weight. Clover jumps higher from the ground and has a 1.15-second dash recharge. All four fighters are available in exhibition matches. Campaign health upgrades do not affect match stocks.
+Pip is balanced. Fenn moves faster and attacks more frequently, but is lighter and easier to launch. Mallow moves more slowly and attacks less frequently, with stronger hits and greater weight. Clover jumps higher from the ground and has a 1.15-second dash recharge. All five fighters are available in exhibition matches. Campaign health upgrades do not affect match stocks.
 
 Canopy Court has three upper platforms over a wide base. The factory has low side ledges and a central belt platform. The storm arena has staggered side platforms. Unsafe Workplace has changing conveyor drift. Return to Thunder has periodic air currents. All arenas receive announced barrel deliveries; the warning gives time to react before a barrel enters.
 

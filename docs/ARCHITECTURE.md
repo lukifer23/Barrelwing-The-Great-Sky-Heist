@@ -12,7 +12,7 @@ Rendering follows the display refresh rate. Arcade uses a fixed 60 Hz physics st
 
 ## Authored content
 
-`src/game/data/levels` contains nine campaign levels and seven trials. Coordinates use a per-stage tile size. Runtime construction converts these definitions into world positions. Each collectible and enemy has a stable object identifier for save restoration; each gem also has its own slot from zero through two.
+`src/game/data/levels` contains nine campaign levels and nine trials. Coordinates use a per-stage tile size. Runtime construction converts these definitions into world positions. The save record count and trial IDs derive from the ordered stage list. Each collectible and enemy has a stable object identifier for save restoration; each gem also has its own slot from zero through two.
 
 Plain Phaser groups organize entities that already have configured Arcade bodies. Physics groups apply defaults when adding objects and can overwrite gravity, velocity, and body flags. Use a physics group only when that behavior is intended.
 

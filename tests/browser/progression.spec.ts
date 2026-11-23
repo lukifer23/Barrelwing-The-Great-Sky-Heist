@@ -342,3 +342,143 @@ test('Clover rebounds on an actual downward aerial hit and displays the directio
   expect(damage).toBe(9); expect(rise).toBeLessThan(-200); expect(art).toBe('slash-upward'); expect(visible).toBe(true);
   await page.keyboard.up('s'); expect(errors).toEqual([]);
 });
+
+test('Reed carries an air dash refund into campaign play and a kick refund into Brawl', async ({ page }) => {
+  const errors = await boot(page);
+  await choose(page, 'Title', 'COURIERS');
+  await choose(page, 'Characters', 'REED  /  MARSH RUNNER');
+  await page.keyboard.press('Escape');
+  await choose(page, 'Title', 'NEW GAME'); await active(page, 'Game');
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('Game').player.grounded);
+  const charges = () => page.evaluate(() => (window as any).__game.scene.getScene('Game').player.flapCharges);
+  await page.keyboard.down('Space'); await page.waitForTimeout(140); await page.keyboard.up('Space');
+  await page.keyboard.press('Space'); await expect.poll(charges).toBe(1);
+  await page.keyboard.press('j'); await expect.poll(charges).toBe(2);
+  expect(await page.evaluate(() => (window as any).__game.scene.getScene('Game').player.characterId)).toBe('reed');
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.scene.stop('Game'); g.scene.start('Brawl', { player: 'reed', cpu: 'pip' });
+  });
+  await active(page, 'Brawl');
+  const chargesAfterHits = await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Brawl'), r = s.human;
+    r.body.reset(160, 80); r.airJumps = 0; r.attackAim = 0;
+    r.landStrike(s.cpu, false);
+    const first = r.airJumps;
+    r.landStrike(s.cpu, false);
+    const second = r.airJumps;
+    r.respawn(160, 80); r.airJumps = 0;
+    r.landStrike(s.cpu, false);
+    return [first, second, r.airJumps];
+  });
+  expect(chargesAfterHits).toEqual([1, 1, 1]);
+  expect(errors).toEqual([]);
+});
+
+test('Storm Coat respects hazard timing, shield priority, respawn and active-time expiry', async ({ page }) => {
+  const errors = await boot(page);
+  for (const id of [4, 17]) {
+    await start(page, id);
+    const state = await page.evaluate(id => {
+      const s = (window as any).__game.scene.getScene('Game'), p = s.player;
+      const item = s.powerups.find((o: any) => o.getData('kind') === 'stormcoat');
+      p.body.reset(item.x, item.y + 12); s.updatePickups(16);
+      const duration = p.stormcoatUntil - p.now;
+      const h = s.weatherHazards.find((hazard: any) => hazard.kind === (id === 4 ? 'steam' : 'lightning'));
+      const damageAt = h.period * 0.3 - h.phase * 1000;
+      p.body.reset(h.bounds.centerX, h.bounds.centerY + 12); p.body.updateFromGameObject(); p.invulnUntil = 0; p.activateShield();
+      s.updateHazards(damageAt);
+      const protectedHit = [p.hearts, p.shield, s.damageTaken];
+      const visibleArea = h.spray.visible && h.spray.displayWidth === h.bounds.width && h.spray.displayHeight === h.bounds.height;
+      const nextDischarge = damageAt + Math.ceil((p.stormcoatUntil - damageAt) / h.period) * h.period;
+      s.updateHazards(nextDischarge);
+      const expiredHit = [p.hearts, p.shield, s.damageTaken];
+      p.invulnUntil = 0; s.updateHazards(nextDischarge);
+      const unprotectedHit = [p.hearts, s.damageTaken];
+      p.stormcoatUntil = p.now + duration; p.respawnAt(s.checkpoint.x, s.checkpoint.y);
+      return { duration, visibleArea, protectedHit, expiredHit, unprotectedHit, reset: p.stormcoatUntil };
+    }, id);
+    expect(state).toEqual({ duration: 6000, visibleArea: true, protectedHit: [3, true, 0], expiredHit: [3, false, 0], unprotectedHit: [2, 1], reset: 0 });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('a lane drake locks its heading through wind-up and a hit interrupts its charge', async ({ page }) => {
+  const errors = await boot(page); await start(page, 18);
+  const flight = await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('Game'), p = s.player;
+    const drake = s.enemies.getChildren().find((e: any) => e.kind === 'drake'), now = p.now;
+    p.body.reset(drake.x + 90, drake.body.center.y + 12);
+    drake.updateAI(now, 0.016, p);
+    const warned = drake.anims.isPaused && drake.body.speed === 0;
+    p.body.reset(drake.x - 90, p.y);
+    drake.updateAI(now + 549, 0.016, p);
+    const waiting = drake.body.velocity.x;
+    drake.updateAI(now + 550, 0.016, p);
+    const charge = drake.body.velocity.x;
+    drake.damage(1, p.x);
+    return { warned, waiting, charge, state: drake.aiState, hp: drake.hp, movingWings: !drake.anims.isPaused };
+  });
+  expect(flight).toEqual({ warned: true, waiting: 0, charge: 216, state: 'patrol', hp: 1, movingWings: true });
+  expect(errors).toEqual([]);
+});
+
+test('Gale selection, gate spacing on resize and a one-hit result preserve separate Sprint records', async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.registry.get('saves').setBonusBest(1234);
+    g.scene.stop('Title'); g.scene.start('SkySprint');
+  });
+  await active(page, 'SkySprint');
+  const mode = () => page.evaluate(() => (window as any).__game.scene.getScene('SkySprint').sprintClass);
+  await page.keyboard.press('ArrowRight'); await expect.poll(mode).toBe('gale');
+  const button = await page.evaluate(() => {
+    const g = (window as any).__game, b = g.scene.getScene('SkySprint').readySub.getBounds(), c = g.canvas.getBoundingClientRect();
+    return { x: c.x + b.centerX * c.width / g.scale.width, y: c.y + b.centerY * c.height / g.scale.height };
+  });
+  await page.mouse.click(button.x, button.y); await expect.poll(mode).toBe('classic');
+  await page.mouse.click(button.x, button.y); await expect.poll(mode).toBe('gale');
+  await page.keyboard.press('Space');
+  await page.setViewportSize({ width: 1800, height: 500 });
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('SkySprint').gates.length >= 3);
+  await page.setViewportSize({ width: 800, height: 600 });
+  const gates = await page.evaluate(() => {
+    const s = (window as any).__game.scene.getScene('SkySprint');
+    return { hearts: s.player.hearts, narrow: s.gates.every((g: any) => g.gapH >= 50 && g.gapH <= 62),
+      spaced: s.gates.every((g: any, i: number) => i === 0 || g.x - s.gates[i - 1].x >= 145) };
+  });
+  expect(gates).toEqual({ hearts: 1, narrow: true, spaced: true });
+  await page.waitForFunction(() => !!(window as any).__game.scene.getScene('SkySprint').overMenu);
+  const records = await page.evaluate(() => {
+    const g = (window as any).__game, { bonusBest, galeBest } = g.registry.get('saves').get();
+    return { bonusBest, galeBest, score: g.scene.getScene('SkySprint').score };
+  });
+  expect(records.galeBest).toBeGreaterThan(0); expect(records.galeBest).toBe(records.score); expect(records.bonusBest).toBe(1234);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => (window as any).__game.scene.getScene('SkySprint').state === 'ready');
+  expect(await mode()).toBe('gale');
+  await page.reload(); await active(page, 'Title');
+  expect(await page.evaluate(() => (window as any).__game.registry.get('saves').get().galeBest)).toBe(records.score);
+  expect(errors).toEqual([]);
+});
+
+test('moving and falling planks preserve their collision surfaces through travel and recovery', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page, 18);
+  await page.waitForFunction(() => {
+    const m = (window as any).__game.scene.getScene('Game').movers[0];
+    return Math.abs(m.x - m.startX) > 8;
+  });
+  const surfaces = await page.evaluate(() => {
+    const scene = (window as any).__game.scene.getScene('Game'), mover = scene.movers[0], plank = scene.fallingPlats[0];
+    const aligned = () => Math.abs(mover.body.top - (mover.y - mover.height / 2 + 2)) < 0.01
+      && Math.abs(mover.body.left - (mover.x - mover.width / 2)) < 0.01 && mover.body.height === 14;
+    const traveled = aligned();
+    scene.clearTransient();
+    return { traveled, reset: aligned() && mover.x === mover.startX,
+      falling: plank.body.height === 12 && plank.body.enable && !plank.used };
+  });
+  expect(surfaces).toEqual({ traveled: true, reset: true, falling: true });
+  expect(errors).toEqual([]);
+});

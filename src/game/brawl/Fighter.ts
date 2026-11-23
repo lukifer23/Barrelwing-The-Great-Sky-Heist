@@ -25,6 +25,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   private dashReady = 0;
   private dashUntil = 0;
   private guardUntil = 0;
+  private kickRefunded = false;
   private liftSpent = false;
   private attackFacing = 1;
   private bufferedDashAim = 0;
@@ -78,7 +79,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     if (input.jump) this.bufferedJump = now + 140;
     if (input.dash) { this.bufferedDash = now + 140; this.bufferedDashAim = input.dashAim ?? input.aim; }
     if (input.attack) { this.bufferedAttack = now + 160; this.bufferedAim = input.attackAim ?? input.aim; }
-    if (this.grounded) { this.liftSpent = false; this.airJumps = 2; this.groundAt = now; }
+    if (this.grounded) { this.kickRefunded = false; this.liftSpent = false; this.airJumps = 2; this.groundAt = now; }
     this.setAlpha(now < this.invulnerableUntil ? 0.45 + Math.abs(Math.sin(now / 75)) * 0.5 : 1);
     if (now >= this.stunUntil) {
       if (input.face || Math.abs(input.move) > 0.1) this.face(input.face || input.move);
@@ -191,6 +192,10 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       target.scene.events.emit('brawl-parry', target);
       return;
     }
+    if (this.id === 'reed' && this.attackAim === 0 && !this.grounded && !this.kickRefunded && this.airJumps < 2) {
+      this.kickRefunded = true;
+      this.airJumps++;
+    }
     target.damage += this.style.damage;
     if (this.id === 'clover' && this.attackAim > 0 && !this.grounded) this.body.velocity.y = -255;
     const weight = target.style.weight;
@@ -215,6 +220,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   respawn(x: number, y: number): void {
+    this.kickRefunded = false;
     this.guardUntil = 0; this.liftSpent = false; this.swingCue.setVisible(false); this.swingArt.setVisible(false);
     this.damage = 0; this.airJumps = 2; this.body.reset(x, y); this.body.velocity.set(0, 0);
     this.body.setAllowGravity(true); this.body.enable = true; this.setVisible(true).setAngle(0);

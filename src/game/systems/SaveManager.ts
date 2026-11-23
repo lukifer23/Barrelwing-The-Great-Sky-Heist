@@ -1,3 +1,4 @@
+import { SPRINT_CLASSES, type SprintClass } from '../data/sprint';
 import { TOTAL_LEVELS, TRIAL_IDS } from '../data/progression';
 import { emptyMastery, STAMPS, type Mastery } from '../data/mastery';
 import { emptyBrawlRecord, MATCH_LENGTH, type BrawlRecord, type BrawlRun, type BrawlOptions, type BrawlPreset } from '../data/brawl';
@@ -61,6 +62,7 @@ export interface ProfileData {
   unlocked: number;
   bonusUnlocked: boolean;
   bonusBest: number;
+  galeBest: number;
   completedGame: boolean;
   totalScore: number;
   settings: Settings;
@@ -131,7 +133,7 @@ function emptyProfile(): ProfileData {
     levels,
     unlocked: 1,
     bonusUnlocked: false,
-    bonusBest: 0,
+    bonusBest: 0, galeBest: 0,
     completedGame: false,
     totalScore: 0,
     settings: defaultSettings(),
@@ -233,6 +235,7 @@ export class SaveManager {
       unlocked: Math.max(Math.floor(finite(raw.unlocked, 1, 9)), 1, ...Object.entries(levels).filter(([id, l]) => +id <= 9 && l.completed).map(([id]) => Math.min(9, +id + 1))),
       bonusUnlocked: raw.bonusUnlocked === true || levels[3].completed,
       bonusBest: Number.isFinite(raw.bonusBest) ? Math.max(0, raw.bonusBest!) : 0,
+      galeBest: finite(raw.galeBest),
       completedGame: raw.completedGame === true || levels[9].completed,
       totalScore: Number.isFinite(raw.totalScore) ? Math.max(0, raw.totalScore!) : 0,
       settings: settingsFrom(raw.settings),
@@ -383,13 +386,13 @@ export class SaveManager {
     const revision = this.get().revision;
     const settings = { ...this.get().settings };
     const selectedCharacter = this.get().selectedCharacter;
-    const { brawl, brawlRun, brawlPreset, bonusBest, cloverUnlocked, slot, otherProfiles } = this.get();
+    const { brawl, brawlRun, brawlPreset, bonusBest, galeBest, cloverUnlocked, slot, otherProfiles } = this.get();
     this.data = { ...emptyProfile(), slot, otherProfiles };
     // Reset is a newer save too; retain ordering against older recovery copies.
     this.data.revision = revision;
     this.data.settings = settings;
     this.data.selectedCharacter = selectedCharacter; this.data.cloverUnlocked = cloverUnlocked;
-    this.data.brawlPreset = brawlPreset; this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest;
+    this.data.brawlPreset = brawlPreset; this.data.brawl = brawl; this.data.brawlRun = brawlRun; this.data.bonusBest = bonusBest; this.data.galeBest = galeBest;
     this.save();
   }
 
@@ -425,10 +428,11 @@ export class SaveManager {
     return merged;
   }
 
-  static setBonusBest(score: number): void {
+  static setBonusBest(score: number, sprintClass: SprintClass = 'classic'): void {
+    const key = SPRINT_CLASSES[sprintClass].best;
     const d = this.get();
-    if (score > d.bonusBest) {
-      d.bonusBest = score;
+    if (score > d[key]) {
+      d[key] = score;
       this.save();
     }
   }

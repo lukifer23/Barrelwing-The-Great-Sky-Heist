@@ -15,14 +15,14 @@ The [project audit](docs/AUDIT.md) records corrected gameplay and performance is
 ## The game
 
 - Nine campaign stages across Verdant Canopy, the Copperworks, and the Storm Above.
-- Seven post-campaign Sky Trials, including a tougher Baron rematch and Sorting Office, a two-route score chase through the factory.
-- Sky Sprint: an endless flight mode with a saved personal best, unlocked after Cloudvine Drift.
+- Nine post-campaign Sky Trials, including a Baron rematch, the live deck at Lightning Exchange, and the ferries and falling planks at Reedbank Crossing.
+- Sky Sprint unlocks after Cloudvine Drift. Classic gives you three hearts. Gale gives you one heart, higher speed and tighter gates. Each class saves its own record.
 - Running, variable-height jumps, air flaps, buffered jumps, coyote time, ladders, drop-through platforms, and a barrel-smashing dash.
 - Moving platforms, conveyors, springs, switches, gates, steam vents, lightning, updrafts, and falling platforms.
-- Distinct enemies, four barrel variants, and a three-phase boss with attack warnings and vulnerable windows.
-- Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
-- Barrel Brawl: solo-versus-CPU platform fighting with stock matches, a 90-second KO race, independent player and CPU roster picks, four signature attacks with visible CPU wind-ups, parry counters, aerial recovery, three distinct arenas, and three CPU difficulties. Each local player keeps their own match settings.
-- Four playable couriers including Clover, the level-two rooftop scout. Starting choices are Pip, the balanced squirrel; Fenn, an express fox with 10% faster running; and Mallow, a slower squirrel with an extra heart. Choose in Couriers before a stage.
+- Lane drakes lock onto your altitude before charging. Other hazards include four barrel variants and a three-phase boss with attack warnings and vulnerable windows.
+- Storm Coat for lightning and steam, Shield, Speed Boost, Magnet, Extra Flap, healing, extra lives, and Acorn Nova: a blast that clears nearby enemies and wooden barrels.
+- Barrel Brawl: solo-versus-CPU platform fighting with stock matches, a 90-second KO race, independent player and CPU roster picks, five signature attacks with visible CPU wind-ups, parry counters, aerial recovery, three distinct arenas, and three CPU difficulties. Each local player keeps their own match settings.
+- Five playable couriers. Start with Pip, Fenn, Mallow, or Reed, a frog whose air dash recovers a spent flap once per landing. Recruit Clover at courier level two. Choose your courier before starting a stage.
 - Hearts, lives, checkpoints, continues, score combos, three gems per stage, best times, and Bronze/Silver/Gold ratings.
 - Three delivery stamps per stage: all gems, a deathless par clear, and a clear without damage or deaths. Each new stamp earns a permanent Sky Shard, with live eligibility and saved map/results feedback.
 - Permanent upgrades: more hearts, more starting lives, shorter dash cooldowns, longer powerups, and longer acorn combos. Earn Sky Shards from new gems and better ratings, then spend them in the Windtail Workshop.
@@ -50,7 +50,7 @@ npm run test:browser    # Browser integration and touch tests
 npm run test:production # Build and run browser checks against production output
 npm run test:routes -- --levels=1,2 --seconds=120 # Ordinary-input route probes
 npm run test:soak -- --cycles=45 --dwell=20 # Longer lifecycle and heap sampling
-npm run test:brawl     # Nine ordinary-input courier/difficulty matches
+npm run test:brawl     # Fifteen ordinary-input courier/difficulty matches
 npm run check           # Content checks, build, and browser tests
 ```
 
@@ -72,7 +72,7 @@ npm run android:apk
 
 The APK is written to `artifacts/barrelwing-debug.apk`. It is signed with the local Android debug key for personal installation. Install updates with the same key and package ID to preserve app data. A Play Store account is unnecessary.
 
-The app supports portrait, landscape, and changing foldable display sizes. Gameplay expands its camera viewport to fit the available screen instead of stretching the character or changing movement speed. On portrait touch screens, a separate lower control area keeps fingers out of the playfield. See [Android development](docs/ANDROID.md) for configuration, diagnostics, and limitations.
+The app supports portrait, landscape, and changing foldable display sizes. Gameplay expands its camera viewport to fit the available screen instead of stretching the character or changing movement speed. On portrait touch screens the controls overlay the lower part of the full-height playfield. The campaign camera leaves room for thumbs near the ground. See [Android development](docs/ANDROID.md) for configuration, diagnostics, and limitations.
 
 ## Controls
 

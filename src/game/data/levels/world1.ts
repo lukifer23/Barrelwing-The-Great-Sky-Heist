@@ -12,9 +12,9 @@ export const LEVEL_1: LevelDef = {
   height: 20,
   spawn: { x: 3, y: 16 },
   parTime: 110,
-  thresholds: { bronze: 1100, silver: 1900, gold: 2600 },
+  thresholds: { silver: 1900, gold: 2600 },
   music: 'forest',
-  intro: 'Meet Pip, the forest courier.',
+  intro: 'Catch the Baron before he leaves the canopy.',
   terrain: [
     T(0, 16, 26, 4),
     T(29, 16, 16, 4),
@@ -35,7 +35,7 @@ export const LEVEL_1: LevelDef = {
     T(121, 9, 4, 1, 'wood'),
   ],
   objects: [
-    { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN' },
+    { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN', touchText: 'PUSH THE STICK RIGHT TO RUN.' },
     { t: 'powerup', kind: 'priority', x: 6, y: 15 },
     { t: 'powerup', kind: 'shield', x: 24, y: 15 },
     { t: 'powerup', kind: 'nova', x: 86, y: 11 },
@@ -43,9 +43,9 @@ export const LEVEL_1: LevelDef = {
     { t: 'fallingPlatform', x: 72, y: 9, w: 4 },
     { t: 'tutorial', x: 70, y: 9, text: 'CRUMBLING PLANKS: JUMP BEFORE THEY FALL.' },
     { t: 'tutorial', x: 21, y: 14, text: 'SHIELD: ONE FREE MISTAKE. USE IT WISELY.' },
-    { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP' },
-    { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP' },
-    { t: 'tutorial', x: 46, y: 14, text: 'J — DASH THROUGH ENEMIES. LAND TO REFILL YOUR FLAPS.' },
+    { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP', touchText: 'HOLD JUMP FOR HEIGHT.' },
+    { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP', touchText: 'RELEASE JUMP, THEN TAP FLAP IN THE AIR.' },
+    { t: 'tutorial', x: 46, y: 14, text: 'J — DASH THROUGH ENEMIES. LAND TO REFILL YOUR FLAPS.', touchText: 'TAP DASH THROUGH ENEMIES. LAND TO REFILL FLAPS.' },
     { t: 'tutorial', x: 60, y: 12, text: 'STOMP ENEMIES FROM ABOVE' },
 
     ...coinLine(6, 14, 7, 2),
@@ -92,7 +92,7 @@ export const LEVEL_2: LevelDef = {
   height: 56,
   spawn: { x: 4, y: 52 },
   parTime: 160,
-  thresholds: { bronze: 1300, silver: 2100, gold: 3000 },
+  thresholds: { silver: 2100, gold: 3000 },
   music: 'forest',
   intro: 'Climb the scaffold. Mind the barrels.',
   terrain: [
@@ -115,7 +115,7 @@ export const LEVEL_2: LevelDef = {
     T(10, 15, 5, 1, 'wood'),
   ],
   objects: [
-    { t: 'tutorial', x: 4, y: 50, text: 'W / S  —  CLIMB THE VINES' },
+    { t: 'tutorial', x: 4, y: 50, text: 'W / S  —  CLIMB THE VINES', touchText: 'PUSH THE STICK UP OR DOWN TO CLIMB.' },
     { t: 'tutorial', x: 12, y: 43, text: 'BARRELS: FREE SHIPPING. VERY POOR HANDLING.' },
 
     ...coinLine(4, 50, 6, 2),
@@ -176,7 +176,7 @@ export const LEVEL_3: LevelDef = {
   height: 24,
   spawn: { x: 3, y: 18 },
   parTime: 150,
-  thresholds: { bronze: 1400, silver: 2300, gold: 3300 },
+  thresholds: { silver: 2300, gold: 3300 },
   music: 'forest',
   intro: 'Run the canopy. Ride the wind.',
   terrain: [
@@ -193,7 +193,7 @@ export const LEVEL_3: LevelDef = {
   ],
   objects: [
     { t: 'tutorial', x: 8, y: 16, text: 'LEAP INTO THE WIND CHANNEL' },
-    { t: 'tutorial', x: 34, y: 14, text: 'TAP SPACE TO FLAP. KEEP THE RHYTHM.' },
+    { t: 'tutorial', x: 34, y: 14, text: 'TAP SPACE TO FLAP. KEEP THE RHYTHM.', touchText: 'TAP FLAP TO RISE. AIM BETWEEN THE GATES.' },
 
     ...coinLine(6, 16, 6, 2),
     ...coinArc(24, 14, 4, 2),

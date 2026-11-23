@@ -359,7 +359,13 @@ test('touch feedback exposes real charges, recharge, and flight controls', async
   await expect(page.locator('[data-action="dash"]')).toContainText('CHARGING');
   await page.waitForTimeout(600);
   await expect(page.locator('[data-action="dash"]')).toContainText('READY');
-  await page.evaluate(() => { const g = (window as any).__game; g.scene.stop('Game'); g.scene.start('SkySprint'); });
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.registry.get('saves').patchSettings({ oneHanded: true });
+    g.scene.stop('Game'); g.scene.start('SkySprint');
+  });
+  await expect(page.locator('#joystick')).toBeHidden();
+  await expect(page.locator('[data-action="stop"]')).toBeHidden();
   await expect(page.locator('[data-action="jump"]')).toContainText('TAP TO RISE');
   await expect(page.locator('[data-action="dash"]')).toBeHidden();
   await page.screenshot({ path: 'artifacts/sprint-touch-feedback.png' });

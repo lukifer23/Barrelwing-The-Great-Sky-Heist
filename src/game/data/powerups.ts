@@ -10,6 +10,7 @@ export interface PowerMeta {
 }
 
 export const POWER_META: Record<PowerKind, PowerMeta> = {
+  stormcoat: { label: 'STORM COAT', tex: 'power_stormcoat', color: 0x80dfba, hex: '#a1ffdc', durationMs: 6000, blurb: 'BLOCKS STEAM AND LIGHTNING' },
   priority: { label: 'PRIORITY PAY', tex: 'ui_paw', color: 0xf5bf68, hex: '#ffda95', durationMs: 10000, blurb: 'DOUBLE ACORN POINTS' },
   nova: { label: 'ACORN NOVA', tex: 'power_nova', color: 0xffdf78, hex: '#ffe9a0', durationMs: 0, blurb: 'BLASTS NEARBY ENEMIES AND WOODEN BARRELS' },
   life: { label: 'EXTRA LIFE', tex: 'ui_heart_gold', color: 0xffd65a, hex: '#ffe08a', durationMs: 0, blurb: '+1 LIFE AND FULL HEALTH' },
