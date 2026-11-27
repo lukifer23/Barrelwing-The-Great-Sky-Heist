@@ -98,7 +98,8 @@ export class GameScene extends Phaser.Scene {
   private updrafts: { rect: Phaser.Geom.Rectangle; power: number }[] = [];
   private fallingPlats: { sprite: Phaser.GameObjects.TileSprite; body: Phaser.Physics.Arcade.StaticBody; used: boolean }[] = [];
   private flightZones: FlightRuntime[] = [];
-  private tutorials: { x: number; y: number; text: string; shown: boolean }[] = [];
+  private tutorials: { x: number; y: number; text: string; shown: boolean; teachControl: boolean }[] = [];
+  private pendingHints: typeof this.tutorials = [];
   private powerups: Phaser.GameObjects.Image[] = [];
   private boss: Boss | null = null;
 
@@ -123,9 +124,6 @@ export class GameScene extends Phaser.Scene {
   private exitGlow!: Phaser.GameObjects.Image;
   private projGroup!: Phaser.GameObjects.Group;
   private bossBolts: { sprite: Phaser.Physics.Arcade.Sprite; life: number }[] = [];
-  private bossFlameRect: Phaser.Geom.Rectangle | null = null;
-  private bossFlameDir = -1;
-  private bossFlameUntil = 0;
   private bgLayers: { sprite: Phaser.GameObjects.TileSprite; factor: number; baseY: number }[] = [];
   private killY = 0;
   private musicKey: 'forest' | 'factory' | 'storm' = 'forest';
@@ -169,10 +167,10 @@ export class GameScene extends Phaser.Scene {
     this.fallingPlats = [];
     this.flightZones = [];
     this.tutorials = [];
+    this.pendingHints = [];
     this.powerups = [];
     this.bgLayers = [];
     this.bossBolts = [];
-    this.bossFlameRect = null;
     this.coinsCollected = 0;
     this.gemsCollected = [false, false, false];
     this.score = 0;
@@ -455,7 +453,7 @@ export class GameScene extends Phaser.Scene {
         }
         case 'fallingPlatform': this.addFallingPlatform(cx(o.x), o.y * ts, o.w * ts); break;
         case 'exit': this.addExit(cx(o.x), o.y * ts); break;
-        case 'tutorial': this.tutorials.push({ x: cx(o.x), y: o.y * ts, text: window.matchMedia('(pointer: coarse)').matches ? o.touchText ?? o.text : o.text, shown: false }); break;
+        case 'tutorial': this.tutorials.push({ x: cx(o.x), y: o.y * ts, text: window.matchMedia('(pointer: coarse)').matches ? o.touchText ?? o.text : o.text, teachControl: !!o.teachControl, shown: false }); break;
         case 'powerup': this.addPowerup(o.kind, cx(o.x), o.y * ts + ts / 2, objectId); break;
         case 'decor': this.addDecor(o.kind, cx(o.x), o.y * ts, o.scale ?? 1, o.kind === 'tree' ? 2 : 7); break;
         case 'boss':
@@ -790,14 +788,6 @@ export class GameScene extends Phaser.Scene {
       this.fx.gust(x, y, dir, true);
       this.fx.shake(0.004, 200);
     }, this);
-    this.events.on('boss-breath-start', (x: number, y: number, dir: number) => {
-      this.bossFlameDir = dir;
-      this.bossFlameUntil = playTime(this) + 1000;
-      this.bossFlameRect = new Phaser.Geom.Rectangle(dir < 0 ? x - 190 : x, y - 46, 190, 54);
-      const beam = this.add.rectangle(x + dir * 95, y - 26, 190, 44, 0xff7a3a, 0.28).setDepth(24);
-      this.tweens.add({ targets: beam, alpha: 0.08, duration: 120, yoyo: true, repeat: 5, onComplete: () => beam.destroy() });
-      AudioManager.sfx('magic', { volume: 0.4, rate: 0.7 });
-    }, this);
     this.events.on('boss-defeated', () => this.onBossDefeated(), this);
     this.events.on('boss-vulnerable', () => {
       this.hud.toast('▼ STOMP THE BARON!', '#ffe08a', 1500);
@@ -807,8 +797,8 @@ export class GameScene extends Phaser.Scene {
     }, this);
     this.events.on('boss-telegraph', (attack: string) => {
       const labels: Record<string, string> = {
-        sweep: 'SWEEP INCOMING — GET AIRBORNE!',
-        breath: 'FLAME BREATH — MOVE!',
+        sweep: 'SWEEP — LEAVE THE MARKED LANE!',
+        breath: 'BREATH — CLEAR THE FLAME LINE!',
         barrels: 'BARREL BARRAGE!',
         gust: 'WIND BURST — DODGE!',
       };
@@ -817,11 +807,6 @@ export class GameScene extends Phaser.Scene {
       if (!this.boss) return;
       const glow = this.add.image(this.boss.x, this.boss.y - 40, 'fx_glow').setTint(0xff5030).setScale(2.4).setDepth(23).setAlpha(0.55);
       this.tweens.add({ targets: glow, alpha: 0.1, scale: 3.2, duration: 240, yoyo: true, repeat: 2, onComplete: () => glow.destroy() });
-    }, this);
-    this.events.on('boss-sweep', (x: number, y: number, dir: number) => {
-      const cx = (this.boss?.body.center.x ?? x) + dir * 120;
-      const band = this.add.rectangle(cx, y, 260, 6, 0xff3b52, 0.35).setDepth(24);
-      this.tweens.add({ targets: band, alpha: 0, duration: 420, onComplete: () => band.destroy() });
     }, this);
     this.events.on('boss-phase', (p: number) => {
       this.hud.toast(`PHASE ${p} — THE STORM RISES!`, '#ff9a9a', 1100);
@@ -883,14 +868,6 @@ export class GameScene extends Phaser.Scene {
     // pit death
     if (this.player.y > this.killY && !this.player.dead && this.deathAt === 0) {
       this.killPlayer(true);
-    }
-
-    // boss flame damage
-    if (this.bossFlameRect && time < this.bossFlameUntil) {
-      const pb = this.player.body;
-      const pr = new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height);
-      if (Phaser.Geom.Intersects.RectangleToRectangle(this.bossFlameRect, pr)) this.hurtPlayer(this.player.x - this.bossFlameDir * 40);
-      if (time % 80 < 20) this.fx.sparkle(this.bossFlameRect.centerX + Phaser.Math.Between(-70, 70), Phaser.Math.Between(this.bossFlameRect.top, this.bossFlameRect.bottom), 0xffb060);
     }
 
     this.inputMgr.clearFrameFlags();
@@ -1046,16 +1023,15 @@ export class GameScene extends Phaser.Scene {
     // player vs boss
     const bb = this.boss.body;
     const pb = this.player.body;
-    const br = new Phaser.Geom.Rectangle(bb.x, bb.y, bb.width, bb.height);
-    const pr = new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height);
-    if (Phaser.Geom.Intersects.RectangleToRectangle(br, pr)) {
+    if (this.boss.breathHits(pb)) this.hurtPlayer(this.boss.x);
+    if (pb.right > bb.left && pb.left < bb.right && pb.bottom > bb.top && pb.top < bb.bottom) {
       const stomp = this.player.body.velocity.y > 0 && pb.bottom < bb.bottom - 2;
       const dash = this.player.dashActive;
       if (this.boss.bossState === 'vulnerable' && (stomp || dash)) {
         if (this.boss.takeHit(stomp ? 'stomp' : 'dash')) {
           this.player.bounce(stomp ? -300 : -240);
         }
-      } else if (this.boss.bossState !== 'vulnerable') {
+      } else if (this.boss.bossState === 'sweep') {
         this.hurtPlayer(this.boss.x);
       }
     }
@@ -1091,8 +1067,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateTutorials(): void {
+    if (!this.canInteract) return;
+    let nearby;
+    for (const hint of this.tutorials) {
+      if (hint.shown || Math.abs(this.player.x - hint.x) >= 90 || Math.abs(this.player.y - hint.y) >= 80) continue;
+      if (hint.teachControl) {
+        this.pendingHints.push(hint);
+        hint.shown = true;
+      } else {
+        nearby ??= hint;
+      }
+    }
     if (this.introCard?.active || this.hud.toastActive) return;
-    const hint = this.tutorials.find(t => !t.shown && Math.abs(this.player.x - t.x) < 90 && Math.abs(this.player.y - t.y) < 80);
+    const hint = this.pendingHints.shift() ?? nearby;
     if (hint) {
       hint.shown = true;
       this.hud.toast(hint.text, '#f4e6c8', 1600);
@@ -1342,8 +1329,6 @@ export class GameScene extends Phaser.Scene {
     this.barrels.clear(true, true);
     for (const p of this.bossBolts) p.sprite.destroy();
     this.bossBolts = [];
-    this.bossFlameRect = null;
-    this.bossFlameUntil = 0;
     this.inputMgr.reset();
     this.coinCombo = 0;
     for (const z of this.flightZones) z.active = false;
@@ -1609,7 +1594,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.off(Phaser.Core.Events.BLUR, this.saveOnHide);
     this.game.events.off(Phaser.Core.Events.HIDDEN, this.saveOnHide);
     this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
-    for (const name of ['sfx', 'fx-dust', 'fx-step', 'fx-gust', 'fx-dash', 'fx-defeat', 'fx-shield-break', 'enemy-defeated', 'barrel-smash', 'enemy-projectile', 'boss-barrel', 'boss-bolt', 'boss-gust', 'boss-breath-start', 'boss-defeated', 'boss-vulnerable', 'boss-telegraph', 'boss-sweep', 'boss-phase', 'boss-enter']) this.events.removeAllListeners(name);
+    for (const name of ['sfx', 'fx-dust', 'fx-step', 'fx-gust', 'fx-dash', 'fx-defeat', 'fx-shield-break', 'enemy-defeated', 'barrel-smash', 'enemy-projectile', 'boss-barrel', 'boss-bolt', 'boss-gust', 'boss-defeated', 'boss-vulnerable', 'boss-telegraph', 'boss-phase', 'boss-enter']) this.events.removeAllListeners(name);
     this.fx?.destroy();
     this.hud?.destroy();
     for (const s of this.spawners) s.destroy();

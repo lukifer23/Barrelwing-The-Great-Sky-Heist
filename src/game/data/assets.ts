@@ -85,9 +85,9 @@ export const SHEETS: SpriteSheetDef[] = [
 ];
 
 export const BOSS_SHEETS: SpriteSheetDef[] = [
-  { key: 'boss_idle_sheet', path: 'assets/sprites/boss_idle.png', frameWidth: 144, frameHeight: 64, frames: 6 },
-  { key: 'boss_breath_sheet', path: 'assets/sprites/boss_breath.png', frameWidth: 144, frameHeight: 64, frames: 7 },
-  { key: 'boss_tail_sheet', path: 'assets/sprites/boss_tail.png', frameWidth: 144, frameHeight: 64, frames: 8 },
+  { key: 'boss_idle_sheet', path: 'assets/sprites/boss_idle.png', frameWidth: 208, frameHeight: 64, frames: 6 },
+  { key: 'boss_breath_sheet', path: 'assets/sprites/boss_breath.png', frameWidth: 208, frameHeight: 64, frames: 7 },
+  { key: 'boss_tail_sheet', path: 'assets/sprites/boss_tail.png', frameWidth: 208, frameHeight: 64, frames: 8 },
 ];
 
 export const MUSIC = {

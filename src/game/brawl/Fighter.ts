@@ -69,6 +69,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   get dashProgress(): number { return Phaser.Math.Clamp(1 - (this.dashReady - this.now) / this.dashCooldown, 0, 1); }
   get stunned(): boolean { return this.now < this.stunUntil; }
   get guarding(): boolean { return this.now < this.guardUntil; }
+  get canRefundKick(): boolean { return this.id === 'reed' && !this.grounded && !this.kickRefunded && this.airJumps < 2; }
   get canLift(): boolean { return !this.liftSpent; }
   get windingUp(): boolean { return this.now >= this.attackAt && this.now < this.attackAt + this.attackWindup; }
   get attacking(): boolean { const t = this.now - this.attackAt; return t >= this.attackWindup && t < this.attackWindup + this.style.activeMs; }
@@ -192,9 +193,10 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       target.scene.events.emit('brawl-parry', target);
       return;
     }
-    if (this.id === 'reed' && this.attackAim === 0 && !this.grounded && !this.kickRefunded && this.airJumps < 2) {
+    if (this.attackAim === 0 && this.canRefundKick) {
       this.kickRefunded = true;
       this.airJumps++;
+      this.scene.events.emit('brawl-kick-refund', this);
     }
     target.damage += this.style.damage;
     if (this.id === 'clover' && this.attackAim > 0 && !this.grounded) this.body.velocity.y = -255;

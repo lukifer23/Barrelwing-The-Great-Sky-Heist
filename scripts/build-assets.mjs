@@ -252,10 +252,22 @@ async function main() {
   }
   fs.copyFileSync(path.join(sideSprites, 'Grotto-escape-2-FX/PNG/spritesheets/energy-shield.png'), write('sprites/shield_aura.png'));
 
-  // Boss dragon: three native 144x64 sheets.
+  // Anchor the torso in each pose so turning or playing a tail swing keeps it over the physics body.
   const boss = path.join(sideSprites, 'Grotto-escape-2-boss-dragon/PNG/spritesheets');
-  for (const a of ['idle', 'breath', 'tail']) {
-    fs.copyFileSync(path.join(boss, `${a}.png`), write(`sprites/boss_${a}.png`));
+  const torsoX = {
+    idle: [92, 92, 92, 92, 92, 92],
+    breath: [92, 95, 96, 92, 92, 92, 92],
+    tail: [87, 88, 88, 82, 70, 68, 70, 69],
+  };
+  for (const [pose, anchors] of Object.entries(torsoX)) {
+    const source = path.join(boss, `${pose}.png`);
+    const width = 208;
+    const cells = await Promise.all(anchors.map(async (anchor, i) => ({
+      input: await sharp(source).extract({ left: i * 144, top: 0, width: 144, height: 64 }).png().toBuffer(),
+      left: i * width + width / 2 - anchor, top: 0,
+    })));
+    await sharp({ create: { width: width * cells.length, height: 64, channels: 4, background: '#00000000' } })
+      .composite(cells).png().toFile(write(`sprites/boss_${pose}.png`));
   }
 
   // ----------------------------------------------------------------- objects

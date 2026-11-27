@@ -44,7 +44,7 @@ try {
     await page.waitForFunction(() => (window as any).__game.scene.getScene('Brawl').human?.active);
     await page.evaluate(() => {
       const g = (window as any).__game, scene = g.scene.getScene('Brawl');
-      const report = { swings: [0, 0], hits: [0, 0], parries: [0, 0], interruptedWindups: [0, 0], punishedMisses: [0, 0], ringOuts: [] as object[] };
+      const report = { swings: [0, 0], hits: [0, 0], parries: [0, 0], interruptedWindups: [0, 0], punishedMisses: [0, 0], kickRefunds: [0, 0], ringOuts: [] as object[] };
       const last = [{ at: -10000, connected: false }, { at: -10000, connected: false }];
       g.registry.set('matchObservation', report);
       const observers = {
@@ -58,6 +58,7 @@ try {
           if (!last[target].connected && age < f.attackWindup) report.interruptedWindups[target]++;
           else if (!last[target].connected && age >= f.attackWindup + f.style.activeMs && age < f.attackCooldown) report.punishedMisses[target]++;
         },
+        'brawl-kick-refund'(f: any) { report.kickRefunds[Number(f.isCpu)]++; },
         'brawl-parry'(f: any) {
           const side = Number(f.isCpu); report.parries[side]++; last[1 - side].connected = true;
         },

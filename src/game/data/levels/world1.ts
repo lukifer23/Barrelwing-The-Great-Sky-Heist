@@ -35,7 +35,7 @@ export const LEVEL_1: LevelDef = {
     T(121, 9, 4, 1, 'wood'),
   ],
   objects: [
-    { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN', touchText: 'PUSH THE STICK RIGHT TO RUN.' },
+    { t: 'tutorial', x: 8, y: 14, text: 'A / D  —  RUN', teachControl: true, touchText: 'PUSH THE STICK RIGHT TO RUN.' },
     { t: 'powerup', kind: 'priority', x: 6, y: 15 },
     { t: 'powerup', kind: 'shield', x: 24, y: 15 },
     { t: 'powerup', kind: 'nova', x: 86, y: 11 },
@@ -43,9 +43,9 @@ export const LEVEL_1: LevelDef = {
     { t: 'fallingPlatform', x: 72, y: 9, w: 4 },
     { t: 'tutorial', x: 70, y: 9, text: 'CRUMBLING PLANKS: JUMP BEFORE THEY FALL.' },
     { t: 'tutorial', x: 21, y: 14, text: 'SHIELD: ONE FREE MISTAKE. USE IT WISELY.' },
-    { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP', touchText: 'HOLD JUMP FOR HEIGHT.' },
-    { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP', touchText: 'RELEASE JUMP, THEN TAP FLAP IN THE AIR.' },
-    { t: 'tutorial', x: 46, y: 14, text: 'J — DASH THROUGH ENEMIES. LAND TO REFILL YOUR FLAPS.', touchText: 'TAP DASH THROUGH ENEMIES. LAND TO REFILL FLAPS.' },
+    { t: 'tutorial', x: 18, y: 12, text: 'SPACE  —  JUMP', teachControl: true, touchText: 'HOLD JUMP FOR HEIGHT.' },
+    { t: 'tutorial', x: 33, y: 12, text: 'SPACE IN THE AIR  —  WINDTAIL FLAP', teachControl: true, touchText: 'RELEASE JUMP, THEN TAP FLAP IN THE AIR.' },
+    { t: 'tutorial', x: 46, y: 14, text: 'J — DASH THROUGH ENEMIES. LAND TO REFILL YOUR FLAPS.', teachControl: true, touchText: 'TAP DASH THROUGH ENEMIES. LAND TO REFILL FLAPS.' },
     { t: 'tutorial', x: 60, y: 12, text: 'STOMP ENEMIES FROM ABOVE' },
 
     ...coinLine(6, 14, 7, 2),
@@ -115,7 +115,7 @@ export const LEVEL_2: LevelDef = {
     T(10, 15, 5, 1, 'wood'),
   ],
   objects: [
-    { t: 'tutorial', x: 4, y: 50, text: 'W / S  —  CLIMB THE VINES', touchText: 'PUSH THE STICK UP OR DOWN TO CLIMB.' },
+    { t: 'tutorial', x: 4, y: 50, text: 'W / S  —  CLIMB THE VINES', teachControl: true, touchText: 'PUSH THE STICK UP OR DOWN TO CLIMB.' },
     { t: 'tutorial', x: 12, y: 43, text: 'BARRELS: FREE SHIPPING. VERY POOR HANDLING.' },
 
     ...coinLine(4, 50, 6, 2),
@@ -193,7 +193,7 @@ export const LEVEL_3: LevelDef = {
   ],
   objects: [
     { t: 'tutorial', x: 8, y: 16, text: 'LEAP INTO THE WIND CHANNEL' },
-    { t: 'tutorial', x: 34, y: 14, text: 'TAP SPACE TO FLAP. KEEP THE RHYTHM.', touchText: 'TAP FLAP TO RISE. AIM BETWEEN THE GATES.' },
+    { t: 'tutorial', x: 34, y: 14, text: 'TAP SPACE TO FLAP. KEEP THE RHYTHM.', teachControl: true, touchText: 'TAP FLAP TO RISE. AIM BETWEEN THE GATES.' },
 
     ...coinLine(6, 16, 6, 2),
     ...coinArc(24, 14, 4, 2),

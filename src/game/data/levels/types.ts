@@ -33,7 +33,7 @@ export type LevelObject = (
   | { t: 'updraft'; x: number; y: number; w: number; h: number; power?: number }
   | { t: 'fallingPlatform'; x: number; y: number; w: number }
   | { t: 'exit'; x: number; y: number }
-  | { t: 'tutorial'; x: number; y: number; text: string; touchText?: string }
+  | { t: 'tutorial'; x: number; y: number; text: string; touchText?: string; teachControl?: boolean }
   | { t: 'powerup'; kind: PowerKind; x: number; y: number }
   | { t: 'decor'; kind: 'tree' | 'vine' | 'mushroom_red' | 'mushroom_brown' | 'rock' | 'plant' | 'leaves' | 'crate' | 'cloud' | 'pipe'; x: number; y: number; scale?: number }
   | { t: 'boss'; x: number; y: number }

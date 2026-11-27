@@ -217,6 +217,8 @@ export class BrawlScene extends Phaser.Scene {
     const headroom = cpu.y > this.floor - 245;
     const airborne = !cpu.grounded;
     intent.aim = 0; intent.dashAim = 0;
+    const readyTarget = time + cpu.attackWindup >= rival.invulnerableUntil && !rival.guarding;
+    const canAttack = readyTarget && !cpu.stunned && !cpu.guarding && time >= this.nextCpuAttack;
     if (offstage) {
       intent.move = Math.sign(this.W / 2 - cpu.x);
       intent.face = intent.move;
@@ -228,6 +230,8 @@ export class BrawlScene extends Phaser.Scene {
       else if (headroom && falling && time > this.nextCpuJump && (cpu.grounded || cpu.airJumps > 0)) {
         intent.jump = true; this.nextCpuJump = time + 240;
       }
+      intent.attack = canAttack && cpu.canRefundKick && intent.face * dx > 0 &&
+        Math.abs(dx - intent.face * cpu.style.reach) <= cpu.style.radius && Math.abs(dy) <= 38;
       this.cpuIntent = intent; return intent;
     }
 
@@ -259,8 +263,7 @@ export class BrawlScene extends Phaser.Scene {
     intent.aim = vertical ? Math.sign(futureY) : 0;
     const reach = cpu.style.reach + cpu.style.radius - (easy ? 23 : 8);
     const inRange = vertical ? Math.abs(futureY) < 72 : Math.abs(futureX) < reach && Math.abs(futureY) < 38;
-    const readyTarget = time + cpu.attackWindup >= rival.invulnerableUntil && !rival.guarding;
-    intent.attack = inRange && readyTarget && !cpu.stunned && !cpu.guarding && time >= this.nextCpuAttack;
+    intent.attack = inRange && canAttack;
     if (cpu.id === 'clover' && intent.jump && !airborne && !counter) intent.attack = false;
 
     if (hard && !cpu.stunned && (rival.windingUp || rival.attacking) && !rival.hitThisSwing &&

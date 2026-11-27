@@ -30,7 +30,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private vulnerableHit = false;
   private hoverTween?: Phaser.Tweens.Tween;
   private facing = -1;
-  private sweepDir = -1;
+  private sweepEndX = 0;
+  private readonly attackBand: Phaser.GameObjects.Rectangle;
   private sweepY = 0;
   private flame?: Phaser.GameObjects.Sprite;
   private encounterTimers: Phaser.Time.TimerEvent[] = [];
@@ -48,10 +49,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.startPhase = this.phase;
     this.hp = (4 - this.phase) * 2;
     this.maxHp = this.hp;
-    this.setOrigin(0.28, 0.92);
+    this.setOrigin(0.5, 1);
     this.setScale(2);
-    this.body.setSize(54, 44);
-    this.body.setOffset(12, 18);
+    this.body.setSize(30, 29);
+    this.body.setOffset((this.width - 30) / 2, 34);
+    this.body.updateFromGameObject();
+    this.attackBand = scene.add.rectangle(0, 0, 1, 1).setDepth(24).setVisible(false);
     this.body.setAllowGravity(false);
     this.body.setImmovable(true);
     this.setDepth(26);
@@ -103,18 +106,16 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         break;
 
       case 'telegraph':
-        this.face(player);
-        this.setTint(Math.sin(time / 55) > 0 ? 0xffb0a0 : 0xffffff);
+        this.setTint(SaveManager.get().settings.reducedMotion || Math.sin(time / 90) > 0 ? 0xffb0a0 : 0xffffff);
         if (time > this.stateUntil) {
           this.clearTint();
-          this.launchAttack(time, player);
+          this.launchAttack(time);
         }
         break;
 
       case 'sweep':
-        this.body.velocity.x = this.sweepDir * 260;
-        this.body.velocity.y = (this.sweepY - this.y) * 4;
-        if (time > this.stateUntil || (this.sweepDir < 0 && this.x < this.arena.left + 24) || (this.sweepDir > 0 && this.x > this.arena.right - 24)) {
+        this.body.setVelocity(this.facing * 260, 0);
+        if (time >= this.stateUntil || (this.x - this.sweepEndX) * this.facing >= 0) {
           this.body.velocity.set(0, 0);
           this.endAttack(time);
         }
@@ -122,13 +123,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
       case 'breath':
         this.body.velocity.set(0, 0);
-        if (this.flame) {
-          this.flame.setPosition(this.x + this.facing * 74, this.y - 26);
-          if (time % 120 < 20) this.scene.events.emit('boss-flame-puff', this.flame.x, this.flame.y, this.facing);
-        }
         if (time > this.stateUntil) {
-          this.flame?.destroy();
-          this.flame = undefined;
           this.endAttack(time);
         }
         break;
@@ -191,7 +186,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  private nextAttack(time: number, _player: Phaser.Physics.Arcade.Sprite): void {
+  private nextAttack(time: number, player: Phaser.Physics.Arcade.Sprite): void {
     if (this.attackQueue.length === 0) {
       this.attackQueue = this.phase === 1
         ? ['sweep', 'gust', 'sweep']
@@ -202,6 +197,20 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     const attack = this.attackQueue.shift()!;
     this.bossState = 'telegraph';
     this.stateUntil = time + (this.phase === 3 ? 460 : 620);
+    this.face(player);
+    if (attack === 'sweep') {
+      // Feet sit two world pixels below the torso. Commit to a lane while there is time to dodge.
+      this.sweepY = Phaser.Math.Clamp(player.body!.center.y + 31, this.arena.top + 58, this.arena.floorY);
+      this.sweepEndX = Phaser.Math.Clamp(this.x + this.facing * 260 * 1.4, this.arena.left + 24, this.arena.right - 24);
+      this.attackBand.setPosition((this.x + this.sweepEndX) / 2, this.sweepY - 31)
+        .setSize(Math.abs(this.sweepEndX - this.x) + this.body.width, this.body.height);
+      this.scene.tweens.add({ targets: this, y: this.sweepY, duration: this.stateUntil - time, ease: 'Sine.easeInOut' });
+    } else if (attack === 'breath') {
+      this.attackBand.setPosition(this.x + this.facing * (40 + 95), this.y - 28).setSize(190, 44);
+    }
+    if (attack === 'sweep' || attack === 'breath') {
+      this.attackBand.setFillStyle(0xff994f, 0.08).setStrokeStyle(2, 0xffb066, 0.8).setVisible(true);
+    }
     this.scene.events.emit('boss-telegraph', attack);
     this.scene.events.emit('sfx', 'bump', { volume: 0.2, rate: 0.7 });
     this.pendingAttack = attack;
@@ -209,17 +218,19 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   private pendingAttack = 'sweep';
 
-  private launchAttack(time: number, player: Phaser.Physics.Arcade.Sprite): void {
+  private launchAttack(time: number): void {
     this.clearTint();
     const attack = this.pendingAttack;
     if (attack === 'sweep') {
       this.bossState = 'sweep';
       this.play('boss-tail', true);
-      this.sweepDir = player.x < this.x ? -1 : 1;
-      this.sweepY = player.y - 24;
+      this.scene.tweens.killTweensOf(this);
+      this.setY(this.sweepY);
+      this.body.updateFromGameObject();
+      this.body.setVelocity(this.facing * 260, 0);
+      this.attackBand.setFillStyle(0xff5261, 0.08).setStrokeStyle(1, 0xff5261, 0.65);
       this.stateUntil = time + 1400;
       this.scene.events.emit('sfx', 'throw', { volume: 0.4, rate: 0.7 });
-      this.scene.events.emit('boss-sweep', this.x, this.sweepY, this.sweepDir);
     } else if (attack === 'breath') {
       this.bossState = 'breath';
       this.stateUntil = time + 1100;
@@ -227,9 +238,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.flame = this.scene.add.sprite(this.x + this.facing * 74, this.y - 26, 'fireball')
         .setScale(2.2).setFlipX(this.facing > 0).setDepth(27);
       this.flame.play('fireball-fly');
-      this.scene.events.emit('boss-breath-start', this.x, this.y, this.facing);
+      this.attackBand.setFillStyle(0xff893e, 0.38).setStrokeStyle(2, 0xffbf61, 1);
       this.scene.events.emit('sfx', 'magic', { volume: 0.45, rate: 0.6 });
-      this.later(1100, () => { if (this.bossActive && this.bossState === 'breath') this.play('boss-idle', true); });
     } else if (attack === 'barrels') {
       this.bossState = 'barrels';
       this.stateUntil = time + 2100;
@@ -257,7 +267,21 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  breathHits(body: Phaser.Physics.Arcade.Body): boolean {
+    if (this.bossState !== 'breath') return false;
+    const band = this.attackBand;
+    return body.right > band.x - band.width / 2 && body.left < band.x + band.width / 2 &&
+      body.bottom > band.y - band.height / 2 && body.top < band.y + band.height / 2;
+  }
+
+  private clearAttack(): void {
+    this.attackBand.setVisible(false);
+    this.flame?.destroy();
+    this.flame = undefined;
+  }
+
   private endAttack(time: number): void {
+    this.clearAttack();
     this.setTexture('boss_idle_sheet');
     this.play('boss-idle', true);
     this.attackCount++;
@@ -329,7 +353,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.bossActive = false;
     this.clearEncounterTimers();
     this.scene.tweens.killTweensOf(this);
-    this.flame?.destroy(); this.flame = undefined;
+    this.clearAttack();
     this.body.enable = false;
     this.hoverTween?.remove();
     this.setTint(0xffd9a0);
@@ -364,7 +388,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.clearEncounterTimers();
     this.scene.tweens.killTweensOf(this);
     this.hoverTween?.remove();
-    this.flame?.destroy(); this.flame = undefined;
+    this.clearAttack();
     this.body.reset(this.homeX, this.homeY);
     this.body.velocity.set(0, 0);
     this.bossState = 'dormant';
@@ -378,6 +402,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.clearEncounterTimers();
     this.hoverTween?.remove();
     this.flame?.destroy();
+    this.attackBand.destroy();
     this.destroy();
   }
 
