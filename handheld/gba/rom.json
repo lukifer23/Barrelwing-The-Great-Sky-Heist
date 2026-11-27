@@ -1,0 +1,6 @@
+{
+  "mode": "sky-sprint",
+  "contentVersion": "handheld-1",
+  "playableStages": [],
+  "notes": "Sky Sprint is procedural. Campaign stages are exported as data but are not selectable in this ROM until their required object types are implemented."
+}
