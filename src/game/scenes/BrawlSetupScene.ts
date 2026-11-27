@@ -5,6 +5,7 @@ import { ARENA_NAMES, FIGHT_STYLES, type BrawlRules, type BrawlDifficulty } from
 import type { ThemeId } from '../data/levels/types';
 import { SaveManager } from '../systems/SaveManager';
 import { Menu } from '../ui/Menu';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 export type RosterSide = 'player' | 'cpu';
 export class BrawlSetupScene extends Phaser.Scene {
@@ -29,6 +30,11 @@ export class BrawlSetupScene extends Phaser.Scene {
   }
   create(): void {
     this.draw();
+    bindGamepadActions(this, action => {
+      if (action === 'left' || action === 'right') this.openRoster(action === 'left' ? 'player' : 'cpu');
+      else if (action === 'back') this.scene.start('Title');
+      else if (action === 'up' || action === 'down' || action === 'confirm') this.menu?.handleAction(action);
+    }, { isEnabled: () => !this.scene.isPaused() });
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {

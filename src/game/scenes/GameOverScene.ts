@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
 import { Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 import type { GameScene } from './GameScene';
 import { SaveManager } from '../systems/SaveManager';
 
@@ -21,6 +22,7 @@ export class GameOverScene extends Phaser.Scene {
       { label: 'WORLD MAP', action: () => { this.scene.stop('Game'); this.scene.start('WorldMap', { trials: this.data_.levelId >= 10 }); } },
       { label: 'TITLE SCREEN', action: () => { this.scene.stop('Game'); this.scene.start('Title'); } },
     ], { x: 240, y: 145, spacing: 30, fontSize: '11px', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: () => { this.scene.stop('Game'); this.scene.start('WorldMap', { trials: this.data_.levelId >= 10 }); } });
     this.add.text(240, 239, 'CONTINUE RESETS ATTEMPT SCORE AND TIMER', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#8a93b2' }).setOrigin(0.5);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { this.scene.stop('Game'); this.scene.start('WorldMap', { trials: this.data_.levelId >= 10 }); }

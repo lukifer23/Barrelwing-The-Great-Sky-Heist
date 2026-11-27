@@ -3,6 +3,7 @@ import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
 import { Menu, addPanel } from '../ui/Menu';
+import { bindGamepadActions, bindMenuGamepad } from '../ui/MenuInput';
 
 export class TitleScene extends Phaser.Scene {
   private menu!: Menu;
@@ -122,6 +123,7 @@ export class TitleScene extends Phaser.Scene {
     const panelH = spacing * items.length + 8;
     this.add.rectangle(tall ? x - panelW / 2 - 10 : x - 14, top - spacing / 2 - 4, panelW + 20, panelH, 0x101528, 0.9).setOrigin(0).setStrokeStyle(1, 0x6b5a3a).setDepth(9);
     this.menu = new Menu(this, items, { x, y: top, spacing, align: tall ? 'center' : 'left', fontSize: tall ? '20px' : '9px', showHints: false, depth: 12 });
+    bindMenuGamepad(this, this.menu, { isEnabled: () => !this.modal });
   }
 
   private continueGame(): void {
@@ -153,6 +155,16 @@ export class TitleScene extends Phaser.Scene {
     yes.on('pointerdown', () => { close(); this.startNewGame(); }); no.on('pointerdown', close);
     this.input.keyboard?.on('keydown', key);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', key));
+    bindGamepadActions(this, action => {
+      if (action === 'left' || action === 'right') {
+        selection = 1 - selection;
+        yes.setColor(selection === 0 ? '#f0c060' : '#9fb0d0');
+        no.setColor(selection === 1 ? '#f0c060' : '#9fb0d0');
+        AudioManager.sfx('ui_move', { volume: 0.4 });
+      } else if (action === 'confirm') {
+        close(); if (selection === 0) this.startNewGame();
+      } else if (action === 'back' || action === 'pause') close();
+    }, { isEnabled: () => this.modal === c, repeat: false });
   }
 
   private openOverlay(key: 'Controls' | 'Settings' | 'Credits' | 'Characters'): void { this.scene.pause(); this.scene.launch(key, { from: 'Title' }); }

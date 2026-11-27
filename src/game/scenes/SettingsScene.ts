@@ -3,6 +3,7 @@ import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { SaveManager, type Settings } from '../systems/SaveManager';
 import { addPanel } from '../ui/Menu';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 type Row = { label: string; key: keyof Settings | 'fullscreen'; min?: number; max?: number; step?: number };
 const PAGES: { label: string; rows: Row[] }[] = [
@@ -17,6 +18,7 @@ const PAGES: { label: string; rows: Row[] }[] = [
     { label: 'BUTTON OPACITY', key: 'touchOpacity', min: 0.25, max: 1, step: 0.125 },
     { label: 'LEFT HANDED', key: 'leftHanded' },
     { label: 'ONE-THUMB PORTRAIT', key: 'oneHanded' },
+    { label: 'CONTROLLER LABELS', key: 'controllerPreset' },
   ] },
   { label: 'DISPLAY', rows: [
     { label: 'SCREEN SHAKE', key: 'shake', min: 0, max: 1, step: 0.1 },
@@ -63,6 +65,19 @@ export class SettingsScene extends Phaser.Scene {
     };
     this.input.keyboard?.on('keydown', onKey);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
+    bindGamepadActions(this, action => {
+      if (action === 'back') { this.close(); return; }
+      if (action === 'pause' || action === 'attack') {
+        const step = action === 'pause' ? 1 : -1;
+        this.page = (this.page + step + PAGES.length) % PAGES.length;
+        this.index = 0; this.buildRows(); return;
+      }
+      if (action === 'up') this.index = (this.index + PAGES[this.page].rows.length - 1) % PAGES[this.page].rows.length;
+      else if (action === 'down') this.index = (this.index + 1) % PAGES[this.page].rows.length;
+      else if (action === 'left') this.adjust(-1);
+      else if (action === 'right' || action === 'confirm') this.adjust(1);
+      this.repaint();
+    });
     this.buildRows();
   }
 
@@ -70,7 +85,7 @@ export class SettingsScene extends Phaser.Scene {
     for (const row of this.rows) row.destroy();
     this.rows = []; this.labels = []; this.values = [];
     PAGES[this.page].rows.forEach((row, i) => {
-      const y = 91 + i * 34;
+      const y = 88 + i * 32;
       const container = this.add.container(0, y);
       const bg = this.add.rectangle(240, 0, 404, 30, 0x1d2540).setStrokeStyle(1, 0x3a4460);
       const label = this.add.text(50, 0, row.label, { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f4e6c8' }).setOrigin(0, 0.5).setData('portraitWidth', 194);
@@ -86,7 +101,12 @@ export class SettingsScene extends Phaser.Scene {
 
   private adjust(dir: number): void {
     const row = PAGES[this.page].rows[this.index];
-    if (row.key === 'fullscreen') {
+    if (row.key === 'controllerPreset') {
+      const order = ['auto', 'standard', 'handheld'] as const;
+      const current = SaveManager.get().settings.controllerPreset;
+      const next = order[(order.indexOf(current) + dir + order.length) % order.length];
+      SaveManager.patchSettings({ controllerPreset: next });
+    } else if (row.key === 'fullscreen') {
       if (this.scale.isFullscreen) this.scale.stopFullscreen(); else this.scale.startFullscreen();
     } else {
       const current = SaveManager.get().settings[row.key];
@@ -100,8 +120,10 @@ export class SettingsScene extends Phaser.Scene {
     this.tabs.forEach((t, i) => t.setColor(i === this.page ? '#f0c060' : '#8a93b2'));
     this.labels.forEach((label, i) => label.setColor(i === this.index ? '#f0c060' : '#f4e6c8'));
     PAGES[this.page].rows.forEach((r, i) => {
-      const v = r.key === 'fullscreen' ? this.scale.isFullscreen : SaveManager.get().settings[r.key];
-      this.values[i].setText(typeof v === 'boolean' ? (v ? 'ON' : 'OFF') : `${Math.round(v * 100)}%`);
+      const v = r.key === 'fullscreen' ? this.scale.isFullscreen
+        : r.key === 'controllerPreset' ? SaveManager.get().settings.controllerPreset.toUpperCase()
+        : SaveManager.get().settings[r.key];
+      this.values[i].setText(typeof v === 'boolean' ? (v ? 'ON' : 'OFF') : typeof v === 'number' ? `${Math.round(v * 100)}%` : v);
     });
   }
 

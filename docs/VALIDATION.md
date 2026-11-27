@@ -1,5 +1,13 @@
 # Validation and review
 
+## November 27 controller pass
+
+Baseline on `feat/barrelwing-handheld`: Node 22.23.5, npm 10.9.9, 24 content checks, production build, and all 59 Chromium regressions passed before the input work. The existing boss/tutorial WIP was preserved and verified first.
+
+The shared action layer now merges keyboard, touch and the first standard-mapped gamepad into scene-local pressed/held/released state. Menus, the title modal, profiles, map, workshop, settings, field guide, pause, results, game over, ending, Sprint ready/results, Brawl setup/roster/pause/results, couriers and credits route controller actions without synthesising keyboard events. Scene entry, pause, resume and disconnect flush held edges, so a held confirm cannot activate the next screen twice. Settings includes Auto/Standard/Handheld controller labels and a controller-readable field-guide tab.
+
+The virtual-gamepad regression covers Title → Profiles → New Game → stage movement → pause/resume, Sprint launch/class/pause/resume, World Map → Workshop → back, Settings controller labels, and Brawl setup → roster → match → pause/resume. **Physical-controller verification remains pending because no controller is attached to this Mac.** No Tekko or Android hardware result is claimed.
+
 The initial review covered the original application source, authored stages, asset manifests, build scripts, README, credits, runtime assets, and package configuration. Upstream source archives are optional build inputs, not part of the application source maintained here.
 
 ## November 23 local acceptance

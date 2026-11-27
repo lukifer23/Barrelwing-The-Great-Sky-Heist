@@ -3,6 +3,7 @@ import type { SprintClass } from '../data/sprint';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { Menu, addPanel } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 export class PauseScene extends Phaser.Scene {
   private levelId = 1;
@@ -45,6 +46,7 @@ export class PauseScene extends Phaser.Scene {
       { label: 'RETURN TO TITLE', action: () => this.returnTo('Title') },
     ];
     this.menu = new Menu(this, items, { x: 240, y: 102, spacing: 17, align: 'center', fontSize: '8px', showHints: false });
+    bindMenuGamepad(this, this.menu, { onBack: () => this.resumeGame(), isEnabled: () => this.time.now >= this.readyAt });
     this.readyAt = this.time.now + 240;
 
     const onKey = (e: KeyboardEvent) => {

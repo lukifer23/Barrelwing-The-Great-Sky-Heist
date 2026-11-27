@@ -6,6 +6,7 @@ import { RATING_COLORS, RATING_LABELS } from '../data/levels/types';
 import { AudioManager } from '../systems/AudioManager';
 import { courierLevel, SaveManager } from '../systems/SaveManager';
 import { STAMPS, STAMP_LABELS } from '../data/mastery';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 interface NodeView {
   id: number;
@@ -65,6 +66,13 @@ export class WorldMapScene extends Phaser.Scene {
     AudioManager.playMusic('title', { fade: 400 });
     this.keyHandler = (e) => this.handleKey(e);
     this.input.keyboard?.on('keydown', this.keyHandler);
+    bindGamepadActions(this, action => {
+      if (action === 'back') { this.scene.start(this.trialMode ? 'WorldMap' : 'Title'); return; }
+      if (action === 'confirm') { this.enterSelected(); return; }
+      if (action === 'attack') { this.openWorkshop(); return; }
+      if (action === 'pause') { if (SaveManager.get().bonusUnlocked) this.scene.start('SkySprint'); return; }
+      if (action === 'up' || action === 'down' || action === 'left' || action === 'right') this.moveDirection(action);
+    });
     this.scale.on(Phaser.Scale.Events.RESIZE, this.adapt);
     this.events.on(Phaser.Scenes.Events.RESUME, this.adapt);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -268,6 +276,29 @@ export class WorldMapScene extends Phaser.Scene {
   private formatTime(ms: number): string {
     const s = Math.floor(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  private moveDirection(action: 'up' | 'down' | 'left' | 'right'): void {
+    if (this.cover) {
+      const delta = action === 'up' ? -3 : action === 'down' ? 3 : action === 'left' ? -1 : 1;
+      this.selected = Phaser.Math.Clamp(this.selected + delta, 0, this.list.length - 1);
+      AudioManager.sfx('ui_move', { volume: 0.4 }); this.refreshSelection(); return;
+    }
+    if (this.trialMode) {
+      const columns = Math.ceil(this.list.length / 2);
+      const step = action === 'left' ? -1 : action === 'right' ? 1 : action === 'up' ? -columns : columns;
+      this.selected = Math.abs(step) === 1 ? Phaser.Math.Wrap(this.selected + step, 0, this.list.length)
+        : Phaser.Math.Clamp(this.selected + step, 0, this.list.length - 1);
+      AudioManager.sfx('ui_move', { volume: 0.4 }); this.refreshSelection(); return;
+    }
+    const level = this.list[this.selected];
+    const col = level.world - 1;
+    const row = (level.id - 1) % 3;
+    if (action === 'left') this.selected = Math.max(0, col - 1) * 3 + row;
+    else if (action === 'right') this.selected = Math.min(2, col + 1) * 3 + row;
+    else if (action === 'up' && row < 2) this.selected = col * 3 + row + 1;
+    else if (action === 'down' && row > 0) this.selected = col * 3 + row - 1;
+    AudioManager.sfx('ui_move', { volume: 0.4 }); this.refreshSelection();
   }
 
   private handleKey(e: KeyboardEvent): void {

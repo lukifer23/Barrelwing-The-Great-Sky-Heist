@@ -6,6 +6,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { courierLevel, SaveManager } from '../systems/SaveManager';
 import { STAMPS, STAMP_LABELS, type Stamp } from '../data/mastery';
 import { Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 interface ResultsData {
   levelId: number;
@@ -103,6 +104,7 @@ export class ResultsScene extends Phaser.Scene {
       ...(level.id < 10 && SaveManager.get().completedGame ? [{ label: 'SKY TRIALS', hint: 'Post-campaign remixes', action: () => this.scene.start('WorldMap', { trials: true }) }] : []),
     ];
     const menu = new Menu(this, items, { x: 240, y: 198, spacing: 15, align: 'center', fontSize: '7px', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: () => this.scene.start('WorldMap', { trials: level.id >= 10 }) });
 
     const onKey = (e: KeyboardEvent) => menu.handleKey(e);
     this.input.keyboard?.on('keydown', onKey);

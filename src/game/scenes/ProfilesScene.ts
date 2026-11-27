@@ -3,6 +3,7 @@ import { FONT_SMALL } from '../config';
 import { courierLevel, PROFILE_SLOTS, SaveManager } from '../systems/SaveManager';
 import { CHARACTERS } from '../data/characters';
 import { Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 export class ProfilesScene extends Phaser.Scene {
   constructor() { super('Profiles'); }
@@ -27,6 +28,7 @@ export class ProfilesScene extends Phaser.Scene {
     });
     items.push({ label: 'BACK TO TITLE', action: () => this.scene.start('Title') });
     const menu = new Menu(this, items, { x: 78, y: 80, spacing: 50, align: 'left', fontSize: '9px', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: () => this.scene.start('Title') });
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.scene.start('Title'); else menu.handleKey(e); };
     this.input.keyboard?.on('keydown', onKey);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));

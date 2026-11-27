@@ -21,8 +21,10 @@ export async function installNativePlatform(game: Phaser.Game): Promise<void> {
   await App.addListener('backButton', () => {
     const active = game.scene.getScenes(true).at(-1);
     if (!active) return;
-    // Send through each scene's existing navigation logic.
-    active.input.keyboard?.emit('keydown', new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
+    // Gameplay owns an explicit pause path; menus keep their existing keyboard navigation.
+    if (!['Game', 'Brawl', 'SkySprint'].includes(active.scene.key)) {
+      active.input.keyboard?.emit('keydown', new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
+    }
     if (['Game', 'Brawl', 'SkySprint'].includes(active.scene.key)) (active as Phaser.Scene & { pauseForApp(): void }).pauseForApp();
   });
 }

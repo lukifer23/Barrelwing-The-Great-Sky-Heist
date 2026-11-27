@@ -5,6 +5,7 @@ import { CHARACTERS, COURIERS, type CharacterId } from '../data/characters';
 import { SaveManager } from '../systems/SaveManager';
 import { AudioManager } from '../systems/AudioManager';
 import type { BrawlSetupScene, RosterSide } from './BrawlSetupScene';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 export class BrawlRosterScene extends Phaser.Scene {
   private side: RosterSide = 'player';
@@ -20,6 +21,13 @@ export class BrawlRosterScene extends Phaser.Scene {
   init(data: { side: RosterSide; current: CharacterId }): void { this.side = data.side; this.selected = data.current; }
   create(): void {
     this.draw();
+    bindGamepadActions(this, action => {
+      if (action === 'back' || action === 'pause') { this.close(); return; }
+      if (action === 'confirm' || action === 'attack') { this.confirm(); return; }
+      const delta: Partial<Record<typeof action, number>> = { left: -1, right: 1, up: -this.cols, down: this.cols };
+      const step = delta[action];
+      if (step !== undefined) this.select(COURIERS[Phaser.Math.Wrap(COURIERS.indexOf(this.selected) + step, 0, COURIERS.length)]);
+    });
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.key === 'Escape') { e.stopPropagation(); this.close(); return; }

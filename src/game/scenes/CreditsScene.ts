@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { FONT_SMALL, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { addPanel } from '../ui/Menu';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 export class CreditsScene extends Phaser.Scene {
   private from = 'Title';
@@ -59,6 +60,7 @@ export class CreditsScene extends Phaser.Scene {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') this.close();
     };
     this.input.once('pointerdown', () => this.close());
+    bindGamepadActions(this, action => { if (action === 'back' || action === 'confirm' || action === 'pause') this.close(); });
     this.input.keyboard?.on('keydown', onKey);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
   }

@@ -4,6 +4,7 @@ import { UPGRADES, UPGRADE_COSTS, type UpgradeKind } from '../data/upgrades';
 import { SaveManager } from '../systems/SaveManager';
 import { AudioManager } from '../systems/AudioManager';
 import { addPanel, Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 export class WorkshopScene extends Phaser.Scene {
   private labels: Phaser.GameObjects.Text[] = [];
@@ -35,6 +36,7 @@ export class WorkshopScene extends Phaser.Scene {
       } };
     });
     this.menu = new Menu(this, items, { x: 82, y: 72, spacing: 29, align: 'left', fontSize: '8px', showHints: false });
+    bindMenuGamepad(this, this.menu, { onBack: () => this.close() });
     this.message = this.add.text(240, 222, 'GEMS, RATING STARS AND STAMPS EACH EARN 1 SHARD', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#9fb0d0' }).setOrigin(0.5);
     this.add.text(240, 243, window.matchMedia('(pointer: coarse)').matches ? 'BACK TO MAP' : 'BACK TO MAP  ·  ESC', { fontFamily: FONT_SMALL, fontSize: '8px', color: '#f0c060' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.close());
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.close(); else this.menu.handleKey(e); };

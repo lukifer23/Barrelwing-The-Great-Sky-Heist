@@ -29,6 +29,7 @@ export interface Settings {
   oneHanded: boolean;
   haptics: boolean;
   showFps: boolean;
+  controllerPreset: 'auto' | 'standard' | 'handheld';
 }
 
 export interface RunSnapshot {
@@ -99,10 +100,12 @@ const ids = (v: unknown): number[] => Array.isArray(v) ? [...new Set(v.filter(n 
 
 function settingsFrom(raw: Partial<Settings> | undefined): Settings {
   const d = defaultSettings();
+  const preset = raw?.controllerPreset === 'handheld' || raw?.controllerPreset === 'standard' ? raw.controllerPreset : 'auto';
   return { music: finite(raw?.music, d.music, 1), sfx: finite(raw?.sfx, d.sfx, 1),
     shake: finite(raw?.shake, d.shake, 1), muted: raw?.muted === true, reducedMotion: raw?.reducedMotion === true,
     touchScale: Math.max(0.75, finite(raw?.touchScale, 1, 1.5)), touchOpacity: Math.max(0.25, finite(raw?.touchOpacity, 0.75, 1)),
-    oneHanded: raw?.oneHanded === true, leftHanded: raw?.leftHanded === true, haptics: raw?.haptics !== false, showFps: raw?.showFps === true };
+    oneHanded: raw?.oneHanded === true, leftHanded: raw?.leftHanded === true, haptics: raw?.haptics !== false, showFps: raw?.showFps === true,
+    controllerPreset: preset };
 }
 
 
@@ -122,6 +125,7 @@ export const defaultSettings = (): Settings => ({
   shake: 1,
   reducedMotion: false,
   touchScale: 1, touchOpacity: 0.75, leftHanded: false, oneHanded: false, haptics: true, showFps: false,
+  controllerPreset: 'auto',
 });
 
 function emptyProfile(): ProfileData {

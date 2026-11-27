@@ -91,6 +91,8 @@ The app supports portrait, landscape, and changing foldable display sizes. Gamep
 | Enter | Confirm |
 | U on the map | Windtail Workshop |
 
+A standard-mapped controller uses D-pad/left stick to move, South/A to confirm and jump or flap, East/B to go back and dash, West/X to attack in Brawl, and Start to pause. Controller labels can be switched to a handheld preset in Settings → Controls.
+
 On touch screens, use the analog movement joystick, JUMP, DASH, and PAUSE buttons. Move the stick gently to walk or fully to run. Push up or down to climb ladders. Hold JUMP for height; tap again in the air to flap. Movement and jumping can be held together. Buttons show remaining air flaps and action recharge; DASH is hidden during flight. In Brawl, hold HIT to repeat attacks as they recharge. The field guide explains touch, keyboard, and powerups. In Settings → Controls, One-Thumb Portrait groups actions on one side. Release the stick to keep moving, tap STOP to brake, and use Left Handed to mirror the controls. Menus support tapping. Android Back pauses gameplay or returns from a menu.
 
 ## Settings and saves

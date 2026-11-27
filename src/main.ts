@@ -24,6 +24,7 @@ import { SaveManager } from './game/systems/SaveManager';
 import { installViewport } from './game/systems/Viewport';
 import { installNativePlatform } from './game/systems/NativePlatform';
 import { installTouchControls } from './game/systems/TouchControls';
+import { installGamepadInput } from './game/systems/GamepadInput';
 import { AudioManager } from './game/systems/AudioManager';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -66,6 +67,7 @@ game.registry.set('saves', SaveManager);
 AudioManager.bind(game);
 game.registry.set('audioRefresh', () => AudioManager.refreshVolumes());
 installTouchControls(game);
+installGamepadInput();
 installViewport(game);
 void installNativePlatform(game);
 

@@ -4,6 +4,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
 import { CHARACTERS, type CharacterId } from '../data/characters';
 import { Menu } from '../ui/Menu';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 interface EndingData {
   score: number;
@@ -54,6 +55,19 @@ export class EndingScene extends Phaser.Scene {
     };
     this.input.keyboard?.on('keydown', onKey);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
+    bindGamepadActions(this, action => {
+      if (action === 'back' || action === 'pause') {
+        if (this.menu) this.scene.start('Title'); else this.skipEnding();
+        return;
+      }
+      if (this.menu) {
+        if (action === 'up') this.menu.move(-1);
+        else if (action === 'down') this.menu.move(1);
+        else if (action === 'confirm') this.menu.confirm();
+      } else if (action === 'confirm' || action === 'attack') {
+        this.skipEnding();
+      }
+    });
 
     // dawn breaks in
     this.tweens.add({ targets: this.overlay, alpha: 0, duration: 5000, ease: 'Sine.easeOut' });

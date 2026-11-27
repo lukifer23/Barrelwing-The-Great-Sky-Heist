@@ -2,9 +2,11 @@ import Phaser from 'phaser';
 import { FONT_SMALL } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 import { POWER_META } from '../data/powerups';
+import { actionGlyph, activeInputFamily, controlsLine } from '../data/inputLabels';
+import { bindGamepadActions } from '../ui/MenuInput';
 
-type Guide = 'TOUCH' | 'KEYS' | 'POWERUPS';
-const GUIDES: Record<Exclude<Guide, 'POWERUPS'>, [string, string][]> = {
+type Guide = 'TOUCH' | 'KEYS' | 'PAD' | 'POWERUPS';
+const GUIDES: Record<'TOUCH' | 'KEYS', [string, string][]> = {
   TOUCH: [
     ['JOYSTICK', 'Move gently to walk; push farther to run. Up/down climbs vines.'],
     ['JUMP', 'Hold for height. Release and tap again for two air flaps. Land to refill.'],
@@ -31,18 +33,26 @@ export class ControlsScene extends Phaser.Scene {
   constructor() { super('Controls'); }
   init(data: { from?: string }): void { this.from = data?.from ?? 'Title'; }
   create(): void {
-    this.guide = window.matchMedia('(pointer: coarse)').matches ? 'TOUCH' : 'KEYS';
+    this.guide = activeInputFamily() === 'gamepad' ? 'PAD' : window.matchMedia('(pointer: coarse)').matches ? 'TOUCH' : 'KEYS';
     this.draw();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.draw, this);
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.key === 'Escape' || e.key === 'Enter') this.close();
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const tabs: Guide[] = ['TOUCH', 'KEYS', 'POWERUPS'];
-        this.guide = tabs[(tabs.indexOf(this.guide) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; this.draw();
+        const tabs: Guide[] = ['TOUCH', 'KEYS', 'PAD', 'POWERUPS'];
+        this.guide = tabs[(tabs.indexOf(this.guide) + (e.key === 'ArrowRight' ? 1 : 3)) % tabs.length]; this.draw();
       }
     };
     this.input.keyboard?.on('keydown', onKey);
+    bindGamepadActions(this, action => {
+      if (action === 'back' || action === 'confirm' || action === 'pause') { this.close(); return; }
+      if (action === 'left' || action === 'right') {
+        const tabs: Guide[] = ['TOUCH', 'KEYS', 'PAD', 'POWERUPS'];
+        const step = action === 'right' ? 1 : tabs.length - 1;
+        this.guide = tabs[(tabs.indexOf(this.guide) + step) % tabs.length]; this.draw();
+      }
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.draw, this);
       this.input.keyboard?.off('keydown', onKey);
@@ -57,12 +67,22 @@ export class ControlsScene extends Phaser.Scene {
     const left = Math.max(24, (W - 680) / 2), width = W - left * 2;
     this.add.rectangle(0, 0, W, H, 0x101528).setOrigin(0);
     this.add.text(W / 2, 24, 'FIELD GUIDE', { fontFamily: '"Press Start 2P"', fontSize: `${14 * size}px`, color: '#f4e6c8' }).setOrigin(0.5);
-    (['TOUCH', 'KEYS', 'POWERUPS'] as Guide[]).forEach((tab, i) => {
-      this.add.text(left + width * (i + 0.5) / 3, 56 * size, tab, { fontFamily: FONT_SMALL, fontSize: `${10 * size}px`, color: this.guide === tab ? '#f0c060' : '#9fb0d0' })
-        .setOrigin(0.5).setPadding(8, 8).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.guide = tab; this.draw(); });
+    (['TOUCH', 'KEYS', 'PAD', 'POWERUPS'] as Guide[]).forEach((tab, i) => {
+      this.add.text(left + width * (i + 0.5) / 4, 56 * size, tab, { fontFamily: FONT_SMALL, fontSize: `${9 * size}px`, color: this.guide === tab ? '#f0c060' : '#9fb0d0' })
+        .setOrigin(0.5).setPadding(6, 8).setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.guide = tab; this.draw(); });
     });
     this.add.text(W / 2, 77 * size, 'STAMPS: ALL GEMS / PAR WITHOUT DEATHS / NO DAMAGE OR DEATHS. EACH EARNS 1 SHARD.', { fontFamily: FONT_SMALL, fontSize: `${6 * size}px`, color: '#9ff5ff', align: 'center', wordWrap: { width } }).setOrigin(0.5);
-    const rows: [string, string][] = this.guide === 'POWERUPS' ? Object.values(POWER_META).map(p => [p.label, `${p.blurb}${p.durationMs ? ` (${p.durationMs / 1000}s before upgrades)` : ''}`]) : GUIDES[this.guide];
+    const padRows: [string, string][] = [
+      ['STICK / D-PAD', 'Move, climb and aim. Menu directions repeat while held.'],
+      [`${actionGlyph('confirm')}  /  SOUTH`, 'Confirm menus and jump or flap in play.'],
+      [`${actionGlyph('back')}  /  EAST`, 'Back in menus and dash in play.'],
+      [`${actionGlyph('attack')}  /  WEST`, 'Attack in Brawl; opens the Workshop from the map.'],
+      [`${actionGlyph('pause')}  /  START`, 'Pause or resume. Settings contain the mute control.'],
+      ['HANDHELD LABELS', controlsLine()],
+      ['CHANGE LABELS', 'Settings → Controls → Controller Labels (Auto / Standard / Handheld).'],
+    ];
+    const rows: [string, string][] = this.guide === 'POWERUPS' ? Object.values(POWER_META).map(p => [p.label, `${p.blurb}${p.durationMs ? ` (${p.durationMs / 1000}s before upgrades)` : ''}`])
+      : this.guide === 'PAD' ? padRows : GUIDES[this.guide];
     const start = 94 * size, spacing = (H - start - 28 * size) / rows.length;
     rows.forEach(([label, description], i) => {
       const y = start + i * spacing;

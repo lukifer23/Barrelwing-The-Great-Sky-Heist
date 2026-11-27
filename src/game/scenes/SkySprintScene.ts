@@ -8,6 +8,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { SaveManager } from '../systems/SaveManager';
 import { Effects } from '../systems/Effects';
 import { addPanel, Menu } from '../ui/Menu';
+import { bindGamepadActions } from '../ui/MenuInput';
 
 interface Gate {
   x: number;
@@ -120,6 +121,17 @@ export class SkySprintScene extends Phaser.Scene {
     });
     const onKey = (e: KeyboardEvent) => this.handleKey(e);
     this.input.keyboard?.on('keydown', onKey);
+    bindGamepadActions(this, action => {
+      if (this.state === 'over') {
+        if (action === 'up') this.overMenu?.move(-1);
+        else if (action === 'down') this.overMenu?.move(1);
+        else if (action === 'confirm') this.overMenu?.confirm();
+        else if (action === 'back' || action === 'pause') this.scene.start('Title');
+      } else if (this.state === 'ready') {
+        if (action === 'left' || action === 'right') this.changeClass();
+        else if (action === 'confirm') this.startSprint();
+      }
+    }, { repeat: false });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
   }
 

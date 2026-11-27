@@ -21,6 +21,8 @@ export interface MenuOptions {
   depth?: number;
 }
 
+export type MenuAction = 'up' | 'down' | 'confirm';
+
 /** Keyboard + mouse menu with an animated acorn marker. */
 export class Menu {
   readonly items: MenuItem[];
@@ -128,6 +130,15 @@ export class Menu {
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.stopPropagation(); this.move(-1); return true; }
     if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.stopPropagation(); this.move(1); return true; }
     if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); this.confirm(); return true; }
+    return false;
+  }
+
+  /** Controller/touch action surface; keyboard callers can keep using handleKey. */
+  handleAction(action: MenuAction): boolean {
+    if (!this.active) return false;
+    if (action === 'up') { this.move(-1); return true; }
+    if (action === 'down') { this.move(1); return true; }
+    if (action === 'confirm') { this.confirm(); return true; }
     return false;
   }
 

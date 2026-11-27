@@ -16,6 +16,10 @@ At a ladder summit, air flaps refill and a short grace period permits a full jum
 
 In portrait, Settings → Controls → One-Thumb Portrait places the stick, STOP and actions together. Release the stick to maintain horizontal movement while tapping JUMP or DASH. Releasing on a ladder stops vertical travel. In Brawl, releasing keeps the aim for the next attack or dash. STOP clears both movement and aim. Pause, rotation out of portrait and touch cancellation release the controls.
 
+## Controllers
+
+Connect a standard-mapped controller before or during play. D-pad or left stick moves and climbs; South/A confirms and jumps or flaps; East/B goes back in menus and dashes in play; West/X attacks in Brawl; Start pauses. Menus repeat while a direction is held. Settings → Controls → Controller Labels switches between Auto, Standard and Handheld label sets for devices whose physical buttons differ from the browser's reported mapping. A held confirm is cleared on scene changes, and the first controller button unlocks audio.
+
 ## Couriers
 
 Choose a courier from the title or map. The selection applies to a new stage; Continue retains the courier used by that saved run.

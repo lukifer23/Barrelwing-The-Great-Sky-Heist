@@ -4,6 +4,7 @@ import { CHARACTERS, COURIERS } from '../data/characters';
 import { SaveManager } from '../systems/SaveManager';
 import { AudioManager } from '../systems/AudioManager';
 import { Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 export class CharacterScene extends Phaser.Scene {
   private from = 'Title';
@@ -23,6 +24,7 @@ export class CharacterScene extends Phaser.Scene {
     const menu = new Menu(this, COURIERS.map(id => ({ disabled: id === 'clover' && locked, label: `${CHARACTERS[id].name}  /  ${id === 'clover' && locked ? 'UNLOCK AT LEVEL 2' : CHARACTERS[id].species}`, action: () => {
       SaveManager.selectCharacter(id); AudioManager.sfx('select', { volume: 0.4 }); this.refresh();
     } })), { x: 118, y: 46, spacing: 33, fontSize: '8px', align: 'left', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: () => this.close() });
     this.status = this.add.text(240, 210, '', { fontFamily: FONT_SMALL, fontSize: '8px', color: '#9ff5ff' }).setOrigin(0.5);
     this.quip = this.add.text(240, 225, '', { fontFamily: FONT_SMALL, fontSize: '6px', color: '#f0c060' }).setOrigin(0.5);
     this.add.text(240, 248, 'BACK', { fontFamily: FONT_SMALL, fontSize: '9px', color: '#f4e6c8', padding: { x: 40, y: 6 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.close());

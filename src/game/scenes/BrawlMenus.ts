@@ -3,6 +3,7 @@ import { FONT_SMALL } from '../config';
 import type { BrawlOptions } from '../data/brawl';
 import { SaveManager } from '../systems/SaveManager';
 import { Menu } from '../ui/Menu';
+import { bindMenuGamepad } from '../ui/MenuInput';
 
 export class BrawlPauseScene extends Phaser.Scene {
   private options!: BrawlOptions;
@@ -18,6 +19,7 @@ export class BrawlPauseScene extends Phaser.Scene {
       { label: 'RESTART MATCH', action: () => { this.scene.stop('Brawl'); SaveManager.saveBrawlRun(null); this.scene.start('Brawl', { ...this.options, resume: false }); } },
       { label: 'SAVE AND LEAVE', action: () => { this.scene.stop('Brawl'); this.scene.start('BrawlSetup'); } },
     ], { x: 240, y: 108, spacing: 29, fontSize: '10px', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: resume });
     const onKey = (e: KeyboardEvent) => { if (e.repeat) return; if (e.key === 'Escape' || e.key.toLowerCase() === 'p') resume(); else menu.handleKey(e); };
     this.input.keyboard?.on('keydown', onKey); this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
   }
@@ -38,6 +40,7 @@ export class BrawlResultsScene extends Phaser.Scene {
       { label: 'BRAWL SETUP', action: () => this.scene.start('BrawlSetup') },
       { label: 'TITLE', action: () => this.scene.start('Title') },
     ], { x: 240, y: 169, spacing: 25, fontSize: '10px', showHints: false });
+    bindMenuGamepad(this, menu, { onBack: () => this.scene.start('BrawlSetup') });
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.scene.start('BrawlSetup'); else menu.handleKey(e); };
     this.input.keyboard?.on('keydown', onKey); this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard?.off('keydown', onKey));
   }
