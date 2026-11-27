@@ -141,6 +141,51 @@ export async function exportSpriteSheet(
   return { file, jsonFile, width: frameWidth, height: frameHeight, frames, paletteColors: image.palette.length };
 }
 
+export async function exportGbaSpriteSheet(
+  source: string,
+  target: string,
+  sourceFrameWidth: number,
+  sourceFrameHeight: number,
+  frames: number,
+  targetWidth: number,
+  targetHeight: number,
+  feetSourceY?: number,
+): Promise<SpriteExport & { feetY?: number }> {
+  const composites: sharp.OverlayOptions[] = [];
+  let feetY: number | undefined;
+  for (let i = 0; i < frames; i++) {
+    const cell = await sharp(source).extract({ left: i * sourceFrameWidth, top: 0, width: sourceFrameWidth, height: sourceFrameHeight })
+      .ensureAlpha().resize({ width: targetWidth, height: targetHeight, fit: 'inside', kernel: 'nearest' })
+      .png().toBuffer({ resolveWithObject: true });
+    const left = i * targetWidth + Math.floor((targetWidth - cell.info.width) / 2);
+    const top = targetHeight - cell.info.height;
+    composites.push({ input: cell.data, left, top });
+    if (i === 0 && feetSourceY !== undefined) {
+      const scale = cell.info.height / sourceFrameHeight;
+      feetY = top + Math.round(feetSourceY * scale);
+    }
+  }
+  const sheet = await sharp({ create: { width: targetWidth * frames, height: targetHeight, channels: 4, background: '#00000000' } })
+    .composite(composites).ensureAlpha().raw().toBuffer();
+  const image = quantize(sheet, 16);
+  const file = target + '.bmp';
+  const jsonFile = target + '.json';
+  writeBmp4(file, targetWidth * frames, targetHeight, image);
+  fs.writeFileSync(jsonFile, JSON.stringify({ type: 'sprite', width: targetWidth, height: targetHeight, bpp_mode: 'bpp_4' }, null, 2) + '\n');
+  return { file, jsonFile, width: targetWidth, height: targetHeight, frames, paletteColors: image.palette.length, feetY };
+}
+
+export async function exportGbaSingleCell(
+  source: string,
+  target: string,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+): Promise<SpriteExport> {
+  return exportGbaSpriteSheet(source, target, sourceWidth, sourceHeight, 1, targetWidth, targetHeight);
+}
+
 export async function exportSingleImage(source: string, target: string): Promise<SpriteExport> {
   const meta = await sharp(source).metadata();
   if (!meta.width || !meta.height) throw new Error(`unreadable image: ${source}`);

@@ -9,7 +9,8 @@ import { ANIMS, IMAGES, SHEETS, SFX } from '../src/game/data/assets';
 import { CHARACTERS } from '../src/game/data/characters';
 import { FIGHT_STYLES } from '../src/game/data/brawl';
 import { SPRINT_CLASSES } from '../src/game/data/sprint';
-import { FLIGHT, GAME_HEIGHT, GAME_WIDTH, PHYSICS } from '../src/game/config';
+import { goldenCourse, SPRINT_CANONICAL, SPRINT_COURSE_VERSION } from '../src/game/data/sprint/course';
+import { FLIGHT, GAME_HEIGHT, PHYSICS } from '../src/game/config';
 import { contactSheet, exportBackground, exportSingleImage, exportSpriteSheet } from './handheld/image';
 import { buildSprintModule, sprintModuleInfo } from './handheld/mod';
 
@@ -196,11 +197,16 @@ export async function exportHandheld(options: ExportOptions = {}): Promise<{ out
 
   const sprintFile = path.join(dataDir, 'sprint.json');
   fs.writeFileSync(sprintFile, canonicalJson({
-    version: 1,
-    canonical: { width: GAME_WIDTH, height: GAME_HEIGHT, scaleToGba: 0.5, gbaWidth: 240, gbaHeight: 160, playfieldHeight: 135 },
+    version: SPRINT_COURSE_VERSION,
+    canonical: { ...SPRINT_CANONICAL, scaleToGba: 0.5, gbaWidth: 240, gbaHeight: 160, playfieldTop: 25, playfieldHeight: 135 },
     classes: SPRINT_CLASSES,
     physics: { ...PHYSICS, ...FLIGHT },
     course: { minY: 50, maxY: GAME_HEIGHT - 34, gateWidth: 34, gateSpacingBase: 1.5, gateSpacingMin: 1.05 },
+    golden: {
+      seed: 0x12345678,
+      classic: goldenCourse(0x12345678, 'classic', 8),
+      gale: goldenCourse(0x12345678, 'gale', 8),
+    },
   }));
 
   const characterFile = path.join(dataDir, 'characters.json');

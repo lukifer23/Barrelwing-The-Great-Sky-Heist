@@ -8,6 +8,12 @@ The shared action layer now merges keyboard, touch and the first standard-mapped
 
 The virtual-gamepad regression covers Title → Profiles → New Game → stage movement → pause/resume, Sprint launch/class/pause/resume, World Map → Workshop → back, Settings controller labels, and Brawl setup → roster → match → pause/resume. **Physical-controller verification remains pending because no controller is attached to this Mac.** No Tekko or Android hardware result is claimed.
 
+## November 27 handheld exporter and GBA toolchain
+
+`npm run export:handheld` writes 31 deterministic files to ignored `build/handheld/v1`: all 18 stage records with stable object IDs and explicit tile/world units, Sprint/class/tuning data, golden course vectors, Pip/acorn/UI/background BMPs, five WAV cues, a generated original tracker loop, a contact sheet and a resource report. `npm run export:handheld:verify` compares two exports and reports an identical content hash. `npm run test:handheld` covers all stages, stable IDs, deterministic output, missing assets, unsupported playable objects and a clean-clone run with `_assets_src/` temporarily removed. The test passed 4/4; content checks passed 24/24; TypeScript and the production build passed.
+
+The GBA toolchain is proven with Butano 21.10.1 and the `docker.io/devkitpro/devkitarm:20260610` image. The official Butano `keypad` example compiled to a 135 KB ROM. The Barrelwing project source, Makefile, build script, SRAM save format, challenge-code contract and fixed-tick Sprint code are committed. **The Barrelwing ROM is not built yet.** Butano rejected the browser-sized sprite sheets during asset conversion (`pip` 57x45, `acorn` 20x20, `heart` 12x12, `storm_fill` 128x16); GBA-specific 32x32 Pip, 16x16 acorn, 16x16 heart and 16x16 storm-fill exports are the next required change. No mGBA round, save-reload check, screenshot or Tekko test exists for this ROM, and none is claimed.
+
 The initial review covered the original application source, authored stages, asset manifests, build scripts, README, credits, runtime assets, and package configuration. Upstream source archives are optional build inputs, not part of the application source maintained here.
 
 ## November 23 local acceptance

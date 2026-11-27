@@ -12,6 +12,7 @@
     "assets": "node scripts/build-assets.mjs && node scripts/build-characters.mjs && node scripts/build-icons.mjs",
     "export:handheld": "tsx scripts/export-handheld.ts",
     "export:handheld:verify": "tsx scripts/export-handheld.ts --verify",
+    "rom:gba": "bash handheld/gba/tools/build-rom.sh",
     "test": "tsx --test tests/content.test.ts",
     "test:handheld": "tsx --test tests/handheld-export.test.ts",
     "test:browser": "playwright test",

@@ -74,6 +74,19 @@ The APK is written to `artifacts/barrelwing-debug.apk`. It is signed with the lo
 
 The app supports portrait, landscape, and changing foldable display sizes. Gameplay expands its camera viewport to fit the available screen instead of stretching the character or changing movement speed. On portrait touch screens the controls overlay the lower part of the full-height playfield. The campaign camera leaves room for thumbs near the ground. See [Android development](docs/ANDROID.md) for configuration, diagnostics, and limitations.
 
+## Handheld / GBA development
+
+The same repository can export deterministic handheld data and assets and build a Butano Sky Sprint ROM once the GBA sprite packing is finished. The exporter reads only committed runtime art; `_assets_src/` is not required.
+
+```sh
+npm run export:handheld
+npm run export:handheld:verify
+npm run test:handheld
+npm run rom:gba
+```
+
+The GBA runtime is pinned to Butano 21.10.1 and a devkitARM container image. The current source and toolchain are in place, but the ROM is not yet built: Butano requires GBA-sized sprite sheets, while the exporter still emits browser-sized frames. See [docs/HANDHELD.md](docs/HANDHELD.md) for the exact blocker, toolchain, controls, save contract and Tekko arrival checklist.
+
 ## Controls
 
 | Keyboard | Action |

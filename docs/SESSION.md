@@ -1,5 +1,21 @@
 # Development handoff
 
+## 2026-11-27 handheld branch
+
+Branch `feat/barrelwing-handheld`, based on the reviewed `2e0781c` commit.
+
+Completed:
+- Baseline on Node 22.23.5: 24 content checks, production build and 59 Chromium tests passed before edits.
+- Preserved and verified the in-progress boss/tutorial work as a separate commit.
+- Shared gamepad action layer across menus, gameplay, pause/background handling and controller label settings. Virtual-gamepad regression passes; physical controller remains pending.
+- Deterministic handheld exporter with clean-clone, missing-asset, stable-ID and unsupported-playable-stage tests.
+- Butano 21.10.1 GBA project and devkitARM container setup. The official Butano example compiles.
+- GBA title, class select, challenge-code entry, course, gates, acorns, hearts, HUD, pause, results, retry and SRAM save source.
+
+Blocked:
+- The Barrelwing ROM does not compile yet because Butano rejects the browser-sized sprite sheets. GBA-specific 32x32 Pip, 16x16 acorn, 16x16 heart and 16x16 storm-fill export is the next change. No mGBA round or device test has been claimed.
+- Podman is stopped after the handoff to free resources. Butano and the pulled image remain available under `$HOME/.local/butano` and Podman storage.
+
 ## 2026-11-23 local review
 
 The current working tree adds Reed, lane drakes, Storm Coat, two Sky Trials and Gale Sprint. The [audit](AUDIT.md) records the implementation findings and remaining priorities. The [validation record](VALIDATION.md) identifies the browser routes, Brawl match, lifecycle checks and Android build for this revision. The November 20 entry below identifies the last hardware-tested milestone.

@@ -1,6 +1,13 @@
 node_modules/
 dist/
 build/
+handheld/gba/build/
+handheld/gba/graphics/
+handheld/gba/audio/
+handheld/gba/*.gba
+handheld/gba/*.elf
+handheld/gba/*.map
+handheld/gba/build-toolchain.json
 _assets_src/
 artifacts/
 test-results/
